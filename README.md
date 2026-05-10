@@ -38,6 +38,9 @@ Internet
 3. Caddy receives the request and reverse proxies it to the right container
 4. TLS cert is issued by Caddy's local CA (installed system-wide)
 
+**Docker containers and *.lan domains:**
+Docker containers cannot route to `100.104.43.6` — it's a host-local Tailscale address unreachable from the Docker bridge network. Uptime Kuma works around this via `extra_hosts` entries in its docker-compose that map all `.lan` domains directly to Caddy's Docker IP (`172.18.0.4`). Caddy is pinned to that IP via `ipv4_address: 172.18.0.4` in its docker-compose. Any new `.lan` service added to the Caddyfile also needs an `extra_hosts` entry added to Uptime Kuma's compose file.
+
 **Tailscale is set up with:**
 - Subnet routing: advertises `192.168.0.0/24` (approved in Tailscale admin console)
 - `--accept-dns=false` on the server itself (prevents a DNS loop since mediahub IS the DNS server)
@@ -150,9 +153,31 @@ sudo tailscale up --advertise-routes=192.168.0.0/24 --accept-dns=false
 # Then approve the subnet route in the Tailscale admin console
 ```
 
-### 5. Create shared Docker network
+### 5. Create shared Docker network and configure firewall
 ```bash
 docker network create mediahub_internal
+```
+
+Install and configure UFW:
+```bash
+sudo apt install -y ufw
+
+# Allow loopback
+sudo ufw allow in on lo
+
+# Allow all traffic from LAN
+sudo ufw allow from 192.168.0.0/24 comment "LAN"
+
+# Allow Tailscale CGNAT range and interface
+sudo ufw allow from 100.64.0.0/10 comment "Tailscale CGNAT"
+sudo ufw allow in on tailscale0 comment "Tailscale interface"
+sudo ufw allow 41641/udp comment "Tailscale VPN port"
+
+# Allow Docker bridge networks to reach host services
+# (required for containers to reverse-proxy to host-networked services like AdGuard)
+sudo ufw allow from 172.16.0.0/12 comment "Docker bridge networks"
+
+sudo ufw enable
 ```
 
 ### 6. Caddy (must come first — everything else needs TLS)
