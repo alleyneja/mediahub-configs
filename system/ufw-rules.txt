@@ -1,0 +1,16 @@
+Status: active
+Logging: on (low)
+Default: deny (incoming), allow (outgoing), deny (routed)
+New profiles: skip
+
+To                         Action      From
+--                         ------      ----
+Anywhere on lo             ALLOW IN    Anywhere                  
+Anywhere                   ALLOW IN    192.168.0.0/24             # LAN
+Anywhere                   ALLOW IN    100.64.0.0/10              # Tailscale CGNAT
+Anywhere on tailscale0     ALLOW IN    Anywhere                   # Tailscale interface
+41641/udp                  ALLOW IN    Anywhere                   # Tailscale VPN port
+Anywhere (v6) on lo        ALLOW IN    Anywhere (v6)             
+Anywhere (v6) on tailscale0 ALLOW IN    Anywhere (v6)              # Tailscale interface
+41641/udp (v6)             ALLOW IN    Anywhere (v6)              # Tailscale VPN port
+
