@@ -1,0 +1,10 @@
+[Unit]
+Description=Reload Wings TLS cert before Caddy local cert expires
+Requires=wings.service
+
+[Timer]
+OnBootSec=11h
+OnUnitActiveSec=11h
+
+[Install]
+WantedBy=timers.target

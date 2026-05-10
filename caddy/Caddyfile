@@ -1,0 +1,196 @@
+# ─────────────────────────────────────────
+# PERSONAL CLOUD
+# ─────────────────────────────────────────
+
+vaultwarden.lan {
+    tls internal
+    reverse_proxy vaultwarden:80
+}
+
+auth.lan {
+    tls internal
+    reverse_proxy authentik-server:9000
+}
+
+nextcloud.lan {
+    tls internal
+    reverse_proxy nextcloud:80
+}
+
+immich.lan {
+    tls internal
+    reverse_proxy immich-server:2283
+}
+
+# ─────────────────────────────────────────
+# BOOKS & READING
+# ─────────────────────────────────────────
+
+calibre-web.lan {
+    tls internal
+    reverse_proxy calibre-web-automated:8083 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {remote_host}
+    }
+}
+
+calibre-content.lan {
+    tls internal
+    reverse_proxy calibre-content-server:8080
+}
+
+audiobookshelf.lan {
+    tls internal
+    reverse_proxy audiobookshelf:80 {
+        header_up X-Forwarded-Proto https
+        header_up X-Forwarded-For {remote_host}
+    }
+}
+
+bookshelf-ebooks.lan {
+    tls internal
+    reverse_proxy bookshelf-ebooks:8787
+}
+
+bookshelf-audiobooks.lan {
+    tls internal
+    reverse_proxy bookshelf-audiobooks:8787
+}
+
+# ─────────────────────────────────────────
+# MEDIA SERVERS
+# ─────────────────────────────────────────
+
+plex.lan {
+    tls internal
+    reverse_proxy plex:32400
+}
+
+jellyfin.lan {
+    tls internal
+    reverse_proxy jellyfin:8096
+}
+
+aurral.lan {
+    tls internal
+    reverse_proxy aurral:3001
+}
+
+# ─────────────────────────────────────────
+# ARR STACK
+# ─────────────────────────────────────────
+
+sonarr.lan {
+    tls internal
+    reverse_proxy sonarr:8989
+}
+
+radarr.lan {
+    tls internal
+    reverse_proxy radarr:7878
+}
+
+lidarr.lan {
+    tls internal
+    reverse_proxy lidarr:8686
+}
+
+prowlarr.lan {
+    tls internal
+    reverse_proxy prowlarr:9696
+}
+
+bazarr.lan {
+    tls internal
+    reverse_proxy bazarr:6767
+}
+
+seer.lan {
+    tls internal
+    reverse_proxy seer:5055
+}
+
+# ─────────────────────────────────────────
+# DOWNLOAD CLIENTS
+# ─────────────────────────────────────────
+
+sabnzbd.lan {
+    tls internal
+    reverse_proxy sabnzbd:8080
+}
+
+qbittorrent.lan {
+    tls internal
+    reverse_proxy gluetun:8082
+}
+
+# ─────────────────────────────────────────
+# INFRASTRUCTURE & MONITORING
+# ─────────────────────────────────────────
+
+portainer.lan {
+    tls internal
+    reverse_proxy https://portainer:9443 {
+        transport http {
+            tls_insecure_skip_verify
+        }
+    }
+}
+
+adguard.lan {
+    tls internal
+    reverse_proxy 192.168.0.21:3000
+}
+
+uptimekuma.lan {
+    tls internal
+    reverse_proxy uptime-kuma:3001
+}
+
+netdata.lan {
+    tls internal
+    reverse_proxy netdata:19999
+}
+
+glances.lan {
+    tls internal
+    reverse_proxy glances:61208
+}
+
+scanopy.lan {
+    tls internal
+    reverse_proxy scanopy-server-1:60072
+}
+
+homepage.lan {
+    tls internal
+    reverse_proxy homepage:3000
+}
+# ─────────────────────────────────────────
+# GAMES
+# ─────────────────────────────────────────
+
+romm.lan {
+    tls internal
+    reverse_proxy romm:8080
+}
+
+# ─────────────────────────────────────────
+# PTERODACTYL SERVERS (MINECRAFT)
+# ─────────────────────────────────────────
+
+pterodactyl.lan {
+    tls internal
+    root * /var/www/pterodactyl/public
+    php_fastcgi unix//run/php/pterodactyl.sock
+    file_server
+    encode gzip
+}
+
+pterodactyl.lan:8090 {
+    tls internal
+    reverse_proxy 192.168.0.21:8090 {
+        header_up Connection {>Connection}
+        header_up Upgrade {>Upgrade}
+    }
+}

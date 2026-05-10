@@ -1,0 +1,574 @@
+http:
+  pprof:
+    port: 6060
+    enabled: false
+  address: 0.0.0.0:3000
+  session_ttl: 720h
+users:
+  - name: admin
+    password: $2a$10$TU94lCtVrIVED8L5jn8GpOfRn0t/pHepA2ZV3KC.qGdiAXMJe5sKG
+auth_attempts: 5
+block_auth_min: 15
+http_proxy: ""
+language: ""
+theme: auto
+dns:
+  bind_hosts:
+    - 0.0.0.0
+  port: 53
+  anonymize_client_ip: false
+  ratelimit: 20
+  ratelimit_subnet_len_ipv4: 24
+  ratelimit_subnet_len_ipv6: 56
+  ratelimit_whitelist: []
+  refuse_any: true
+  upstream_dns:
+    - https://dns10.quad9.net/dns-query
+  upstream_dns_file: ""
+  bootstrap_dns:
+    - 9.9.9.10
+    - 149.112.112.10
+    - 2620:fe::10
+    - 2620:fe::fe:10
+  fallback_dns: []
+  upstream_mode: load_balance
+  fastest_timeout: 1s
+  allowed_clients: []
+  disallowed_clients: []
+  blocked_hosts:
+    - version.bind
+    - id.server
+    - hostname.bind
+  trusted_proxies:
+    - 127.0.0.0/8
+    - ::1/128
+  cache_enabled: true
+  cache_size: 4194304
+  cache_ttl_min: 0
+  cache_ttl_max: 0
+  cache_optimistic: false
+  cache_optimistic_answer_ttl: 30s
+  cache_optimistic_max_age: 12h
+  bogus_nxdomain: []
+  aaaa_disabled: false
+  enable_dnssec: false
+  edns_client_subnet:
+    custom_ip: ""
+    enabled: false
+    use_custom: false
+  max_goroutines: 300
+  handle_ddr: true
+  ipset: []
+  ipset_file: ""
+  bootstrap_prefer_ipv6: false
+  upstream_timeout: 10s
+  private_networks: []
+  use_private_ptr_resolvers: false
+  local_ptr_upstreams: []
+  use_dns64: false
+  dns64_prefixes: []
+  serve_http3: false
+  use_http3_upstreams: false
+  serve_plain_dns: true
+  hostsfile_enabled: true
+  pending_requests:
+    enabled: true
+tls:
+  enabled: false
+  server_name: ""
+  force_https: false
+  port_https: 443
+  port_dns_over_tls: 853
+  port_dns_over_quic: 853
+  port_dnscrypt: 0
+  dnscrypt_config_file: ""
+  allow_unencrypted_doh: false
+  certificate_chain: ""
+  private_key: ""
+  certificate_path: ""
+  private_key_path: ""
+  strict_sni_check: false
+querylog:
+  dir_path: ""
+  ignored: []
+  interval: 2160h
+  size_memory: 1000
+  enabled: true
+  ignored_enabled: false
+  file_enabled: true
+statistics:
+  dir_path: ""
+  ignored: []
+  interval: 24h
+  enabled: true
+  ignored_enabled: false
+filters:
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt
+    name: AdGuard DNS filter
+    id: 1
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_2.txt
+    name: AdAway Default Blocklist
+    id: 2
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_33.txt
+    name: Steven Black's List
+    id: 1774711047
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_70.txt
+    name: 1Hosts (Xtra)
+    id: 1774711048
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_59.txt
+    name: AdGuard DNS Popup Hosts filter
+    id: 1774711049
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_27.txt
+    name: OISD Blocklist Big
+    id: 1774711050
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_3.txt
+    name: Peter Lowe's Blocklist
+    id: 1774711051
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_39.txt
+    name: Dandelion Sprout's Anti Push Notifications
+    id: 1774711052
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_63.txt
+    name: HaGeZi's Windows/Office Tracker Blocklist
+    id: 1774711053
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_30.txt
+    name: Phishing URL Blocklist (PhishTank and OpenPhish)
+    id: 1774711054
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_7.txt
+    name: Perflyst and Dandelion Sprout's Smart-TV Blocklist
+    id: 1774711055
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_44.txt
+    name: HaGeZi's Threat Intelligence Feeds
+    id: 1774711056
+  - enabled: true
+    url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_48.txt
+    name: HaGeZi's Pro Blocklist
+    id: 1774711057
+whitelist_filters: []
+user_rules:
+  - '@@||image.tmdb.org^'
+  - '@@||auth.split.io^'
+  - '@@||sdk.split.io^'
+  - '@@||cdn.split.io^'
+  - '@@||ingest.us.sentry.io^'
+  - '@@||api.segment.io^'
+  - '@@||app-analytics-services.com^'
+  - '@@||cdp.customer.io^'
+  - '@@||superwall.me^'
+  - '@@||appsflyersdk.com^'
+  - '@@||usespeak.com^'
+  - '@@||ca.iadsdk.apple.com^$important'
+  - '@@||pervtube.net^$important'
+  - '@@||plex.tv^'
+  - '@@||plexapp.com^'
+  - '@@||graph.facebook.com^'
+  - '@@||api.twitter.com^'
+  - '@@||authorization.franchise.minecraft-services.net^'
+  - '@@||persona-secondary.franchise.minecraft-services.net^'
+  - '@@||api.minecraftservices.com^'
+  - '@@||sessionserver.mojang.com^'
+  - '@@||api.mojang.com^'
+  - '@@||api.minecraftservices.com^'
+  - '@@||minecraftservices.com^'
+  - '@@||mojang.com^'
+  - '@@||privacy.xboxlive.com^$important'
+  - '@@||xp.apple.com^$important'
+  - '@@||client-api.itunes.apple.com^$important'
+  - '@@||appsgrowthpromo-pa.clients6.google.com^$important'
+  - '@@||baddiesonly.tv^$important'
+  - '@@||features.monarch.com^$important'
+  - '@@||api.monarch.com^$important'
+  - '@@||assets.publixcdn.com^$important'
+  - '@@||images.publixcdn.com^$important'
+  - '@@||assets.adobedtm.com^$important'
+  - '@@||www.elitetorrent.wf^$important'
+  - '@@||www.mcguiresirishpub.com^$important'
+  - '@@||pdrl.fm^'
+  - '@@||pscrb.fm^'
+  - '@@||podtrac.com^'
+  - '@@||mgln.ai^'
+  - '@@||claritaspod.com^'
+  - '@@||prfx.byspotify.com^'
+  - '@@||cohst.app^'
+  - '@@||www.thesaurus.com^$important'
+  - '@@||snowplow-collector.dataplatform.appfolio.net^$important'
+  - '@@||residentapi.foliospace.com^$important'
+  - '@@||fivebridgesres.appfolio.com^$important'
+  - '@@||artificialanalysis.ai^$important'
+  - '@@||log.eufylife.com^$important'
+  - '@@||bedrock.frontendlegacy.realms.minecraft-services.net^$important'
+  - '@@||client.discovery.minecraft-services.net^$important'
+  - '@@||minecraft-services.net^'
+  - '@@||minecraft.azureedge.net^'
+  - '@@||fp.msedge.net^$important'
+  - '@@||self.events.data.microsoft.com^$important'
+  - '@@||xerxes-sub.xerxessecure.com^$important'
+  - '@@||csp-prod.codebig2.net^$important'
+  - ""
+dhcp:
+  enabled: false
+  interface_name: ""
+  local_domain_name: lan
+  dhcpv4:
+    gateway_ip: ""
+    subnet_mask: ""
+    range_start: ""
+    range_end: ""
+    lease_duration: 86400
+    icmp_timeout_msec: 1000
+    options: []
+  dhcpv6:
+    range_start: ""
+    lease_duration: 86400
+    ra_slaac_only: false
+    ra_allow_slaac: false
+filtering:
+  blocking_ipv4: ""
+  blocking_ipv6: ""
+  blocked_services:
+    schedule:
+      time_zone: UTC
+    ids: []
+  protection_disabled_until: null
+  safe_search:
+    enabled: false
+    bing: true
+    duckduckgo: true
+    ecosia: true
+    google: true
+    pixabay: true
+    yandex: true
+    youtube: true
+  blocking_mode: default
+  parental_block_host: family-block.dns.adguard.com
+  safebrowsing_block_host: standard-block.dns.adguard.com
+  rewrites:
+    - domain: vaultwarden.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: auth.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: calibre-web.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: nextcloud.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: immich.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: audiobookshelf.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: aurral.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: plex.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: sonarr.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: radarr.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: lidarr.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: prowlarr.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: bazarr.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: seer.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: sabnzbd.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: qbittorrent.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: portainer.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: adguard.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: uptimekuma.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: netdata.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: glances.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: scanopy.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: homepage.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: calibre-content.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: bookshelf-ebooks.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: bookshelf-audiobooks.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: pterodactyl.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: jellyfin.lan
+      answer: 100.104.43.6
+      enabled: true
+    - domain: romm.lan
+      answer: 100.104.43.6
+      enabled: true
+  safe_fs_patterns:
+    - /opt/adguardhome/work/userfilters/*
+  safebrowsing_cache_size: 1048576
+  safesearch_cache_size: 1048576
+  parental_cache_size: 1048576
+  cache_time: 30
+  filters_update_interval: 24
+  blocked_response_ttl: 10
+  filtering_enabled: true
+  rewrites_enabled: true
+  parental_enabled: false
+  safebrowsing_enabled: false
+  protection_enabled: true
+clients:
+  runtime_sources:
+    whois: true
+    arp: true
+    rdns: true
+    dhcp: true
+    hosts: true
+  persistent:
+    - safe_search:
+        enabled: false
+        bing: true
+        duckduckgo: true
+        ecosia: true
+        google: true
+        pixabay: true
+        yandex: true
+        youtube: true
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []
+      name: Jay's iPhone
+      ids:
+        - 100.97.193.57
+      tags: []
+      upstreams: []
+      uid: 019d47b1-1ce4-78ab-bef0-1c4997c760a4
+      upstreams_cache_size: 0
+      upstreams_cache_enabled: false
+      use_global_settings: true
+      filtering_enabled: false
+      parental_enabled: false
+      safebrowsing_enabled: false
+      use_global_blocked_services: true
+      ignore_querylog: false
+      ignore_statistics: false
+    - safe_search:
+        enabled: false
+        bing: false
+        duckduckgo: false
+        ecosia: false
+        google: false
+        pixabay: false
+        yandex: false
+        youtube: false
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []
+      name: Marifer's iPhone
+      ids:
+        - 100.93.113.124
+      tags: []
+      upstreams: []
+      uid: 019d47b0-2205-77e8-bf69-57662398f7e1
+      upstreams_cache_size: 0
+      upstreams_cache_enabled: false
+      use_global_settings: true
+      filtering_enabled: false
+      parental_enabled: false
+      safebrowsing_enabled: false
+      use_global_blocked_services: true
+      ignore_querylog: false
+      ignore_statistics: false
+    - safe_search:
+        enabled: false
+        bing: true
+        duckduckgo: true
+        ecosia: true
+        google: true
+        pixabay: true
+        yandex: true
+        youtube: true
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []
+      name: Uptime Kuma
+      ids:
+        - 172.18.0.28
+      tags: []
+      upstreams: []
+      uid: 019dde3f-c081-7573-b5a8-8e8b73d7d8dc
+      upstreams_cache_size: 0
+      upstreams_cache_enabled: false
+      use_global_settings: true
+      filtering_enabled: false
+      parental_enabled: false
+      safebrowsing_enabled: false
+      use_global_blocked_services: true
+      ignore_querylog: false
+      ignore_statistics: true
+    - safe_search:
+        enabled: false
+        bing: true
+        duckduckgo: true
+        ecosia: true
+        google: true
+        pixabay: true
+        yandex: true
+        youtube: true
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []
+      name: gaming-desktop
+      ids:
+        - 100.115.217.47
+      tags: []
+      upstreams: []
+      uid: 019d47b1-c2e8-7924-9a7e-4c85fcff3a90
+      upstreams_cache_size: 0
+      upstreams_cache_enabled: false
+      use_global_settings: true
+      filtering_enabled: false
+      parental_enabled: false
+      safebrowsing_enabled: false
+      use_global_blocked_services: true
+      ignore_querylog: false
+      ignore_statistics: false
+    - safe_search:
+        enabled: false
+        bing: false
+        duckduckgo: false
+        ecosia: false
+        google: false
+        pixabay: false
+        yandex: false
+        youtube: false
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []
+      name: mediahub-production
+      ids:
+        - 100.104.43.6
+      tags: []
+      upstreams: []
+      uid: 019d4cd6-ea3d-71f9-88ab-d3f758de1410
+      upstreams_cache_size: 0
+      upstreams_cache_enabled: false
+      use_global_settings: true
+      filtering_enabled: false
+      parental_enabled: false
+      safebrowsing_enabled: false
+      use_global_blocked_services: true
+      ignore_querylog: false
+      ignore_statistics: false
+    - safe_search:
+        enabled: false
+        bing: true
+        duckduckgo: true
+        ecosia: true
+        google: true
+        pixabay: true
+        yandex: true
+        youtube: true
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []
+      name: mediahub-staging
+      ids:
+        - 100.124.234.117
+      tags: []
+      upstreams: []
+      uid: 019d47b0-8fd4-77c8-a1ab-729fbc33b72b
+      upstreams_cache_size: 0
+      upstreams_cache_enabled: false
+      use_global_settings: true
+      filtering_enabled: false
+      parental_enabled: false
+      safebrowsing_enabled: false
+      use_global_blocked_services: true
+      ignore_querylog: false
+      ignore_statistics: false
+    - safe_search:
+        enabled: false
+        bing: false
+        duckduckgo: false
+        ecosia: false
+        google: false
+        pixabay: false
+        yandex: false
+        youtube: false
+      blocked_services:
+        schedule:
+          time_zone: UTC
+        ids: []
+      name: mediahub_containers
+      ids:
+        - 172.18.0.1
+      tags: []
+      upstreams: []
+      uid: 019d82d3-1df5-7524-9ca3-c64a4ebfbd7d
+      upstreams_cache_size: 0
+      upstreams_cache_enabled: false
+      use_global_settings: true
+      filtering_enabled: false
+      parental_enabled: false
+      safebrowsing_enabled: false
+      use_global_blocked_services: true
+      ignore_querylog: false
+      ignore_statistics: false
+log:
+  enabled: true
+  file: ""
+  max_backups: 0
+  max_size: 100
+  max_age: 3
+  compress: false
+  local_time: false
+  verbose: false
+os:
+  group: ""
+  user: ""
+  rlimit_nofile: 0
+schema_version: 33

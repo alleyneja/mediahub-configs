@@ -1,0 +1,3 @@
+0 3 * * 0,3 apt update && apt upgrade -y && reboot
+* * * * * php /var/www/pterodactyl/artisan schedule:run >> /dev/null 2>&1
+0 3 * * * chown -R pterodactyl:pterodactyl /srv/docker/caddy/data/caddy/certificates/local/pterodactyl.lan/ && systemctl restart wings

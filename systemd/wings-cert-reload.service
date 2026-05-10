@@ -1,0 +1,7 @@
+[Unit]
+Description=Reload Wings TLS cert
+After=wings.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/systemctl restart wings
