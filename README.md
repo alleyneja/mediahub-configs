@@ -241,6 +241,14 @@ git commit -m "describe what you changed"
 git push
 ```
 
+**Adding a new service checklist:**
+- [ ] Add the service's docker-compose to `stacks/<name>/`
+- [ ] Add a reverse proxy block to `caddy/Caddyfile` (`<name>.lan { tls internal; reverse_proxy ... }`)
+- [ ] Add a DNS rewrite in AdGuard: `<name>.lan` → `100.104.43.6`
+- [ ] Add an `extra_hosts` entry to `stacks/uptime-kuma/docker-compose.yml`: `- "<name>.lan:172.18.0.4"`
+- [ ] Recreate Uptime Kuma to pick up the new hosts entry: `docker compose up -d --force-recreate uptime-kuma`
+- [ ] Add a monitor in Uptime Kuma for `https://<name>.lan`
+
 ---
 
 ## Key IPs
