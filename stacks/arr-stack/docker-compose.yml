@@ -1,0 +1,134 @@
+version: "3.9"
+
+services:
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    ports:
+      - "9696:9696"
+    volumes:
+      - /srv/docker/prowlarr:/config
+      - /mnt/downloads:/data/downloads
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    ports:
+      - "7878:7878"
+    volumes:
+      - /srv/docker/radarr:/config
+      - /mnt/media/movies:/movies
+      - /mnt/downloads:/data/downloads
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    ports:
+      - "8989:8989"
+    volumes:
+      - /srv/docker/sonarr:/config
+      - /mnt/media/tv:/tv
+      - /mnt/downloads:/data/downloads
+
+  lidarr:
+    image: lscr.io/linuxserver/lidarr:latest
+    container_name: lidarr
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    ports:
+      - "8686:8686"
+    volumes:
+      - /srv/docker/lidarr:/config
+      - /mnt/media/music:/music
+      - /mnt/downloads:/data/downloads
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    ports:
+      - "6767:6767"
+    volumes:
+      - /srv/docker/bazarr:/config
+      - /mnt/media/movies:/movies
+      - /mnt/media/tv:/tv
+      - /mnt/downloads:/data/downloads
+
+  seer:
+    image: ghcr.io/seerr-team/seerr:latest
+    container_name: seer
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    ports:
+      - "5055:5055"
+    volumes:
+      - /srv/docker/seer:/app/config
+  # ------------------------------------
+  # --------- Unpackerr (Extraction) ---
+  # ------------------------------------
+  unpackerr:
+    image: golift/unpackerr:latest
+    container_name: unpackerr
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    user: "1000:1000"
+    volumes:
+      - /srv/docker/unpackerr:/config
+      - /mnt/downloads:/data/downloads
+    environment:
+      - TZ=America/Chicago
+      - UN_LOG_FILE=/data/downloads/unpackerr.log
+      # Sonarr
+      - UN_SONARR_0_URL=http://sonarr:8989
+      - UN_SONARR_0_API_KEY=${UN_SONARR_0_API_KEY}
+      - UN_SONARR_0_PATHS_0=/data/downloads
+      # Radarr
+      - UN_RADARR_0_URL=http://radarr:7878
+      - UN_RADARR_0_API_KEY=${UN_RADARR_0_API_KEY}
+      - UN_RADARR_0_PATHS_0=/data/downloads
+      # Lidarr
+      - UN_LIDARR_0_URL=http://lidarr:8686
+      - UN_LIDARR_0_API_KEY=${UN_LIDARR_0_API_KEY}
+      - UN_LIDARR_0_PATHS_0=/data/downloads
+      # Bookshelf - Ebooks (Readarr-compatible fork, port 8787)
+      - UN_READARR_0_URL=http://bookshelf-ebooks:8787
+      - UN_READARR_0_API_KEY=${UN_READARR_0_API_KEY}
+      - UN_READARR_0_PATHS_0=/data/downloads
+      # Bookshelf - Audiobooks (Readarr-compatible fork, port 8789)
+      - UN_READARR_1_URL=http://bookshelf-audiobooks:8787
+      - UN_READARR_1_API_KEY=${UN_READARR_1_API_KEY}
+      - UN_READARR_1_PATHS_0=/data/downloads
+networks:
+  mediahub_internal:
+    external: true

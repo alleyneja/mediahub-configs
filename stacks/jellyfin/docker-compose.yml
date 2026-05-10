@@ -1,0 +1,22 @@
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c", "cp /config/caddy-ca.crt /usr/local/share/ca-certificates/caddy-ca.crt && update-ca-certificates && exec /jellyfin/jellyfin"]
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    volumes:
+      - /srv/docker/jellyfin/config:/config
+      - /srv/docker/jellyfin/cache:/cache
+      - /mnt/media:/media:ro
+    ports:
+      - 8096:8096
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true

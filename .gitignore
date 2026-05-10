@@ -1,0 +1,7 @@
+# Secret files — never commit these
+stack.env
+.env
+*.env
+
+# OS noise
+.DS_Store

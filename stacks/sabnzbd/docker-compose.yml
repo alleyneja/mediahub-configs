@@ -1,0 +1,22 @@
+version: "3.9"
+
+services:
+  sabnzbd:
+    image: lscr.io/linuxserver/sabnzbd:latest
+    container_name: sabnzbd
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    ports:
+      - "8080:8080"
+    volumes:
+      - /srv/docker/sabnzbd:/config
+      - /mnt/downloads:/data/downloads
+
+networks:
+  mediahub_internal:
+    external: true

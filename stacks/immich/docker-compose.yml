@@ -1,0 +1,59 @@
+version: "3.9"
+services:
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:release
+    container_name: immich-server
+    depends_on:
+      - immich-redis
+      - immich-postgres
+    environment:
+      TZ: America/Chicago
+      REDIS_HOSTNAME: immich-redis
+      DB_HOSTNAME: immich-postgres
+      DB_USERNAME: immich
+      DB_PASSWORD: ${IMMICH_DB_PASSWORD}
+      DB_DATABASE_NAME: immich
+      IMMICH_MEDIA_LOCATION: /usr/src/app/upload
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/caddy-root.crt
+    volumes:
+      - /mnt/media/photos/immich:/usr/src/app/upload
+      - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
+    dns:
+      - 192.168.0.21
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+    
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:release
+    container_name: immich-machine-learning
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+    
+  immich-redis:
+    image: redis:7-alpine
+    container_name: immich-redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - /srv/docker/immich/redis:/data
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+    
+  immich-postgres:
+    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+    container_name: immich-postgres
+    environment:
+      POSTGRES_USER: immich
+      POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
+      POSTGRES_DB: immich
+    volumes:
+      - /srv/docker/immich/postgres:/var/lib/postgresql/data
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+    
+networks:
+  mediahub_internal:
+    external: true

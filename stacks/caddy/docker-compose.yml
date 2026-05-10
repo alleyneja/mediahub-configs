@@ -1,0 +1,21 @@
+version: "3.9"
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - /srv/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - /srv/docker/caddy/data:/data
+      - /srv/docker/caddy/config:/config
+      - /run/php:/run/php
+      - /var/www/pterodactyl:/var/www/pterodactyl
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+networks:
+  mediahub_internal:
+    external: true

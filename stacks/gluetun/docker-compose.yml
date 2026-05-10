@@ -1,0 +1,89 @@
+version: "3.9"
+
+services:
+
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    cap_add:
+      - NET_ADMIN           # Required: Gluetun needs to create/manage the TUN interface
+    devices:
+      - /dev/net/tun:/dev/net/tun   # Required: TUN device for WireGuard tunnel
+    environment:
+      # VPN Provider
+      - VPN_SERVICE_PROVIDER=nordvpn
+      - VPN_TYPE=wireguard
+      - DOT=off
+      - DNS_KEEP_NAMESERVER=on
+
+      # NordVPN WireGuard credentials
+      # Replace with your actual NordVPN WireGuard private key
+      - VPN_TYPE=openvpn
+      - OPENVPN_USER=${OPENVPN_USER}
+      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
+
+      # Server selection — set to your preferred region
+      # Options: us, uk, ca, de, nl, etc.
+      - SERVER_COUNTRIES=United States
+
+      # DNS inside the tunnel (NordVPN's servers — prevents DNS leaks)
+      - DNS_ADDRESS=103.86.96.100
+
+      # Gluetun HTTP control server (used for health check and kill-switch status)
+      - HTTPPROXY=off
+      - SHADOWSOCKS=off
+
+    ports:
+      # qBittorrent Web UI — exposed through Gluetun since qbt has no network of its own
+      - "8082:8082"
+
+      # Optional: Gluetun control API (useful for health checks and kill-switch verification)
+      - "8001:8000"
+
+    volumes:
+      - /srv/docker/gluetun:/gluetun
+
+    restart: unless-stopped
+
+    networks:
+      - mediahub_internal
+
+    healthcheck:
+      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+
+    # THIS IS THE CRITICAL LINE — qBittorrent has no network of its own.
+    # It shares Gluetun's network namespace entirely.
+    # If Gluetun goes down, qBittorrent loses all network access.
+    network_mode: "service:gluetun"
+
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
+    environment:
+      - PUID=1000     # Replace with your UID (run `id` on host to confirm)
+      - PGID=1000     # Replace with your GID
+      - TZ=America/Chicago
+      - WEBUI_PORT=8082
+
+    volumes:
+      - /srv/docker/qbittorrent:/config
+      - /mnt/downloads:/data/downloads
+      - /mnt/nas/games/pc:/data/games/pc
+
+    restart: unless-stopped
+    # Note: no `networks:` block here — network_mode overrides it
+
+
+networks:
+  mediahub_internal:
+    external: true

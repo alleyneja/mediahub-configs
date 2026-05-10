@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    environment:
+      TZ: America/Chicago
+      SIGNUPS_ALLOWED: "false"
+      DOMAIN: "https://vaultwarden.lan:8443"
+    volumes:
+      - /srv/docker/vaultwarden/data:/data
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true

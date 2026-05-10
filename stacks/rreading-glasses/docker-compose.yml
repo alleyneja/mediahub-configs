@@ -1,0 +1,99 @@
+services:
+  rreading-glasses-db:
+    mem_limit: 512m
+    cpus: "1.0"
+    image: postgres:17
+    container_name: rreading-glasses-db
+    environment:
+      POSTGRES_USER: rreading-glasses
+      POSTGRES_PASSWORD: ${RG_POSTGRES_PASSWORD}
+      POSTGRES_DB: rreading-glasses
+    volumes:
+      - /srv/docker/rreading-glasses/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+  rreading-glasses:
+    image: blampe/rreading-glasses:latest
+    container_name: rreading-glasses
+    depends_on:
+      - rreading-glasses-db
+    entrypoint: ["/main", "serve"]
+    command:
+      - --upstream=www.goodreads.com
+      - --verbose
+      - --rpm=120
+    environment:
+      POSTGRES_HOST: rreading-glasses-db
+      POSTGRES_DATABASE: rreading-glasses
+      POSTGRES_USER: rreading-glasses
+      POSTGRES_PASSWORD: ${RG_POSTGRES_PASSWORD}
+    ports:
+      - "8788:8788"
+    mem_limit: 512m
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+  calibre-content-server:
+    image: wietsedv/calibre-server:latest
+    container_name: calibre-content-server
+    user: "1000:1000"
+    command:
+      - calibre-server
+      - /library
+      - --trusted-ips
+      - 172.18.0.0/16
+      - --enable-local-write
+    environment:
+      - TZ=America/Chicago
+    volumes:
+      - /mnt/media/ebooks/calibre-library:/library
+      - /srv/docker/calibre-content-server/config:/config
+    ports:
+      - "18091:8080"
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+  bookshelf-ebooks:
+    image: ghcr.io/pennydreadful/bookshelf:softcover
+    container_name: bookshelf-ebooks
+    environment:
+      METADATA_URL: "http://rreading-glasses:8788"
+      TZ: "America/Chicago"
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - /srv/docker/bookshelf/ebooks/config:/config
+      - /mnt/downloads:/data/downloads
+      - /mnt/media/ebooks/calibre-library:/library
+      - /mnt/media/ebooks/bookshelf:/books
+    ports:
+      - "8787:8787"
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+  bookshelf-audiobooks:
+    image: ghcr.io/pennydreadful/bookshelf:softcover
+    container_name: bookshelf-audiobooks
+    environment:
+      METADATA_URL: "http://rreading-glasses:8788"
+      TZ: "America/Chicago"
+      PUID: "1000"
+      PGID: "1000"
+    volumes:
+      - /srv/docker/bookshelf/audiobooks/config:/config
+      - /mnt/media/audiobooks/bookshelf:/books
+      - /mnt/downloads:/data/downloads
+    ports:
+      - "8789:8787"
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true

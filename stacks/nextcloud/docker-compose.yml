@@ -1,0 +1,67 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nextcloud-postgres
+    environment:
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_POSTGRES_PASSWORD}
+    volumes:
+      - /srv/docker/nextcloud/postgres:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nextcloud -d nextcloud -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - mediahub_internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - /srv/docker/nextcloud/redis:/data
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+  nextcloud:
+    image: nextcloud:29-apache
+    container_name: nextcloud
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8081:80"   # Staging port (8080 reserved for SABnzbd)
+    dns:
+      - 192.168.0.21
+    environment:
+      NEXTCLOUD_ADMIN_USER: admin
+      NEXTCLOUD_ADMIN_PASSWORD: ${NEXTCLOUD_ADMIN_PASSWORD}
+
+      POSTGRES_HOST: nextcloud-postgres
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_POSTGRES_PASSWORD}
+      OVERWRITEPROTOCOL: https
+      OVERWRITECLIURL: https://nextcloud.lan:8443
+      TRUSTED_PROXIES: 172.20.0.0/16
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/caddy-root.crt
+      REDIS_HOST: nextcloud-redis
+    volumes:
+      - /srv/docker/nextcloud/html:/var/www/html
+      - /mnt/media/nextcloud/data:/var/www/html/data
+      - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true

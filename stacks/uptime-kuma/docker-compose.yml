@@ -1,0 +1,103 @@
+services:
+
+  uptime-kuma:
+    image: louislam/uptime-kuma:latest
+    container_name: uptime-kuma
+    restart: unless-stopped
+    dns:
+      - 192.168.0.21
+    environment:
+      - NODE_TLS_REJECT_UNAUTHORIZED=0
+    volumes:
+      - /srv/docker/visibility/uptime-kuma:/app/data
+    extra_hosts:
+      - "mediahub-production.tail3b4ccf.ts.net:100.104.43.6"
+    ports:
+      - "3003:3001"
+    networks:
+      - mediahub_internal
+
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+    restart: unless-stopped
+    pid: host
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /srv/docker/visibility/netdata/config:/etc/netdata
+      - /srv/docker/visibility/netdata/lib:/var/lib/netdata
+      - /srv/docker/visibility/netdata/cache:/var/cache/netdata
+      - /mnt/media:/host/mnt/media:ro
+    ports:
+      - "19999:19999"
+    networks:
+      - mediahub_internal
+
+  diun:
+    image: crazymax/diun:latest
+    container_name: diun
+    restart: unless-stopped
+    volumes:
+      - /srv/docker/visibility/diun:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - LOG_LEVEL=info
+      - LOG_JSON=false
+      - DIUN_WATCH_WORKERS=20
+      - DIUN_WATCH_SCHEDULE=0 9 * * 1
+      - DIUN_WATCH_JITTER=30s
+      - DIUN_PROVIDERS_DOCKER=true
+      - DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT=true
+    networks:
+      - mediahub_internal
+
+  glances:
+    image: nicolargo/glances:latest
+    container_name: glances
+    restart: unless-stopped
+    pid: host
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /mnt/media:/mnt/media:ro
+      - /sys/class/hwmon:/sys/class/hwmon:ro
+      - /sys/class/thermal:/sys/class/thermal:ro
+      - /run/udev:/run/udev:ro
+      - /srv/docker/visibility/glances:/etc/glances:ro
+    environment:
+      - GLANCES_OPT=-w --enable-plugin sensors
+    ports:
+      - "61208:61208"
+    networks:
+      - mediahub_internal
+
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "3080:3000"
+    extra_hosts:
+    - "adguardhome:host-gateway"
+    volumes:
+      - /srv/docker/homepage/config:/app/config
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - HOMEPAGE_ALLOWED_HOSTS=192.168.0.21:3080,homepage.lan,mediahub-production.tail3b4ccf.ts.net:3080
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true

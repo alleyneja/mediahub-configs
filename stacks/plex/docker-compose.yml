@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    cpus: "4"
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - VERSION=docker
+      - PLEX_CLAIM=claim-CKx96EC3gh2MLQksSqas
+      - NVIDIA_VISIBLE_DEVICES=all
+    volumes:
+      - /srv/docker/plex:/config
+      - /mnt/media:/data/media
+    ports:
+      - "32400:32400"
+    runtime: nvidia
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true

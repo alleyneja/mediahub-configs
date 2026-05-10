@@ -1,0 +1,26 @@
+services:
+  calibre-web-automated:
+    image: crocodilestick/calibre-web-automated:latest
+    container_name: calibre-web-automated
+    dns:
+      - 192.168.0.21
+    environment:
+      PUID: 1000
+      PGID: 1000
+      TZ: America/Chicago
+      OAUTHLIB_INSECURE_TRANSPORT: "1"
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/caddy-root.crt
+    volumes:
+      - /srv/docker/calibre-web/config:/config
+      - /mnt/media/ebooks/calibre-library:/calibre-library
+      - /mnt/media/ebooks/ingest:/ingest
+      - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
+    extra_hosts:
+      - "auth.lan:172.18.0.28"
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true
