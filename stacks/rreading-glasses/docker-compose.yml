@@ -67,7 +67,7 @@ services:
       PGID: "1000"
     volumes:
       - /srv/docker/bookshelf/ebooks/config:/config
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
       - /mnt/media/ebooks/calibre-library:/library
       - /mnt/media/ebooks/bookshelf:/books
     ports:
@@ -87,7 +87,7 @@ services:
     volumes:
       - /srv/docker/bookshelf/audiobooks/config:/config
       - /mnt/media/audiobooks/bookshelf:/books
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
     ports:
       - "8789:8787"
     restart: unless-stopped
