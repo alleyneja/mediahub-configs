@@ -14,7 +14,7 @@ services:
       - "9696:9696"
     volumes:
       - /srv/docker/prowlarr:/config
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
 
   radarr:
     image: lscr.io/linuxserver/radarr:latest
@@ -29,8 +29,7 @@ services:
       - "7878:7878"
     volumes:
       - /srv/docker/radarr:/config
-      - /mnt/media/movies:/movies
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -45,8 +44,7 @@ services:
       - "8989:8989"
     volumes:
       - /srv/docker/sonarr:/config
-      - /mnt/media/tv:/tv
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
 
   lidarr:
     image: lscr.io/linuxserver/lidarr:latest
@@ -61,8 +59,7 @@ services:
       - "8686:8686"
     volumes:
       - /srv/docker/lidarr:/config
-      - /mnt/media/music:/music
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
 
   bazarr:
     image: lscr.io/linuxserver/bazarr:latest
@@ -77,9 +74,7 @@ services:
       - "6767:6767"
     volumes:
       - /srv/docker/bazarr:/config
-      - /mnt/media/movies:/movies
-      - /mnt/media/tv:/tv
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
 
   seer:
     image: ghcr.io/seerr-team/seerr:latest
@@ -105,7 +100,7 @@ services:
     user: "1000:1000"
     volumes:
       - /srv/docker/unpackerr:/config
-      - /mnt/downloads:/data/downloads
+      - /mnt/media:/data
     environment:
       - TZ=America/Chicago
       - UN_LOG_FILE=/data/downloads/unpackerr.log
