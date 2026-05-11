@@ -77,8 +77,7 @@ services:
 
     volumes:
       - /srv/docker/qbittorrent:/config
-      - /mnt/downloads:/data/downloads
-      - /mnt/nas/games/pc:/data/games/pc
+      - /mnt/media:/data
 
     restart: unless-stopped
     # Note: no `networks:` block here — network_mode overrides it

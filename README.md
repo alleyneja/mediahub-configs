@@ -52,12 +52,19 @@ Docker containers cannot route to `100.104.43.6` — it's a host-local Tailscale
 
 | Path | What it is |
 |------|-----------|
-| `/mnt/internal` | 12TB internal HDD (ext4) |
-| `/mnt/nas` | UGREEN NAS share over NFS (Btrfs, 22TB free) |
-| `/mnt/media` | mergerfs pool combining both — all Docker apps point here |
-| `/mnt/downloads` | Download staging area on internal HDD |
+| `/mnt/internal` | 12TB internal HDD (ext4) — cold storage, existing library |
+| `/mnt/nas` | UGREEN NAS share over NFS (Btrfs, 22TB free) — active library + downloads |
+| `/mnt/media` | mergerfs pool combining both — all Docker apps mount this as `/data` |
+| `/mnt/nas/downloads` | Download staging area on NAS (visible through mergerfs at `/mnt/media/downloads`) |
 
-**mergerfs policy:** most-free-space — new writes automatically go to whichever drive has more room (currently the NAS).
+**mergerfs policy:** most-free-space — new writes automatically go to whichever drive has more room (currently the NAS). Downloads and library files both land on the NAS via this policy, enabling arr apps to hardlink on import (instant, zero-copy) instead of physically copying across filesystems.
+
+**After this pipeline change, update root folders in each arr app's UI:**
+- Radarr → Settings → Media Management → Root Folders: change `/movies` to `/data/movies`
+- Sonarr → Settings → Media Management → Root Folders: change `/tv` to `/data/tv`
+- Lidarr → Settings → Media Management → Root Folders: change `/music` to `/data/music`
+- SABnzbd → Config → Folders: set Temporary Download Folder to `/data/downloads/incomplete`, Completed Download Folder to `/data/downloads/complete`
+- qBittorrent → Settings → Downloads: set Default Save Path to `/data/downloads/complete`
 
 **Key mergerfs tuning in fstab:** `cache.files=partial,dropcacheonclose=true` — buffers small writes through the kernel page cache before hitting the FUSE boundary. Critical for tag-writing performance (Lidarr, etc.) over NFS.
 
