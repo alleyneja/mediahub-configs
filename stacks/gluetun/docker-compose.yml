@@ -13,14 +13,10 @@ services:
       # VPN Provider
       - VPN_SERVICE_PROVIDER=nordvpn
       - VPN_TYPE=wireguard
+      - NORDVPN_ACCESS_TOKEN=${NORDVPN_ACCESS_TOKEN}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - DOT=off
       - DNS_KEEP_NAMESERVER=on
-
-      # NordVPN WireGuard credentials
-      # Replace with your actual NordVPN WireGuard private key
-      - VPN_TYPE=openvpn
-      - OPENVPN_USER=${OPENVPN_USER}
-      - OPENVPN_PASSWORD=${OPENVPN_PASSWORD}
 
       # Server selection — set to your preferred region
       # Options: us, uk, ca, de, nl, etc.
