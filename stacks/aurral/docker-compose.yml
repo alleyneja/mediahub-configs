@@ -6,12 +6,10 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - DOWNLOAD_FOLDER=/data/downloads/tmp
       - PUID=1000
       - PGID=1000
       - TZ=America/Chicago
     volumes:
-      - /mnt/downloads/aurral/tmp:/app/downloads
       - /srv/docker/aurral/data:/app/backend/data
       - /mnt/media/music/_aurral_weeklyflow:/data/weeklyflow
     networks:
