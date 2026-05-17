@@ -38,7 +38,8 @@ services:
     volumes:
       - /srv/docker/immich/redis:/data
     networks:
-      - mediahub_internal
+      mediahub_internal:
+        ipv4_address: 172.18.0.100
     restart: unless-stopped
     
   immich-postgres:
