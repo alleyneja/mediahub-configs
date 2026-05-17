@@ -106,6 +106,8 @@ echo "✓ AdGuardHome.yaml written to /srv/docker/adguardhome/conf/"
 if [ -f "$REPO_DIR/system/docker-daemon.json" ]; then
   sudo cp "$REPO_DIR/system/docker-daemon.json" /etc/docker/daemon.json
   sudo systemctl restart docker
+  echo "  Waiting for Docker daemon..."
+  until docker info >/dev/null 2>&1; do sleep 1; done
   echo "✓ Docker daemon config applied (MTU + NVIDIA runtime)"
 fi
 
@@ -161,5 +163,4 @@ echo "   - Approve subnet route: 192.168.0.0/24"
 echo "   - Set Split DNS: .lan → ${SERVER_IP}"
 echo ""
 echo "4. Visit https://adguard.lan and set your admin password"
-echo "5. Visit https://portainer.lan to manage stacks"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
