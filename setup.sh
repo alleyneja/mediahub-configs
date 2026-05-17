@@ -94,12 +94,12 @@ echo "✓ Docker network ready (mediahub_internal @ 172.18.0.0/16)"
 
 # ── Process Caddyfile template ─────────────────────────────────────────────────
 sed "s/SERVER_IP_PLACEHOLDER/${SERVER_IP}/g" \
-  "$REPO_DIR/caddy/Caddyfile" > /srv/docker/caddy/Caddyfile
+  "$REPO_DIR/caddy/Caddyfile" | sudo tee /srv/docker/caddy/Caddyfile >/dev/null
 echo "✓ Caddyfile written to /srv/docker/caddy/Caddyfile"
 
 # ── Process AdGuard template ───────────────────────────────────────────────────
 sed "s/SERVER_IP_PLACEHOLDER/${SERVER_IP}/g" \
-  "$REPO_DIR/adguard/AdGuardHome.yaml" > /srv/docker/adguardhome/conf/AdGuardHome.yaml
+  "$REPO_DIR/adguard/AdGuardHome.yaml" | sudo tee /srv/docker/adguardhome/conf/AdGuardHome.yaml >/dev/null
 echo "✓ AdGuardHome.yaml written to /srv/docker/adguardhome/conf/"
 
 # ── Docker daemon config ───────────────────────────────────────────────────────
