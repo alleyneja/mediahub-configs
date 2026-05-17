@@ -121,7 +121,7 @@ mediahub-configs/
 ```
 
 **What's NOT here (intentionally):**
-- `stack.env` files — these hold real passwords and stay on the server only. Each stack that needs secrets has a `stack.env` file in its Portainer compose directory at `/var/lib/docker/volumes/portainer_data/_data/compose/<id>/stack.env`.
+- `.env` — holds all secrets and machine-specific values (passwords, API keys, IPs). Copy `.env.example` to `.env` and fill it in. Never commit `.env` — it's gitignored.
 
 ---
 
@@ -140,6 +140,9 @@ The first run creates `.env` from `.env.example` and exits. Fill in all values, 
 ### Prerequisites (install before running setup.sh)
 
 ```bash
+# Required system packages
+sudo apt update && sudo apt install -y nfs-common mergerfs
+
 # Docker Engine (not docker.io — the Engine package includes the Compose plugin)
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker $USER && newgrp docker
