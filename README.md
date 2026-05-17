@@ -155,15 +155,11 @@ sudo tailscale up --advertise-routes=192.168.0.0/24 --accept-dns=false
 
 ### After setup.sh completes
 
-1. **Install Caddy's CA cert** so browsers trust `.lan` domains:
-   ```bash
-   sudo cp /srv/docker/caddy/data/caddy/pki/authorities/local/root.crt \
-           /usr/local/share/ca-certificates/caddy-root.crt
-   sudo update-ca-certificates
-   ```
-2. **Point your router's DNS** at `SERVER_IP`
-3. **Tailscale admin console:** approve the subnet route and set Split DNS for `.lan` → `SERVER_IP`
-4. Visit `https://adguard.lan` — set your admin password (the config ships with no password)
+setup.sh automatically installs Caddy's CA cert into the system trust store and Jellyfin.
+
+1. **Point your router's DNS** at `SERVER_IP`
+2. **Tailscale admin console:** approve the subnet route and set Split DNS for `.lan` → `SERVER_IP`
+3. Visit `https://adguard.lan` — set your admin password (the config ships with no password)
 
 ### One-time system config (manual, not automated by setup.sh)
 

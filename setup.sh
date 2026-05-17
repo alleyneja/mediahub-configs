@@ -85,6 +85,8 @@ dirs=(
 for dir in "${dirs[@]}"; do
   sudo mkdir -p "$dir"
 done
+# Authentik runs as a non-root user internally and needs to create subdirs here
+sudo chmod -R 777 /srv/docker/authentik/media /srv/docker/authentik/certs
 echo "✓ Directory structure created"
 
 # ── Docker network ─────────────────────────────────────────────────────────────
@@ -141,6 +143,18 @@ for stack in "${stacks[@]}"; do
   if [ -f "$compose_file" ]; then
     echo "  ▶ $stack"
     docker compose --env-file "$REPO_DIR/.env" -f "$compose_file" up -d 2>&1 | grep -v "^time=" || true
+
+    # After Caddy starts: wait for its CA cert, then distribute it
+    if [ "$stack" = "caddy" ]; then
+      caddy_cert="/srv/docker/caddy/data/caddy/pki/authorities/local/root.crt"
+      echo "    Waiting for Caddy CA cert..."
+      until [ -f "$caddy_cert" ]; do sleep 2; done
+      sudo cp "$caddy_cert" /usr/local/share/ca-certificates/caddy-root.crt
+      sudo update-ca-certificates >/dev/null 2>&1
+      sudo mkdir -p /srv/docker/jellyfin/config
+      sudo cp "$caddy_cert" /srv/docker/jellyfin/config/caddy-ca.crt
+      echo "✓ Caddy CA cert distributed (system trust store + Jellyfin)"
+    fi
   else
     echo "  ⚠ Skipping $stack (no compose file at stacks/$stack/docker-compose.yml)"
   fi
@@ -151,16 +165,11 @@ echo "✅ mediahub is up!"
 echo ""
 echo "━━━ Next steps ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
-echo "1. Install Caddy's CA cert so browsers trust .lan domains:"
-echo "   sudo cp /srv/docker/caddy/data/caddy/pki/authorities/local/root.crt \\"
-echo "           /usr/local/share/ca-certificates/caddy-root.crt"
-echo "   sudo update-ca-certificates"
+echo "1. Point your router's DNS server to: ${SERVER_IP}"
 echo ""
-echo "2. Point your router's DNS server to: ${SERVER_IP}"
-echo ""
-echo "3. In Tailscale admin console:"
+echo "2. In Tailscale admin console:"
 echo "   - Approve subnet route: 192.168.0.0/24"
 echo "   - Set Split DNS: .lan → ${SERVER_IP}"
 echo ""
-echo "4. Visit https://adguard.lan and set your admin password"
+echo "3. Visit https://adguard.lan and set your admin password"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
