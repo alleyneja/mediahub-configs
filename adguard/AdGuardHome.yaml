@@ -4,9 +4,7 @@ http:
     enabled: false
   address: 0.0.0.0:3000
   session_ttl: 720h
-users:
-  - name: admin
-    password: $2a$10$TU94lCtVrIVED8L5jn8GpOfRn0t/pHepA2ZV3KC.qGdiAXMJe5sKG
+users: []
 auth_attempts: 5
 block_auth_min: 15
 http_proxy: ""
@@ -255,91 +253,91 @@ filtering:
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites:
     - domain: vaultwarden.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: auth.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: calibre-web.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: nextcloud.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: immich.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: audiobookshelf.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: aurral.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: plex.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: sonarr.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: radarr.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: lidarr.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: prowlarr.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: bazarr.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: seer.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: sabnzbd.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: qbittorrent.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: portainer.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: adguard.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: uptimekuma.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: netdata.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: glances.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: scanopy.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: homepage.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: calibre-content.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: bookshelf-ebooks.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: bookshelf-audiobooks.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: pterodactyl.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: jellyfin.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: romm.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
   safe_fs_patterns:
     - /opt/adguardhome/work/userfilters/*
@@ -361,203 +359,7 @@ clients:
     rdns: true
     dhcp: true
     hosts: true
-  persistent:
-    - safe_search:
-        enabled: false
-        bing: true
-        duckduckgo: true
-        ecosia: true
-        google: true
-        pixabay: true
-        yandex: true
-        youtube: true
-      blocked_services:
-        schedule:
-          time_zone: UTC
-        ids: []
-      name: Jay's iPhone
-      ids:
-        - 100.97.193.57
-      tags: []
-      upstreams: []
-      uid: 019d47b1-1ce4-78ab-bef0-1c4997c760a4
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: false
-      parental_enabled: false
-      safebrowsing_enabled: false
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: false
-    - safe_search:
-        enabled: false
-        bing: false
-        duckduckgo: false
-        ecosia: false
-        google: false
-        pixabay: false
-        yandex: false
-        youtube: false
-      blocked_services:
-        schedule:
-          time_zone: UTC
-        ids: []
-      name: Marifer's iPhone
-      ids:
-        - 100.93.113.124
-      tags: []
-      upstreams: []
-      uid: 019d47b0-2205-77e8-bf69-57662398f7e1
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: false
-      parental_enabled: false
-      safebrowsing_enabled: false
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: false
-    - safe_search:
-        enabled: false
-        bing: true
-        duckduckgo: true
-        ecosia: true
-        google: true
-        pixabay: true
-        yandex: true
-        youtube: true
-      blocked_services:
-        schedule:
-          time_zone: UTC
-        ids: []
-      name: Uptime Kuma
-      ids:
-        - 172.18.0.28
-      tags: []
-      upstreams: []
-      uid: 019dde3f-c081-7573-b5a8-8e8b73d7d8dc
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: false
-      parental_enabled: false
-      safebrowsing_enabled: false
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: true
-    - safe_search:
-        enabled: false
-        bing: true
-        duckduckgo: true
-        ecosia: true
-        google: true
-        pixabay: true
-        yandex: true
-        youtube: true
-      blocked_services:
-        schedule:
-          time_zone: UTC
-        ids: []
-      name: gaming-desktop
-      ids:
-        - 100.115.217.47
-      tags: []
-      upstreams: []
-      uid: 019d47b1-c2e8-7924-9a7e-4c85fcff3a90
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: false
-      parental_enabled: false
-      safebrowsing_enabled: false
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: false
-    - safe_search:
-        enabled: false
-        bing: false
-        duckduckgo: false
-        ecosia: false
-        google: false
-        pixabay: false
-        yandex: false
-        youtube: false
-      blocked_services:
-        schedule:
-          time_zone: UTC
-        ids: []
-      name: mediahub-production
-      ids:
-        - 100.104.43.6
-      tags: []
-      upstreams: []
-      uid: 019d4cd6-ea3d-71f9-88ab-d3f758de1410
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: false
-      parental_enabled: false
-      safebrowsing_enabled: false
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: false
-    - safe_search:
-        enabled: false
-        bing: true
-        duckduckgo: true
-        ecosia: true
-        google: true
-        pixabay: true
-        yandex: true
-        youtube: true
-      blocked_services:
-        schedule:
-          time_zone: UTC
-        ids: []
-      name: mediahub-staging
-      ids:
-        - 100.124.234.117
-      tags: []
-      upstreams: []
-      uid: 019d47b0-8fd4-77c8-a1ab-729fbc33b72b
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: false
-      parental_enabled: false
-      safebrowsing_enabled: false
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: false
-    - safe_search:
-        enabled: false
-        bing: false
-        duckduckgo: false
-        ecosia: false
-        google: false
-        pixabay: false
-        yandex: false
-        youtube: false
-      blocked_services:
-        schedule:
-          time_zone: UTC
-        ids: []
-      name: mediahub_containers
-      ids:
-        - 172.18.0.1
-      tags: []
-      upstreams: []
-      uid: 019d82d3-1df5-7524-9ca3-c64a4ebfbd7d
-      upstreams_cache_size: 0
-      upstreams_cache_enabled: false
-      use_global_settings: true
-      filtering_enabled: false
-      parental_enabled: false
-      safebrowsing_enabled: false
-      use_global_blocked_services: true
-      ignore_querylog: false
-      ignore_statistics: false
+  persistent: []
 log:
   enabled: true
   file: ""
