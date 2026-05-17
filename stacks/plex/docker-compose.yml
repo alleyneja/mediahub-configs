@@ -10,7 +10,7 @@ services:
       - PGID=1000
       - TZ=America/Chicago
       - VERSION=docker
-      - PLEX_CLAIM=claim-CKx96EC3gh2MLQksSqas
+      - PLEX_CLAIM=${PLEX_CLAIM}
       - NVIDIA_VISIBLE_DEVICES=all
     volumes:
       - /srv/docker/plex:/config

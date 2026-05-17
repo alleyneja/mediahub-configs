@@ -3,7 +3,7 @@ services:
     image: crocodilestick/calibre-web-automated:latest
     container_name: calibre-web-automated
     dns:
-      - 192.168.0.21
+      - ${SERVER_IP}
     environment:
       PUID: 1000
       PGID: 1000

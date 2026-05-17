@@ -19,7 +19,7 @@ services:
       - /mnt/media/photos/immich:/usr/src/app/upload
       - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
     dns:
-      - 192.168.0.21
+      - ${SERVER_IP}
     networks:
       - mediahub_internal
     restart: unless-stopped

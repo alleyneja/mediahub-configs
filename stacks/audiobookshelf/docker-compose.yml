@@ -3,7 +3,7 @@ services:
     image: ghcr.io/advplyr/audiobookshelf:latest
     container_name: audiobookshelf
     dns:
-      - 192.168.0.21
+      - ${SERVER_IP}
     environment:
       NODE_EXTRA_CA_CERTS: /etc/ssl/certs/caddy-root.crt
     volumes:

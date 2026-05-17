@@ -5,13 +5,13 @@ services:
     container_name: uptime-kuma
     restart: unless-stopped
     dns:
-      - 192.168.0.21
+      - ${SERVER_IP}
     environment:
       - NODE_TLS_REJECT_UNAUTHORIZED=0
     volumes:
       - /srv/docker/visibility/uptime-kuma:/app/data
     extra_hosts:
-      - "mediahub-production.tail3b4ccf.ts.net:100.104.43.6"
+      - "${TAILSCALE_HOSTNAME}:${TAILSCALE_IP}"
       # Route all .lan domains to Caddy's Docker IP (100.104.43.6 is unreachable from Docker bridge)
       - "vaultwarden.lan:172.18.0.4"
       - "auth.lan:172.18.0.4"
@@ -124,7 +124,7 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=America/Chicago
-      - HOMEPAGE_ALLOWED_HOSTS=192.168.0.21:3080,homepage.lan,mediahub-production.tail3b4ccf.ts.net:3080
+      - HOMEPAGE_ALLOWED_HOSTS=${SERVER_IP}:3080,homepage.lan,${TAILSCALE_HOSTNAME}:3080
     networks:
       - mediahub_internal
 
