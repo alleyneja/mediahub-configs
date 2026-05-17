@@ -125,111 +125,63 @@ mediahub-configs/
 
 ---
 
-## Rebuilding from Scratch
+## Fresh Install
 
-If mediahub ever needs to be rebuilt on a new machine, do it in this order:
+Clone this repo and run the setup script:
 
-### 1. Fresh Ubuntu install
-Install Ubuntu Server 24.04 on the machine. Create user `jay`.
-
-### 2. Basic system setup
 ```bash
-# Passwordless sudo
-echo "jay ALL=(ALL) NOPASSWD: ALL" | sudo tee /etc/sudoers.d/jay-nopasswd
-
-# Install dependencies
-sudo apt update && sudo apt install -y nfs-common mergerfs docker.io docker-compose git
-
-# Docker daemon (sets MTU to 1280 for Tailscale compatibility, adds NVIDIA runtime)
-sudo cp system/docker-daemon.json /etc/docker/daemon.json
-sudo systemctl restart docker
+git clone https://github.com/alleyneja/mediahub-configs.git
+cd mediahub-configs
+./setup.sh
 ```
 
-### 3. Storage
-```bash
-# Mount internal HDD and NAS
-sudo cp system/fstab /etc/fstab
-sudo mkdir -p /mnt/internal /mnt/nas /mnt/media /mnt/downloads
-sudo mount -a
-```
+The first run creates `.env` from `.env.example` and exits. Fill in all values, then run `./setup.sh` again — it handles everything: directory structure, Docker network, config template processing, and starting all stacks.
 
-### 4. Tailscale
+### Prerequisites (install before running setup.sh)
+
 ```bash
+# Docker Engine (not docker.io — the Engine package includes the Compose plugin)
+curl -fsSL https://get.docker.com | sh
+sudo usermod -aG docker $USER && newgrp docker
+
+# Tailscale
 curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up --advertise-routes=192.168.0.0/24 --accept-dns=false
 # Then approve the subnet route in the Tailscale admin console
 ```
 
-### 5. Create shared Docker network and configure firewall
-```bash
-docker network create mediahub_internal
-```
+### After setup.sh completes
 
-Install and configure UFW:
+1. **Install Caddy's CA cert** so browsers trust `.lan` domains:
+   ```bash
+   sudo cp /srv/docker/caddy/data/caddy/pki/authorities/local/root.crt \
+           /usr/local/share/ca-certificates/caddy-root.crt
+   sudo update-ca-certificates
+   ```
+2. **Point your router's DNS** at `SERVER_IP`
+3. **Tailscale admin console:** approve the subnet route and set Split DNS for `.lan` → `SERVER_IP`
+4. Visit `https://adguard.lan` — set your admin password (the config ships with no password)
+
+### One-time system config (manual, not automated by setup.sh)
+
 ```bash
+# Storage mounts (edit fstab to match your drive UUIDs and NAS IP first)
+sudo cp system/fstab /etc/fstab
+sudo mkdir -p /mnt/internal /mnt/nas /mnt/media
+sudo mount -a
+
+# Firewall
 sudo apt install -y ufw
+# Apply rules from system/ufw-rules.txt
 
-# Allow loopback
-sudo ufw allow in on lo
-
-# Allow all traffic from LAN
-sudo ufw allow from 192.168.0.0/24 comment "LAN"
-
-# Allow Tailscale CGNAT range and interface
-sudo ufw allow from 100.64.0.0/10 comment "Tailscale CGNAT"
-sudo ufw allow in on tailscale0 comment "Tailscale interface"
-sudo ufw allow 41641/udp comment "Tailscale VPN port"
-
-# Allow Docker bridge networks to reach host services
-# (required for containers to reverse-proxy to host-networked services like AdGuard)
-sudo ufw allow from 172.16.0.0/12 comment "Docker bridge networks"
-
-sudo ufw enable
-```
-
-### 6. Caddy (must come first — everything else needs TLS)
-```bash
-mkdir -p /srv/docker/caddy
-cp caddy/Caddyfile /srv/docker/caddy/Caddyfile
-# Deploy the caddy stack via Portainer, then install the Caddy local CA:
-sudo cp /srv/docker/caddy/caddy-root.crt /usr/local/share/ca-certificates/
-sudo update-ca-certificates
-```
-
-### 7. AdGuard Home
-```bash
-# Deploy the adguard stack via Portainer
-# Restore config:
-sudo cp adguard/AdGuardHome.yaml /srv/docker/adguardhome/conf/AdGuardHome.yaml
-docker restart adguardhome
-# Then point your router's DNS to this machine's IP
-```
-
-### 8. Portainer
-Deploy the portainer stack. Then import all stacks from `stacks/` via Portainer UI. For each stack that has secrets, create a `stack.env` file in its Portainer directory with the real values before deploying.
-
-### 9. Authentik
-Deploy authentik stack. Re-create the Jellyfin OIDC provider (client_id and provider settings are stored in Authentik's database, not in config files).
-
-### 10. Systemd units
-```bash
-sudo cp systemd/wings-cert-reload.timer /etc/systemd/system/
-sudo cp systemd/wings-cert-reload.service /etc/systemd/system/
+# Systemd units (Pterodactyl Wings cert reloader)
+sudo cp systemd/* /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable --now wings-cert-reload.timer
-```
 
-### 11. Cron jobs
-```bash
+# Cron
 sudo crontab cron/root-crontab
 ```
-The crontab includes:
-- **Sun + Wed at 3AM:** `apt update && apt upgrade -y && reboot` — keeps the system patched and clears Docker memory overhead that accumulates over days of uptime
-- **Daily at 3AM:** Renews Pterodactyl's Wings TLS cert ownership and restarts Wings
-- **Every minute:** Pterodactyl scheduler
-
-### 12. Pterodactyl
-Pterodactyl (the game server panel) is installed directly on the host (not in Docker) and uses PHP + Caddy. Its config lives in `/var/www/pterodactyl`. This is not backed up here — refer to the official Pterodactyl docs for reinstallation.
 
 ---
 
@@ -260,7 +212,10 @@ git push
 
 ## Key IPs
 
-| Device | LAN IP | Tailscale IP |
-|--------|--------|-------------|
-| mediahub-production | 192.168.0.21 | 100.104.43.6 |
-| UGREEN NAS | 192.168.0.23 | — |
+Configure these in `.env` before running `setup.sh`:
+
+| Variable | Description | Example |
+|---|---|---|
+| `SERVER_IP` | LAN IP of this machine | `192.168.0.21` |
+| `TAILSCALE_IP` | Tailscale-assigned IP | `100.104.43.6` |
+| `TAILSCALE_HOSTNAME` | Tailscale MagicDNS hostname | `mediahub-production.tail3b4ccf.ts.net` |
