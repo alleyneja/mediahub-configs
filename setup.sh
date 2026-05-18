@@ -148,7 +148,7 @@ for stack in "${stacks[@]}"; do
     if [ "$stack" = "caddy" ]; then
       caddy_cert="/srv/docker/caddy/data/caddy/pki/authorities/local/root.crt"
       echo "    Waiting for Caddy CA cert..."
-      until [ -f "$caddy_cert" ]; do sleep 2; done
+      until sudo test -f "$caddy_cert"; do sleep 2; done
       sudo cp "$caddy_cert" /usr/local/share/ca-certificates/caddy-root.crt
       sudo update-ca-certificates >/dev/null 2>&1
       sudo mkdir -p /srv/docker/jellyfin/config
