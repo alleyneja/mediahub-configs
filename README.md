@@ -127,6 +127,8 @@ mediahub-configs/
 
 ## Fresh Install
 
+> **Server OS requirement:** The machine running the containers must be **Ubuntu 24.04** (or another Debian-based distro). `setup.sh` uses `systemctl`, `update-ca-certificates`, and Linux path conventions — it won't run on Mac or Windows. You don't need to *be* on Ubuntu though; just SSH in from whatever computer you're on.
+
 Clone this repo and run the setup script:
 
 ```bash
