@@ -39,7 +39,7 @@ Internet
 4. TLS cert is issued by Caddy's local CA (installed system-wide)
 
 **Docker containers and *.lan domains:**
-Docker containers cannot route to `100.104.43.6` — it's a host-local Tailscale address unreachable from the Docker bridge network. Uptime Kuma works around this via `extra_hosts` entries in its docker-compose that map all `.lan` domains directly to Caddy's Docker IP (`172.18.0.4`). Caddy is pinned to that IP via `ipv4_address: 172.18.0.4` in its docker-compose. Any new `.lan` service added to the Caddyfile also needs an `extra_hosts` entry added to Uptime Kuma's compose file.
+Docker containers cannot route to `100.104.43.6` — it's a host-local Tailscale address unreachable from the Docker bridge network. Uptime Kuma works around this via `extra_hosts` entries in its docker-compose that map all `.lan` domains directly to Caddy's Docker IP (`172.18.0.200`). Caddy is pinned to that IP via `ipv4_address: 172.18.0.200` in its docker-compose. Any new `.lan` service added to the Caddyfile also needs an `extra_hosts` entry added to Uptime Kuma's compose file.
 
 **Tailscale is set up with:**
 - Subnet routing: advertises `192.168.0.0/24` (approved in Tailscale admin console)
@@ -205,7 +205,7 @@ git push
 - [ ] Add the service's docker-compose to `stacks/<name>/`
 - [ ] Add a reverse proxy block to `caddy/Caddyfile` (`<name>.lan { tls internal; reverse_proxy ... }`)
 - [ ] Add a DNS rewrite in AdGuard: `<name>.lan` → `100.104.43.6`
-- [ ] Add an `extra_hosts` entry to `stacks/uptime-kuma/docker-compose.yml`: `- "<name>.lan:172.18.0.4"`
+- [ ] Add an `extra_hosts` entry to `stacks/uptime-kuma/docker-compose.yml`: `- "<name>.lan:172.18.0.200"`
 - [ ] Recreate Uptime Kuma to pick up the new hosts entry: `docker compose up -d --force-recreate uptime-kuma`
 - [ ] Add a monitor in Uptime Kuma for `https://<name>.lan`
 

@@ -15,7 +15,7 @@ services:
       - /var/www/pterodactyl:/var/www/pterodactyl
     networks:
       mediahub_internal:
-        ipv4_address: 172.18.0.4
+        ipv4_address: 172.18.0.200
     restart: unless-stopped
 networks:
   mediahub_internal:
