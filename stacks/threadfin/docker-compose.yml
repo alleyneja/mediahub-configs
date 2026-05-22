@@ -1,0 +1,18 @@
+services:
+  threadfin:
+    image: fyb3roptik/threadfin:latest
+    container_name: threadfin
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+    volumes:
+      - /srv/docker/threadfin/config:/home/threadfin/.threadfin
+      - /tmp/threadfin:/tmp/threadfin
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true

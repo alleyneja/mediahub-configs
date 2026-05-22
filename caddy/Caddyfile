@@ -76,6 +76,11 @@ aurral.lan {
     reverse_proxy aurral:3001
 }
 
+threadfin.lan {
+    tls internal
+    reverse_proxy threadfin:34400
+}
+
 # ─────────────────────────────────────────
 # ARR STACK
 # ─────────────────────────────────────────
@@ -139,7 +144,7 @@ portainer.lan {
 
 adguard.lan {
     tls internal
-    reverse_proxy SERVER_IP_PLACEHOLDER:3000
+    reverse_proxy 192.168.0.21:3000
 }
 
 uptimekuma.lan {
@@ -189,7 +194,7 @@ pterodactyl.lan {
 
 pterodactyl.lan:8090 {
     tls internal
-    reverse_proxy SERVER_IP_PLACEHOLDER:8090 {
+    reverse_proxy 192.168.0.21:8090 {
         header_up Connection {>Connection}
         header_up Upgrade {>Upgrade}
     }
