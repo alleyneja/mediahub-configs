@@ -70,6 +70,11 @@ CURATED_GROUPS = {
         "EPIX", "EPIX2", "The Film Detective", "RetroPlex East",
         "Sundance", "MGM+ UHD", "LIFETIME MOVIES HD",
     ],
+    "USA Family & Kids": [
+        "Cartoon Network East", "Disney Channel East", "Disney Junior East",
+        "Disney XD", "Nick Jr East", "Nickelodeon UHD",
+        "Boomerang", "PBS Kids", "Teen Nick", "Nick Toon UHD",
+    ],
 }
 
 def fetch(action):
