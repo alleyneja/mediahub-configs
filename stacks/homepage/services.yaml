@@ -1,0 +1,171 @@
+- Media:
+    - Plex:
+        href: https://plex.lan
+        description: Media server
+        icon: plex.png
+    - Threadfin:
+        href: https://threadfin.lan
+        description: IPTV proxy & channel manager
+        icon: mdi-television-play
+    - Jellyfin:
+        href: https://jellyfin.lan
+        description: Open source media server
+        icon: jellyfin.png
+    - Audiobookshelf:
+        href: https://audiobookshelf.lan
+        description: Audiobook & podcast server
+        icon: audiobookshelf.png
+    - Calibre-Web:
+        href: https://calibre-web.lan
+        description: Ebook library
+        icon: calibre-web.png
+- Management:
+    - Sonarr:
+        href: https://sonarr.lan
+        description: TV series manager
+        icon: sonarr.png
+        widget:
+          type: sonarr
+          url: http://sonarr:8989
+          key: 341a5851206b472bb1582c925643a4ed
+    - Radarr:
+        href: https://radarr.lan
+        description: Movie manager
+        icon: radarr.png
+        widget:
+          type: radarr
+          url: http://radarr:7878
+          key: 19252147b52343aa978746757aedfdc2
+    - Lidarr:
+        href: https://lidarr.lan
+        description: Music manager
+        icon: lidarr.png
+        widget:
+          type: lidarr
+          url: http://lidarr:8686
+          key: c358d93f20584d48b6f6034d9ff423e2
+    - Prowlarr:
+        href: https://prowlarr.lan
+        description: Indexer manager
+        icon: prowlarr.png
+        widget:
+          type: prowlarr
+          url: http://prowlarr:9696
+          key: 6d729678e49e468ea478556b6c12e436
+    - Bazarr:
+        icon: bazarr.png
+        href: https://bazarr.lan
+        description: Subtitle manager
+        widget:
+          type: bazarr
+          url: http://bazarr:6767
+          key: 3e6e0ba9dbf3071e4e09a8f1ddb497f5
+    - Seerr:
+        href: https://seer.lan
+        description: Request management
+        icon: overseerr.png
+        widget:
+          type: seerr
+          url: http://seer:5055
+          key: MTc3MjQxNjExODAwM2JkOTAyNjFkLWJkNDktNDNmZS1iYzA2LWQzNmE4Zjc2MWQ3MQ==
+    - SABnzbd:
+        href: https://sabnzbd.lan
+        description: Usenet download client
+        icon: sabnzbd.png
+        widget:
+          type: sabnzbd
+          url: http://sabnzbd:8080
+          key: 58b15cd42b254a51b5a4b52140fe96b3
+    - qBittorrent:
+        href: https://qbittorrent.lan
+        description: Torrent client (VPN-gated)
+        icon: qbittorrent.png
+        widget:
+          type: qbittorrent
+          url: http://192.168.0.21:8082
+          username: admin
+          password: Passw0rd
+    - Aurral:
+        href: https://aurral.lan
+        description: Music streaming
+        icon: airsonic.png
+    - Ebooks Bookshelf:
+        icon: readarr.png
+        href: https://bookshelf-ebooks.lan
+        description: Ebook manager
+        widget:
+          type: readarr
+          url: http://bookshelf-ebooks:8787
+          key: 79d067fc107646359bf3a78b73df64f0
+    - Audiobooks Bookshelf:
+        icon: readarr.png
+        href: https://bookshelf-audiobooks.lan
+        description: Audiobook manager
+        widget:
+          type: readarr
+          url: http://bookshelf-audiobooks:8787
+          key: a28b2032855046618068893923ffdba2
+- Infrastructure:
+    - Portainer:
+        href: https://portainer.lan
+        description: Container management
+        icon: portainer.png
+    - Pterodactyl:
+        href: https://pterodactyl.lan
+        description: Game server management
+        icon: pterodactyl.png
+    - AdGuard Home:
+        href: https://adguard.lan
+        description: DNS filtering
+        icon: adguard-home.png
+        widget:
+          type: adguard
+          url: http://adguardhome:3000
+          username: admin
+          password: Passw0rd
+    - UGREEN NAS:
+        href: http://192.168.0.23
+        description: Network attached storage
+        icon: mdi-nas
+    - Scanopy:
+        href: https://scanopy.lan
+        description: Network topology & device inventory
+        icon: scanopy.png
+    - Uptime Kuma:
+        href: https://uptimekuma.lan
+        description: Service uptime monitoring
+        icon: uptime-kuma.png
+        widget:
+          type: uptimekuma
+          url: http://uptime-kuma:3001
+          slug: mediahub
+    - Netdata:
+        href: https://netdata.lan
+        description: Resource monitoring
+        icon: netdata.png
+        widget:
+          type: netdata
+          url: http://netdata:19999
+          chart: net.enp3s0
+- Personal Cloud:
+    - Immich:
+        href: https://immich.lan
+        description: Photo library
+        icon: immich.png
+        widget:
+          type: immich
+          url: http://immich-server:2283
+          key: unCxjyQTAJkEU1b47O4nOAcWZN4IcopaVQr2mJA
+          version: 2
+    - Nextcloud:
+        href: https://nextcloud.lan
+        description: File storage & sync
+        icon: nextcloud.png
+    - Vaultwarden:
+        href: https://vaultwarden.lan
+        description: Password manager
+        icon: vaultwarden.png
+    - Authentik:
+        href: https://auth.lan
+        description: SSO identity provider
+        icon: authentik.png
