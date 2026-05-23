@@ -215,6 +215,7 @@ user_rules:
   - '@@||csp-prod.codebig2.net^$important'
   - '@@||ky-tv.cc^'
   - '@@||xtremehd.cc^'
+  - '@@||frontcdn.me^'
   - ""
 dhcp:
   enabled: false
