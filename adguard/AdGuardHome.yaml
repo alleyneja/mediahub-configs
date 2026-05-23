@@ -213,6 +213,8 @@ user_rules:
   - '@@||self.events.data.microsoft.com^$important'
   - '@@||xerxes-sub.xerxessecure.com^$important'
   - '@@||csp-prod.codebig2.net^$important'
+  - '@@||ky-tv.cc^'
+  - '@@||xtremehd.cc^'
   - ""
 dhcp:
   enabled: false
