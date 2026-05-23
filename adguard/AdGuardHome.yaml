@@ -336,6 +336,9 @@ filtering:
     - domain: jellyfin.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
+    - domain: threadfin.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
     - domain: romm.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
