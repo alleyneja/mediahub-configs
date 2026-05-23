@@ -1,0 +1,4 @@
+# Refresh Threadfin live-only M3U from Xtream Codes API daily at 4am.
+# Pulls current live streams from provider and rebuilds the channel list
+# at /srv/docker/threadfin/conf/live_only.m3u used by Threadfin on startup.
+0 4 * * * python3 /srv/docker/threadfin/conf/generate_live_m3u.py >> /var/log/threadfin-m3u.log 2>&1
