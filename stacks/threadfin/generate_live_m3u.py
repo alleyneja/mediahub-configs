@@ -13,12 +13,7 @@ OUTPUT = "/srv/docker/threadfin/conf/live_only.m3u"
 
 # Groups included entirely — no name filtering applied
 FULL_GROUPS = {
-    "USA NBA",
-    "USA MLB",
-    "USA NHL",
-    "USA NFL - Sunday Ticket",
     "USA Bein Sports",
-    "USA FanDuel Sports",
     "USA NBC Sports",
     "USA Latin UNIVISION",
     "USA Latin TELEMUNDO",
