@@ -21,6 +21,7 @@ services:
       # Server selection — set to your preferred region
       # Options: us, uk, ca, de, nl, etc.
       - SERVER_COUNTRIES=United States
+      - SERVER_CITIES=Dallas,Atlanta,Chicago,Los Angeles
 
       # DNS inside the tunnel (NordVPN's servers — prevents DNS leaks)
       - DNS_ADDRESS=103.86.96.100
