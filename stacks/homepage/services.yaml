@@ -4,7 +4,7 @@
         description: Media server
         icon: plex.png
     - Threadfin:
-        href: https://threadfin.lan
+        href: https://threadfin.lan/web
         description: IPTV proxy & channel manager
         icon: mdi-television-play
     - Jellyfin:
@@ -87,7 +87,7 @@
           password: Passw0rd
     - Aurral:
         href: https://aurral.lan
-        description: Music streaming
+        description: Music request management
         icon: airsonic.png
     - Ebooks Bookshelf:
         icon: readarr.png
