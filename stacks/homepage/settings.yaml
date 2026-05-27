@@ -1,0 +1,18 @@
+title: MediaHub
+theme: dark
+color: slate
+headerStyle: clean
+allowedHosts: 192.168.0.21:3080,homepage.lan
+layout:
+  Media:
+    style: row
+    columns: 3
+  Management:
+    style: row
+    columns: 3
+  Infrastructure:
+    style: row
+    columns: 3
+  Personal Cloud:
+    style: row
+    columns: 3
