@@ -1,0 +1,13 @@
+- Quick Access:
+    - Tailscale Admin:
+        - href: https://login.tailscale.com/admin
+    - Portainer:
+        - href: https://192.168.0.21:9443
+    - AdGuard:
+        - href: http://192.168.0.21:80
+
+- External:
+    - GitHub:
+        - href: https://github.com
+    - DockerHub:
+        - href: https://hub.docker.com

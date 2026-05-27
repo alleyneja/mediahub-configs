@@ -1,0 +1,25 @@
+- greeting:
+    text_size: xl
+    text: MediaHub
+
+- datetime:
+    text_size: l
+    format:
+      dateStyle: long
+      timeStyle: short
+      hourCycle: h23
+
+- search:
+    provider: google
+    target: _blank
+
+- glances:
+    url: http://glances:61208
+    cpu: true
+    mem: true
+    cputemp: true
+    uptime: true
+    disk: /mnt/media
+    diskUnits: bytes
+    version: 4
+    href: http://192.168.0.21:61208
