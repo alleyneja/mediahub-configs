@@ -50,7 +50,7 @@ services:
       POSTGRES_USER: nextcloud
       POSTGRES_PASSWORD: ${NEXTCLOUD_POSTGRES_PASSWORD}
       OVERWRITEPROTOCOL: https
-      OVERWRITECLIURL: https://nextcloud.lan:8443
+      OVERWRITECLIURL: https://nextcloud.lan
       TRUSTED_PROXIES: 172.20.0.0/16
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/caddy-root.crt
       REDIS_HOST: nextcloud-redis
