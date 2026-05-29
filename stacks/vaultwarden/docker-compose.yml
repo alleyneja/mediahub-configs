@@ -6,7 +6,7 @@ services:
     environment:
       TZ: America/Chicago
       SIGNUPS_ALLOWED: "false"
-      DOMAIN: "https://vaultwarden.lan:8443"
+      DOMAIN: "https://vaultwarden.lan"
     volumes:
       - /srv/docker/vaultwarden/data:/data
     networks:
