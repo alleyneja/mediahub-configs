@@ -8,7 +8,7 @@ import urllib.request
 
 USERNAME = "alleyneja"
 PASSWORD = "68fcMcytqb"
-HOST = "http://ky-tv.cc:80"
+HOST = "http://link4tv.cc:80"
 OUTPUT = "/srv/docker/threadfin/conf/live_only.m3u"
 
 # Groups included entirely — no name filtering applied
@@ -36,6 +36,7 @@ CURATED_GROUPS = {
         "UFC Fight Pass", "Fight Network", "MavTV Motorsports",
         "Olympic Channel", "Stadium 1", "FS1", "FS2",
         "NHL NETWORK HD", "CBS Sports Golazo",
+        "FOX DEPORTES HD",
     ],
     "USA News": [
         "CNN UHD", "CNN INTERNATIONAL", "CNN*", "Fox News Channel",
@@ -64,6 +65,9 @@ CURATED_GROUPS = {
         "TCM", "Turner Classic Movies", "FXM", "FX East UHD",
         "EPIX", "EPIX2", "The Film Detective", "RetroPlex East",
         "Sundance", "MGM+ UHD", "LIFETIME MOVIES HD",
+    ],
+    "USA Local Channels ( Full List )": [
+        "Fox Network East SD",
     ],
     "USA Family & Kids": [
         "Cartoon Network East", "Disney Channel East", "Disney Junior East",
