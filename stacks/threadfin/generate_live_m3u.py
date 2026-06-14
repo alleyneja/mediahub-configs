@@ -11,6 +11,13 @@ PASSWORD = "68fcMcytqb"
 HOST = "http://link4tv.cc:80"
 OUTPUT = "/srv/docker/threadfin/conf/live_only.m3u"
 
+# Override broken/missing provider logos with stable ones (matched by name substring,
+# case-insensitive). The provider ships some junk logos (e.g. expired Bing search
+# thumbnails that 404), so pin a reliable image for those channels.
+LOGO_OVERRIDES = {
+    "CBS 2 WFMY GREENSBORO": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/cbs-logo-white-us.png",
+}
+
 # Groups included entirely — no name filtering applied
 FULL_GROUPS = {
     "USA Latin UNIVISION",
@@ -115,6 +122,10 @@ with open(OUTPUT, "w", encoding="utf-8") as f:
         name = s.get("name", "")
         stream_id = s.get("stream_id", "")
         logo = s.get("stream_icon", "")
+        for ov_key, ov_url in LOGO_OVERRIDES.items():
+            if ov_key.lower() in name.lower():
+                logo = ov_url
+                break
         epg_id = s.get("epg_channel_id", "")
         cat_id = str(s.get("category_id", ""))
         group = cat_map.get(cat_id, "Uncategorized")
