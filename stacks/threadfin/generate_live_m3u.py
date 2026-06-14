@@ -13,8 +13,6 @@ OUTPUT = "/srv/docker/threadfin/conf/live_only.m3u"
 
 # Groups included entirely — no name filtering applied
 FULL_GROUPS = {
-    "USA Bein Sports",
-    "USA NBC Sports",
     "USA Latin UNIVISION",
     "USA Latin TELEMUNDO",
     "USA Latin GALAVISION",
@@ -37,6 +35,9 @@ CURATED_GROUPS = {
         "Olympic Channel", "Stadium 1", "FS1", "FS2",
         "NHL NETWORK HD", "CBS Sports Golazo",
         "FOX DEPORTES HD",
+    ],
+    "USA NBC Sports": [
+        "NBC GOLF HD",
     ],
     "USA News": [
         "CNN UHD", "CNN INTERNATIONAL", "CNN*", "Fox News Channel",
@@ -66,11 +67,15 @@ CURATED_GROUPS = {
         "EPIX", "EPIX2", "The Film Detective", "RetroPlex East",
         "Sundance", "MGM+ UHD", "LIFETIME MOVIES HD",
     ],
-    "USA Local Channels ( Full List )": [
-        "Fox Network East SD",
+    # Broadcast locals — one reliable affiliate per network
+    "USA Local - FOX": [
+        "FOX 5 WNYW NEW YORK",
     ],
     "USA Local - ABC": [
         "ABC 7 WABC NEW YORK",
+    ],
+    "USA Local - CBS": [
+        "CBS 2 WFMY GREENSBORO",
     ],
     "USA Family & Kids": [
         "Cartoon Network East", "Disney Channel East", "Disney Junior East",
