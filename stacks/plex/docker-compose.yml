@@ -5,6 +5,11 @@ services:
     image: lscr.io/linuxserver/plex:latest
     container_name: plex
     cpus: "4"
+    # Host networking so Plex advertises the real LAN IP (192.168.0.21) to
+    # plex.tv and exposes GDM discovery. Under bridge networking it only saw
+    # the docker-internal 172.x IP, so clients (phone app, app.plex.tv) got
+    # "server unreachable" after any container restart.
+    network_mode: host
     environment:
       - PUID=1000
       - PGID=1000
@@ -15,13 +20,5 @@ services:
     volumes:
       - /srv/docker/plex:/config
       - /mnt/media:/data/media
-    ports:
-      - "32400:32400"
     runtime: nvidia
-    networks:
-      - mediahub_internal
     restart: unless-stopped
-
-networks:
-  mediahub_internal:
-    external: true
