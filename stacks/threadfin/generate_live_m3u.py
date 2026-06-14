@@ -12,10 +12,13 @@ HOST = "http://link4tv.cc:80"
 OUTPUT = "/srv/docker/threadfin/conf/live_only.m3u"
 
 # Override broken/missing provider logos with stable ones (matched by name substring,
-# case-insensitive). The provider ships some junk logos (e.g. expired Bing search
-# thumbnails that 404), so pin a reliable image for those channels.
+# case-insensitive). The provider's EPG lists a dead Bing search-thumbnail as CBS's
+# primary icon (Threadfin picks the first <icon>, which 404s). Point it at the
+# provider's OWN logo CDN (185.193.88.130) instead — same source Threadfin already
+# caches successfully for every other channel. Requires x-update-channel-icon=True on
+# the channel in xepg.json so Threadfin uses this M3U logo over the EPG icon.
 LOGO_OVERRIDES = {
-    "CBS 2 WFMY GREENSBORO": "https://raw.githubusercontent.com/tv-logo/tv-logos/main/countries/united-states/cbs-logo-white-us.png",
+    "CBS 2 WFMY GREENSBORO": "http://185.193.88.130:80/images/d90cbfe9c7b343dd2eafef8117272284.png",
 }
 
 # Groups included entirely — no name filtering applied
