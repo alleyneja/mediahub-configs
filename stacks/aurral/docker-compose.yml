@@ -1,6 +1,6 @@
 services:
   aurral:
-    image: ghcr.io/lklynet/aurral:latest
+    image: ghcr.io/lklynet/aurral:1.76.50
     container_name: aurral
     restart: unless-stopped
     ports:
