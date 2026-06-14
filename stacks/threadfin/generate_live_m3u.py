@@ -69,6 +69,9 @@ CURATED_GROUPS = {
     "USA Local Channels ( Full List )": [
         "Fox Network East SD",
     ],
+    "USA Local - ABC": [
+        "ABC 7 WABC NEW YORK",
+    ],
     "USA Family & Kids": [
         "Cartoon Network East", "Disney Channel East", "Disney Junior East",
         "Disney XD", "Nick Jr East", "Nickelodeon UHD",
