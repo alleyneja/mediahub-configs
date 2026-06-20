@@ -28,7 +28,9 @@ dns:
     - 149.112.112.10
     - 2620:fe::10
     - 2620:fe::fe:10
-  fallback_dns: []
+  fallback_dns:
+    - https://cloudflare-dns.com/dns-query
+    - https://dns.google/dns-query
   upstream_mode: load_balance
   fastest_timeout: 1s
   allowed_clients: []
