@@ -113,7 +113,7 @@ filters:
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_33.txt
     name: Steven Black's List
     id: 1774711047
-  - enabled: true
+  - enabled: false
     url: https://adguardteam.github.io/HostlistsRegistry/assets/filter_70.txt
     name: 1Hosts (Xtra)
     id: 1774711048
@@ -155,6 +155,30 @@ filters:
     id: 1774711057
 whitelist_filters: []
 user_rules:
+  - '@@||aiot-mqtt-us.anker.com^$important'
+  - '@@||app-measurement.com^$important'
+  - '@@||cdp.cloud.unity3d.com^$important'
+  - '@@||da.usaa.com^$important'
+  - '@@||delivery.mp.microsoft.com^$important'
+  - '@@||dl.delivery.mp.microsoft.com^$important'
+  - '@@||email.e.headway.co^$important'
+  - '@@||events.split.io^$important'
+  - '@@||fastlink.usaa.com^$important'
+  - '@@||headway.co^$important'
+  - '@@||locations.pizzahut.com^$important'
+  - '@@||locations.suncoastcreditunion.com^$important'
+  - '@@||l.usaa.com^$important'
+  - '@@||mapi-a.usaa.com^$important'
+  - '@@||mobileapps.usaa.com^$important'
+  - '@@||mssdk.tiktokw.us^$important'
+  - '@@||pervl2.xspcdn07.sa.com^$important'
+  - '@@||pervm1.xspcdn01.sa.com^$important'
+  - '@@||pervm1.xspcdn02.sa.com^$important'
+  - '@@||pervm1.xspcdn04.sa.com^$important'
+  - '@@||pervm1.xspcdn05.sa.com^$important'
+  - '@@||p.typekit.net^$important'
+  - '@@||www.panamacitytoyota.com^$important'
+  - '@@||www.walmart.com^$important'
   - '@@||image.tmdb.org^'
   - '@@||auth.split.io^'
   - '@@||sdk.split.io^'
@@ -165,12 +189,9 @@ user_rules:
   - '@@||cdp.customer.io^'
   - '@@||superwall.me^'
   - '@@||appsflyersdk.com^'
-  - '@@||usespeak.com^'
   - '@@||ca.iadsdk.apple.com^$important'
-  - '@@||pervtube.net^$important'
   - '@@||plex.tv^'
   - '@@||plexapp.com^'
-  - '@@||graph.facebook.com^'
   - '@@||api.twitter.com^'
   - '@@||authorization.franchise.minecraft-services.net^'
   - '@@||persona-secondary.franchise.minecraft-services.net^'
@@ -180,30 +201,18 @@ user_rules:
   - '@@||api.minecraftservices.com^'
   - '@@||minecraftservices.com^'
   - '@@||mojang.com^'
-  - '@@||privacy.xboxlive.com^$important'
-  - '@@||xp.apple.com^$important'
   - '@@||client-api.itunes.apple.com^$important'
   - '@@||appsgrowthpromo-pa.clients6.google.com^$important'
-  - '@@||baddiesonly.tv^$important'
-  - '@@||features.monarch.com^$important'
-  - '@@||api.monarch.com^$important'
-  - '@@||assets.publixcdn.com^$important'
-  - '@@||images.publixcdn.com^$important'
-  - '@@||assets.adobedtm.com^$important'
   - '@@||www.elitetorrent.wf^$important'
   - '@@||www.mcguiresirishpub.com^$important'
-  - '@@||pdrl.fm^'
   - '@@||pscrb.fm^'
   - '@@||podtrac.com^'
   - '@@||mgln.ai^'
   - '@@||claritaspod.com^'
   - '@@||prfx.byspotify.com^'
-  - '@@||cohst.app^'
   - '@@||www.thesaurus.com^$important'
   - '@@||snowplow-collector.dataplatform.appfolio.net^$important'
-  - '@@||residentapi.foliospace.com^$important'
   - '@@||fivebridgesres.appfolio.com^$important'
-  - '@@||artificialanalysis.ai^$important'
   - '@@||log.eufylife.com^$important'
   - '@@||bedrock.frontendlegacy.realms.minecraft-services.net^$important'
   - '@@||client.discovery.minecraft-services.net^$important'
@@ -212,10 +221,7 @@ user_rules:
   - '@@||fp.msedge.net^$important'
   - '@@||self.events.data.microsoft.com^$important'
   - '@@||xerxes-sub.xerxessecure.com^$important'
-  - '@@||csp-prod.codebig2.net^$important'
-  - '@@||ky-tv.cc^'
   - '@@||xtremehd.cc^'
-  - '@@||frontcdn.me^'
   - ""
 dhcp:
   enabled: false
