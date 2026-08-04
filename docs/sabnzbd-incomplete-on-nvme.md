@@ -104,3 +104,25 @@ mistake is unrecoverable except via `__ADMIN__` rebuild.
 ~200 GB of orphaned incomplete folders had accumulated on the NAS from
 abandoned jobs. Repair re-adopted most of them; anything genuinely dead should be
 pruned from `/mnt/nas/downloads/incomplete` rather than left to consume space.
+
+---
+
+## CORRECTION (2026-08-04)
+
+The diagnosis above is **incomplete**. The slow pool writes were not primarily
+NFS contention — they were caused by mergerfs running with `cache.files=partial`,
+which limited pool writes to ~4 MB/s against a NAS capable of ~50-70 MB/s.
+Fixing that one mount option took pool writes to 73 MB/s under full load. See
+`docs/mergerfs-cache-files-off.md`.
+
+Two further corrections:
+
+- Moving **completed** downloads to the NVMe (attempted 2026-08-04) was a
+  mistake. It put them on a different device from the library, which broke
+  hardlink imports and dropped them to ~2 MB/s — exactly what commit e2a1244
+  warned about in May. Reverted the same day.
+- Only **in-progress** downloads belong on the NVMe. Current layout is documented
+  in `docs/download-storage-layout.md`.
+
+The measurements in this file were also taken in unrepresentative conditions
+(idle test mount, or with containers stopped) and did not hold under real load.
