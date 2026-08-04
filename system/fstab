@@ -12,4 +12,4 @@
 /swap.img	none	swap	sw	0	0
 UUID=a3348639-452d-4ba6-b8c4-3db1c403cafb /mnt/internal ext4 defaults 0 2
 192.168.0.23:/volume1/media /mnt/nas nfs defaults,_netdev,nofail,bg,hard,timeo=600,retrans=5,x-systemd.after=network-online.target,x-systemd.mount-timeout=90 0 0
-/mnt/internal:/mnt/nas /mnt/media fuse.mergerfs defaults,allow_other,use_ino,category.create=mfs,nonempty,_netdev,nofail,x-systemd.after=mnt-nas.mount,cache.files=partial,dropcacheonclose=true 0 0
+/mnt/internal:/mnt/nas /mnt/media fuse.mergerfs defaults,allow_other,use_ino,category.create=mfs,nonempty,_netdev,nofail,x-systemd.after=mnt-nas.mount,cache.files=off 0 0
