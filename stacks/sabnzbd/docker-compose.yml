@@ -16,6 +16,12 @@ services:
     volumes:
       - /srv/docker/sabnzbd:/config
       - /mnt/media:/data
+      # Incomplete downloads live on the NVMe, not the mergerfs pool. mergerfs
+      # sends new writes to the branch with the most free space, which is always
+      # the NAS, so every article was being written over NFS at ~40-70 MB/s and
+      # SAB's throughput collapsed under the contention. Completed files still
+      # move to /data as before; only the scratch space is local.
+      - /srv/downloads/incomplete:/incomplete
 
 networks:
   mediahub_internal:
