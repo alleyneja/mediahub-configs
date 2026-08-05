@@ -12,7 +12,10 @@ services:
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/caddy-root.crt
     volumes:
       - /srv/docker/calibre-web/config:/config
-      - /mnt/media/ebooks/calibre-library:/calibre-library
+      # Bind the ext4 branch directly, NOT the mergerfs pool: cache.files=off
+      # means /mnt/media cannot mmap(), and SQLite in WAL mode requires it.
+      # See docs/calibre-library-on-ext4.md.
+      - /mnt/internal/ebooks/calibre-library:/calibre-library
       - /mnt/media/ebooks/ingest:/ingest
       - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
     extra_hosts:
