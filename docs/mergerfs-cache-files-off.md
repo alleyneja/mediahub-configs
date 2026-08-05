@@ -77,3 +77,11 @@ production:
 - Benchmarking with containers stopped is not representative either.
 
 Always: real load, and a direct-to-NAS control measured in the same window.
+
+## Known consequence: no `mmap()` on the pool
+
+`cache.files=off` means FUSE `direct_io`, and `direct_io` does not support
+`mmap()` — it returns `ENODEV` ("No such device"). This broke every qBittorrent
+torrent within hours of the change, since libtorrent 2.x memory-maps by default.
+See `docs/qbittorrent-posix-disk-io.md`. Check any new service that touches
+`/mnt/media` for mmap use.
