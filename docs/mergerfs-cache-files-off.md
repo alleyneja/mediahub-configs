@@ -83,5 +83,7 @@ Always: real load, and a direct-to-NAS control measured in the same window.
 `cache.files=off` means FUSE `direct_io`, and `direct_io` does not support
 `mmap()` — it returns `ENODEV` ("No such device"). This broke every qBittorrent
 torrent within hours of the change, since libtorrent 2.x memory-maps by default.
-See `docs/qbittorrent-posix-disk-io.md`. Check any new service that touches
-`/mnt/media` for mmap use.
+See `docs/qbittorrent-posix-disk-io.md`. It also took down the whole Calibre
+stack, because SQLite in WAL mode mmaps its `-shm` file — see
+`docs/calibre-library-on-ext4.md`. Check any new service that touches
+`/mnt/media` for mmap use, and keep databases off the pool entirely.
