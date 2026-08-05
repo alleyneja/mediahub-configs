@@ -9,7 +9,12 @@ services:
       PGID: 1000
       TZ: America/Chicago
       OAUTHLIB_INSECURE_TRANSPORT: "1"
-      REQUESTS_CA_BUNDLE: /etc/ssl/certs/caddy-root.crt
+      # REQUESTS_CA_BUNDLE *replaces* Python's trust store, it does not add to
+      # it. Pointing it at caddy-root.crt alone left this container trusting
+      # only Caddy and no public CA, breaking every cover and metadata lookup.
+      # The host bundle already contains the public CAs *and* the Caddy root
+      # (setup.sh installs it), so it satisfies both. See docs/calibre-web-ca-bundle.md.
+      REQUESTS_CA_BUNDLE: /etc/ssl/certs/ca-bundle-with-caddy.crt
     volumes:
       - /srv/docker/calibre-web/config:/config
       # Bind the ext4 branch directly, NOT the mergerfs pool: cache.files=off
@@ -17,7 +22,7 @@ services:
       # See docs/calibre-library-on-ext4.md.
       - /mnt/internal/ebooks/calibre-library:/calibre-library
       - /mnt/media/ebooks/ingest:/ingest
-      - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-bundle-with-caddy.crt:ro
     extra_hosts:
       - "auth.lan:172.18.0.28"
     networks:
