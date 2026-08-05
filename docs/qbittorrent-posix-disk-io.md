@@ -80,6 +80,9 @@ nine only surfaced once POSIX I/O let qBittorrent actually stat the paths.
 
 **Anything on `/mnt/media` that uses `mmap()` will fail with `ENODEV`.**
 
+qBittorrent was not the only casualty — the Calibre stack was down the same way
+for ~11 hours before anyone noticed. See `docs/calibre-library-on-ext4.md`.
+
 `cache.files=off` is a storage-layer change with application-layer consequences.
 When adding or upgrading a service that touches the pool, check whether it
 memory-maps files — SQLite in some modes, some media scanners, and libtorrent

@@ -49,7 +49,8 @@ services:
     environment:
       - TZ=America/Chicago
     volumes:
-      - /mnt/media/ebooks/calibre-library:/library
+      # ext4 branch, not the mergerfs pool — see docs/calibre-library-on-ext4.md
+      - /mnt/internal/ebooks/calibre-library:/library
       - /srv/docker/calibre-content-server/config:/config
     ports:
       - "18091:8080"
@@ -68,7 +69,8 @@ services:
     volumes:
       - /srv/docker/bookshelf/ebooks/config:/config
       - /mnt/media:/data
-      - /mnt/media/ebooks/calibre-library:/library
+      # ext4 branch, not the mergerfs pool — see docs/calibre-library-on-ext4.md
+      - /mnt/internal/ebooks/calibre-library:/library
       - /mnt/media/ebooks/bookshelf:/books
     ports:
       - "8787:8787"
