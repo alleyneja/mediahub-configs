@@ -109,7 +109,14 @@ Three services in `compose/9` carry the project label `calibre-readarr` and two
 carry `9`. Do not run a bare `up -d` on that file — it will try to recreate all
 five.
 
-## The general rule
+## The general rule, and one caveat
 
-Databases belong on `/srv/docker` or a branch path, never on `/mnt/media`.
-`metadata.db` was the last one on the pool; there are now none.
+Databases belong on `/srv/docker` or a branch path — never *accessed through*
+`/mnt/media`.
+
+The caveat: `metadata.db` is still **visible** at
+`/mnt/media/ebooks/calibre-library/metadata.db`, and always will be, because the
+pool unions the internal branch. What changed is the path the containers use.
+Anything that opens it through `/mnt/media` — a backup script, a manual
+`sqlite3` session, a future container wired to the pool path — will still fail
+with `disk I/O error`. Reach it at `/mnt/internal/ebooks/calibre-library/`.
