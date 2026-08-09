@@ -1,0 +1,35 @@
+version: "3.9"
+
+# CouchDB backend for Obsidian Self-hosted LiveSync.
+#
+# NOTE: deliberately no `ports:` mapping. CouchDB is reachable only from the
+# mediahub_internal docker network (i.e. via Caddy at obsidian-sync.lan).
+# Do not publish 5984 to the host — that would expose an authenticated-but-
+# internet-shaped database to the whole LAN.
+#
+# NOTE: do NOT put Authentik forward-auth in front of obsidian-sync.lan.
+# LiveSync authenticates with HTTP basic auth and cannot complete an
+# interactive browser login flow; adding forward-auth silently breaks sync.
+
+services:
+  couchdb:
+    image: couchdb:3.4
+    container_name: couchdb
+    environment:
+      TZ: America/Chicago
+      COUCHDB_USER: admin
+      # Set in .env alongside this file (gitignored). This repo is PUBLIC —
+      # never inline credentials here.
+      COUCHDB_PASSWORD: "${COUCHDB_PASSWORD:?COUCHDB_PASSWORD must be set in .env}"
+    volumes:
+      # Database files live on NVMe, never on /mnt/media — the mergerfs pool
+      # runs cache.files=off, which blocks mmap and corrupts SQLite/CouchDB.
+      - /srv/docker/couchdb/data:/opt/couchdb/data
+      - /srv/docker/couchdb/local.d:/opt/couchdb/etc/local.d
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true
