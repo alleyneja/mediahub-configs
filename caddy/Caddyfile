@@ -22,6 +22,14 @@ immich.lan {
     reverse_proxy immich-server:2283
 }
 
+# CouchDB backend for Obsidian Self-hosted LiveSync.
+# Do NOT add Authentik forward-auth here — LiveSync uses HTTP basic auth and
+# cannot complete an interactive login flow. Forward-auth silently breaks sync.
+obsidian-sync.lan {
+    tls internal
+    reverse_proxy couchdb:5984
+}
+
 # ─────────────────────────────────────────
 # BOOKS & READING
 # ─────────────────────────────────────────

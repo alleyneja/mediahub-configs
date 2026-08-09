@@ -263,6 +263,9 @@ filtering:
   parental_block_host: family-block.dns.adguard.com
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites:
+    - domain: obsidian-sync.lan
+      answer: 100.104.43.6
+      enabled: true
     - domain: vaultwarden.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
