@@ -7,7 +7,9 @@ services:
       TZ: America/Chicago
       SIGNUPS_ALLOWED: "false"
       DOMAIN: "https://vaultwarden.lan"
-      ADMIN_TOKEN: "8KYL/R6xIqFMYjKquVlopDQsfzhuAk1uQarbf5hKAcMjUNEpyhGzgD54K9bF4V5U"
+    # ADMIN_TOKEN lives in vaultwarden.env (gitignored) as an Argon2id PHC hash
+    env_file:
+      - vaultwarden.env
     volumes:
       - /srv/docker/vaultwarden/data:/data
     networks:
