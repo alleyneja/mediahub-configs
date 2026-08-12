@@ -128,12 +128,24 @@ gate in the build sequence (step 7).
   already emits a `groups` claim (`[group.name for group in request.user.ak_groups.all()]`),
   so `OIDC_GROUPS_CLAIM=groups` works with no custom property mapping.
 
-**Client type divergence.** The five existing providers (Audiobookshelf, Nextcloud,
-Calibre-Web, Immich, Jellyfin) are all `confidential`. Mealie's documentation specifies
-a **public** client with PKCE, because its auth flow runs browser-side. Follow Mealie's
-documentation rather than the house pattern; a mismatch here surfaces as opaque
-`invalid_client` errors. Mealie supports `OIDC_CLIENT_SECRET` as a fallback if the
-public-client flow proves problematic.
+**Client type: `confidential`** — same as the five existing providers.
+
+> **Corrected 2026-08-12 during implementation.** This design originally specified a
+> **public** client with PKCE, because [Mealie's OIDC
+> docs](https://docs.mealie.io/documentation/getting-started/authentication/oidc/) say
+> `Client type: "public"`. The running v3.22.0 code disagrees with its own docs and
+> refuses to enable OIDC without a secret:
+>
+> ```
+> --------==OIDC==--------
+> Reason: Missing required values for ['OIDC_CLIENT_SECRET']
+> ```
+>
+> A public client leaves `enableOidc: false` with no SSO button rendered and no error
+> beyond that log line. `OIDC_CLIENT_SECRET` is therefore **required**, and Mealie ends
+> up matching the house pattern rather than diverging from it.
+
+The secret lives in `mealie.env` alongside `OIDC_CLIENT_ID`.
 
 ### Mealie side
 
