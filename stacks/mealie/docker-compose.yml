@@ -1,0 +1,59 @@
+services:
+  mealie-postgres:
+    image: postgres:16-alpine
+    container_name: mealie-postgres
+    environment:
+      POSTGRES_USER: mealie
+      POSTGRES_DB: mealie
+      TZ: America/Chicago
+    env_file:
+      - mealie.env
+    volumes:
+      # NVMe only. The mergerfs pool cannot mmap (cache.files=off) and NFS has
+      # weak locking/fsync — both corrupt a Postgres data directory.
+      # See docs/mergerfs-cache-files-off.md and docs/calibre-library-on-ext4.md.
+      - /srv/docker/mealie/pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mealie -d mealie"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+  mealie:
+    image: ghcr.io/mealie-recipes/mealie:v3.22.0
+    container_name: mealie
+    depends_on:
+      mealie-postgres:
+        condition: service_healthy
+    # AdGuard, so the container can resolve auth.lan through Caddy.
+    # Do NOT use extra_hosts to pin auth.lan — Caddy's container IP is not
+    # stable, and calibre-web is currently broken that way.
+    dns:
+      - ${SERVER_IP}
+    environment:
+      TZ: America/Chicago
+      PUID: 1000
+      PGID: 1000
+      BASE_URL: https://mealie.lan
+      ALLOW_SIGNUP: "false"
+      # Keep the local admin door open alongside SSO, permanently.
+      ALLOW_PASSWORD_LOGIN: "true"
+      DB_ENGINE: postgres
+      POSTGRES_SERVER: mealie-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: mealie
+      POSTGRES_DB: mealie
+    env_file:
+      - mealie.env
+    volumes:
+      - /srv/docker/mealie/data:/app/data
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true
