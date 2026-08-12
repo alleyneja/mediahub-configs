@@ -107,9 +107,26 @@ lists — the wrong shape for two people cooking together.
 Separate accounts (rather than a shared login) still give individual favorites,
 ratings, and an edit trail, at no cost to sharing.
 
-**Open item:** Mealie's documentation does not state which group and household
-OIDC-created users are assigned to. This is not assumed — it is an explicit verification
-gate in the build sequence (step 7).
+**Resolved 2026-08-12 (was an open item).** Mealie's documentation does not state which
+group and household OIDC-created users are assigned to. Observed behaviour on v3.22.0:
+
+**OIDC-created users are placed in the default group and household** — the same ones
+the first local admin account was created in. Both SSO logins landed in group `Home`,
+household `Family`, alongside the pre-existing `admin1`:
+
+```
+admin1     | example@gmail.com           | admin=t | Home | Family
+alleyneja  | alleynejacob@gmail.com      | admin=t | Home | Family
+mafer_107  | marifercarbajal01@gmail.com | admin=f | Home | Family
+```
+
+The instance has exactly **one** household, so recipes, meal plans, and shopping lists
+are all shared with no further action. `OIDC_ADMIN_GROUP=admin` worked as intended —
+Jay is an admin, Mafe is not.
+
+A consequence worth noting: because the SSO accounts join the *default* household, the
+earlier decision to leave `admin1` on a placeholder email cost nothing. Recipes created
+under `admin1` are visible to both SSO accounts.
 
 ---
 
