@@ -169,3 +169,8 @@
         href: https://auth.lan
         description: SSO identity provider
         icon: authentik.png
+- Home & Kitchen:
+    - Mealie:
+        href: https://mealie.lan
+        description: Recipes & meal planning
+        icon: mealie.png
