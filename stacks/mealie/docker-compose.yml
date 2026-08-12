@@ -46,10 +46,28 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_USER: mealie
       POSTGRES_DB: mealie
+      OIDC_AUTH_ENABLED: "true"
+      OIDC_CONFIGURATION_URL: https://auth.lan/application/o/mealie/.well-known/openid-configuration
+      OIDC_PROVIDER_NAME: Authentik
+      OIDC_USER_GROUP: mealie-users
+      OIDC_ADMIN_GROUP: admin
+      OIDC_GROUPS_CLAIM: groups
+      OIDC_SIGNUP_ENABLED: "true"
+      OIDC_REQUIRES_EMAIL_VERIFICATION: "false"
+      # Scoped to the OIDC client ONLY.
+      #
+      # Do NOT switch this to REQUESTS_CA_BUNDLE. That variable *replaces*
+      # Python's trust store rather than adding to it, so pointing it at
+      # caddy-root.crt would leave this container trusting Caddy and no public
+      # CA — trading working SSO for silently broken recipe URL scraping.
+      # calibre-web hit exactly this with cover/metadata lookups; see
+      # docs/calibre-web-ca-bundle.md.
+      OIDC_TLS_CACERTFILE: /etc/ssl/certs/caddy-root.crt
     env_file:
       - mealie.env
     volumes:
       - /srv/docker/mealie/data:/app/data
+      - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
     networks:
       - mediahub_internal
     restart: unless-stopped
