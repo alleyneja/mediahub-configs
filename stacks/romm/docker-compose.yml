@@ -12,7 +12,8 @@ services:
       - IGDB_CLIENT_SECRET=${IGDB_CLIENT_SECRET}
       - ROMM_AUTH_SECRET_KEY=${ROMM_AUTH_SECRET_KEY}
     volumes:
-      - /mnt/media/games:/romm/library
+      - /mnt/internal/arcade:/romm/library
+      - /mnt/media/games/roms/switch:/romm/library/roms/switch
       - romm-resources:/romm/resources
       - romm-redis-data:/redis-data
     ports:
