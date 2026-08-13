@@ -174,3 +174,8 @@
         href: https://mealie.lan
         description: Recipes & meal planning
         icon: mealie.png
+        widget:
+          type: mealie
+          url: http://mealie:9000
+          key: "{{HOMEPAGE_VAR_MEALIE_KEY}}"
+          version: 2
