@@ -27,7 +27,7 @@
         widget:
           type: sonarr
           url: http://sonarr:8989
-          key: 341a5851206b472bb1582c925643a4ed
+          key: "{{HOMEPAGE_VAR_SONARR_KEY}}"
     - Radarr:
         href: https://radarr.lan
         description: Movie manager
@@ -35,7 +35,7 @@
         widget:
           type: radarr
           url: http://radarr:7878
-          key: 19252147b52343aa978746757aedfdc2
+          key: "{{HOMEPAGE_VAR_RADARR_KEY}}"
     - Lidarr:
         href: https://lidarr.lan
         description: Music manager
@@ -43,7 +43,7 @@
         widget:
           type: lidarr
           url: http://lidarr:8686
-          key: c358d93f20584d48b6f6034d9ff423e2
+          key: "{{HOMEPAGE_VAR_LIDARR_KEY}}"
     - Prowlarr:
         href: https://prowlarr.lan
         description: Indexer manager
@@ -51,7 +51,7 @@
         widget:
           type: prowlarr
           url: http://prowlarr:9696
-          key: 6d729678e49e468ea478556b6c12e436
+          key: "{{HOMEPAGE_VAR_PROWLARR_KEY}}"
     - Bazarr:
         icon: bazarr.png
         href: https://bazarr.lan
@@ -59,7 +59,7 @@
         widget:
           type: bazarr
           url: http://bazarr:6767
-          key: 3e6e0ba9dbf3071e4e09a8f1ddb497f5
+          key: "{{HOMEPAGE_VAR_BAZARR_KEY}}"
     - Seerr:
         href: https://seer.lan
         description: Request management
@@ -67,7 +67,7 @@
         widget:
           type: seerr
           url: http://seer:5055
-          key: MTc3MjQxNjExODAwM2JkOTAyNjFkLWJkNDktNDNmZS1iYzA2LWQzNmE4Zjc2MWQ3MQ==
+          key: "{{HOMEPAGE_VAR_SEERR_KEY}}"
     - SABnzbd:
         href: https://sabnzbd.lan
         description: Usenet download client
@@ -75,7 +75,7 @@
         widget:
           type: sabnzbd
           url: http://sabnzbd:8080
-          key: 58b15cd42b254a51b5a4b52140fe96b3
+          key: "{{HOMEPAGE_VAR_SABNZBD_KEY}}"
     - qBittorrent:
         href: https://qbittorrent.lan
         description: Torrent client (VPN-gated)
@@ -83,8 +83,8 @@
         widget:
           type: qbittorrent
           url: http://192.168.0.21:8082
-          username: admin
-          password: Passw0rd
+          username: "{{HOMEPAGE_VAR_QBITTORRENT_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_QBITTORRENT_PASSWORD}}"
     - Aurral:
         href: https://aurral.lan
         description: Music request management
@@ -96,7 +96,7 @@
         widget:
           type: readarr
           url: http://bookshelf-ebooks:8787
-          key: 79d067fc107646359bf3a78b73df64f0
+          key: "{{HOMEPAGE_VAR_EBOOKS_BOOKSHELF_KEY}}"
     - Audiobooks Bookshelf:
         icon: readarr.png
         href: https://bookshelf-audiobooks.lan
@@ -104,7 +104,7 @@
         widget:
           type: readarr
           url: http://bookshelf-audiobooks:8787
-          key: a28b2032855046618068893923ffdba2
+          key: "{{HOMEPAGE_VAR_AUDIOBOOKS_BOOKSHELF_KEY}}"
 - Infrastructure:
     - Portainer:
         href: https://portainer.lan
@@ -121,8 +121,8 @@
         widget:
           type: adguard
           url: http://adguardhome:3000
-          username: admin
-          password: Passw0rd
+          username: "{{HOMEPAGE_VAR_ADGUARD_HOME_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_ADGUARD_HOME_PASSWORD}}"
     - UGREEN NAS:
         href: http://192.168.0.23
         description: Network attached storage
@@ -155,7 +155,7 @@
         widget:
           type: immich
           url: http://immich-server:2283
-          key: unCxjyQTAJkEU1b47O4nOAcWZN4IcopaVQr2mJA
+          key: "{{HOMEPAGE_VAR_IMMICH_KEY}}"
           version: 2
     - Nextcloud:
         href: https://nextcloud.lan
