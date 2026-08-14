@@ -1,0 +1,25 @@
+[Unit]
+Description=Sunshine game stream host (headless, Quadro P400 display :1)
+Documentation=https://docs.lizardbyte.dev/projects/sunshine/
+After=xorg-headless.service network-online.target
+Requires=xorg-headless.service
+
+[Service]
+Type=simple
+User=jay
+Group=jay
+# input = /dev/uinput for virtual gamepads. The packaged udev rule uses uaccess,
+# which only grants the active seat user (gdm here), so group membership is required.
+SupplementaryGroups=input video render
+Environment=HOME=/home/jay
+Environment=DISPLAY=:1
+Environment=XAUTHORITY=/etc/X11/headless.xauth
+# PipeWire runs as a jay user service; Sunshine needs its pulse socket for audio.
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=PULSE_SERVER=unix:/run/user/1000/pulse/native
+ExecStart=/usr/bin/sunshine
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
