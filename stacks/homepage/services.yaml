@@ -19,6 +19,14 @@
         href: https://calibre-web.lan
         description: Ebook library
         icon: calibre-web.png
+    - RomM:
+        href: https://romm.lan
+        description: Game library & ROM manager
+        icon: romm.png
+        widget:
+          type: romm
+          url: http://romm:8080
+          fields: ["platforms", "totalRoms", "totalfilesize"]
 - Management:
     - Sonarr:
         href: https://sonarr.lan
