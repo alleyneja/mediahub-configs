@@ -1,0 +1,21 @@
+[Unit]
+Description=Openbox window manager on the headless P400 display (:1)
+# Emulators need a WM on :1 -- without one they start, allocate GPU memory and
+# never map a window, so Sunshine captures an empty screen.
+After=xorg-headless.service
+Requires=xorg-headless.service
+PartOf=xorg-headless.service
+
+[Service]
+Type=simple
+User=jay
+Group=jay
+Environment=HOME=/home/jay
+Environment=DISPLAY=:1
+Environment=XAUTHORITY=/etc/X11/headless.xauth
+ExecStart=/usr/bin/openbox
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
