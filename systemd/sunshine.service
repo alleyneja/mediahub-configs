@@ -17,6 +17,8 @@ Environment=XAUTHORITY=/etc/X11/headless.xauth
 # PipeWire runs as a jay user service; Sunshine needs its pulse socket for audio.
 Environment=XDG_RUNTIME_DIR=/run/user/1000
 Environment=PULSE_SERVER=unix:/run/user/1000/pulse/native
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+Environment=XDG_CURRENT_DESKTOP=X-Generic
 # Sunshine raises thread priority; User= drops file caps unless made ambient.
 AmbientCapabilities=CAP_SYS_NICE
 ExecStart=/usr/bin/sunshine
