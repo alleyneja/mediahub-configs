@@ -1,0 +1,29 @@
+{
+  "env": {
+    "PATH": "$(PATH):$(HOME)/.local/bin"
+  },
+  "apps": [
+    {
+      "name": "Desktop",
+      "image-path": "desktop.png"
+    },
+    {
+      "name": "RetroArch",
+      "cmd": "flatpak run org.libretro.RetroArch",
+      "auto-detach": true,
+      "wait-all": true
+    },
+    {
+      "name": "Dolphin (GameCube / Wii)",
+      "cmd": "flatpak run org.DolphinEmu.dolphin-emu",
+      "auto-detach": true,
+      "wait-all": true
+    },
+    {
+      "name": "PCSX2 (PS2)",
+      "cmd": "flatpak run net.pcsx2.PCSX2",
+      "auto-detach": true,
+      "wait-all": true
+    }
+  ]
+}
