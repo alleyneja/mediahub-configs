@@ -72,7 +72,7 @@ writes. Confirm the result with a framebuffer capture rather than assuming.
 |---|---|---|
 | RetroArch | `udev` (`input_joypad_driver = "udev"`) | Works with zero config — autoconfig matches the Xbox profile at runtime |
 | PCSX2 | SDL, binds by index | Works. `SDL-0/*` bindings, verified driving a game |
-| Dolphin | SDL, binds by name | Device line set to `SDL/0/Microsoft Xbox One` — **not yet verified** |
+| Dolphin | SDL, binds by name | Works. `SDL/0/Microsoft Xbox One`, **verified** driving Wind Waker |
 
 **RetroArch was the only one that worked out of the box because it uses `udev`,
 not SDL.** That is the dividing line, not emulator quality.
@@ -178,3 +178,84 @@ Backups: `PCSX2.ini.bak-desk-20260815`, `PCSX2.ini.bak-prehotkey-20260815`.
 
 Still gated by the Big Picture launch bug — see
 `pcsx2-bigpicture-vulkan-present-queue.md`.
+
+## Dolphin — verified 2026-08-15
+
+`GCPadNew.ini` now reads `Device = SDL/0/Microsoft Xbox One`, **confirmed working**
+by launching Wind Waker headless and injecting a synthetic START. The game moved
+off its title screen into the opening narration.
+
+```bash
+flatpak run org.DolphinEmu.dolphin-emu -b -e "/mnt/internal/arcade/roms/ngc/<game>.ciso"
+```
+
+Two things learned in the process:
+
+- **Dolphin hotplugs pads**, same as PCSX2. A device created after launch is
+  picked up without a restart.
+- **Time the injection to the game, not the launch.** The first attempt pressed
+  START 40s in, while Wind Waker was still booting, and nothing happened — which
+  looks *identical* to a broken binding. Dolphin runs on **OpenGL**, which is
+  software-rendered under `xf86-video-dummy`, so boots are slow. Screenshot
+  first, confirm the game is at an interactive screen, then inject.
+
+Still untested: the corrected `Trigger L`/`Trigger R` bindings. Wiimote slots
+remain unconfigured and are permanently irrelevant over Moonlight.
+
+**Dolphin has no Big Picture equivalent.** Its game list is mouse-only, so there
+is no pad-navigable way to pick a game. That is a launcher problem, not a Dolphin
+config problem — see the frontend note below.
+
+## Two traps that only appeared after the portal was fixed
+
+**Portal file dialogs bury themselves behind fullscreen windows.** PCSX2's
+per-game "Set Cover Image" opens a GTK file chooser via
+`xdg-desktop-portal-gtk`. On a bare openbox session it opens *behind* a
+fullscreen game and blocks the app — looks like a hang, is not one. Note this
+failure mode **did not exist before the portal was fixed**, because portal calls
+simply timed out and no dialog ever appeared.
+
+Recovery without killing the emulator — the dialog belongs to the portal
+process, not the app:
+
+```bash
+systemctl --user restart xdg-desktop-portal-gtk.service
+```
+
+Avoid file-choosers entirely on this host. For cover art, drop files into
+`covers/` named by serial (`SLUS-21678.jpg`); PCSX2's bulk **Cover Downloader**
+is also a desktop-UI window and stacks the same way. Verified working source:
+`https://raw.githubusercontent.com/xlenore/ps2-covers/main/covers/default/${serial}.jpg`
+(the `3d/` path 404s).
+
+**One emulator instance at a time.** Launching PCSX2 from the Moonlight app list
+while another instance is already running gives two sets of windows at identical
+geometry, and a modal on one hides under the other's fullscreen window. Check
+before launching:
+
+```bash
+ps -eo pid,cmd | grep "[p]csx2-qt"
+grep -q "Sunshine X-Box One (virtual) pad" /proc/bus/input/devices && echo "client connected"
+```
+
+**Powering off the projector does not end a Moonlight session.** The client keeps
+streaming to a dark display and Sunshine cannot tell. Quit Moonlight properly, or
+check the pad node above.
+
+## Frontend / launcher — evaluated 2026-08-15, deferred
+
+One pad-navigable launcher in front of all three emulators would give a single
+Sunshine entry, one artwork scrape for every system, and — most importantly — a
+way to pick GameCube/Wii games with a pad, which Dolphin cannot do alone.
+
+- **Ampchor** (ampchor.com) — **not suitable.** It is a media server/player
+  (movies, TV, music, books) whose retro games are played *inside the app*, i.e.
+  embedded emulation with roughly the EmulatorJS ceiling. It will not drive
+  GameCube, Wii or PS2, and duplicates Plex/Calibre/Audiobookshelf.
+- **Playnite** — Windows-only .NET/WPF. Not viable natively.
+- **ES-DE** — the purpose-built option. Not on Flathub; AppImage install.
+- **Pegasus** — on Flathub, alpha. **Lutris** — on Flathub, PC-game oriented.
+
+**Deferred until the mini-DP plug is fitted.** A frontend needs its own GPU
+context and may hit the same present-queue failure as PCSX2's Big Picture. Build
+it only once that is resolved, or two unknowns get debugged at once.
