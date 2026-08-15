@@ -106,3 +106,75 @@ which never forwards motion, IR or MotionPlus.
 Both `GCPadNew.ini` and `PCSX2.ini` now target the virtual pad. Desk play with a
 physically-attached controller needs them switched back; originals are saved
 alongside as `*.bak-desk-20260815`.
+
+## PCSX2 ships zero controller hotkeys — bind `OpenPauseMenu` yourself
+
+Same class of gotcha as udev-vs-SDL. Out of the box **every** entry in `[Hotkeys]`
+is keyboard-only:
+
+```ini
+OpenPauseMenu = Keyboard/Escape
+TogglePause   = Keyboard/Space
+```
+
+RetroArch ships a default guide-button menu toggle; PCSX2 ships nothing for
+controllers. At a projector with no keyboard that means no way out of a running
+game — which looks like "you have to kill it from a terminal", but is just a
+missing binding.
+
+```ini
+OpenPauseMenu = SDL-0/Guide
+```
+
+`Guide` is a valid PCSX2 SDL button name — **verified** by injecting a synthetic
+press mid-game and confirming the pause menu opened. The menu's **Close Game**
+item returns to Big Picture.
+
+Caveat: some Moonlight clients capture the guide button for their own overlay
+before forwarding it. If it never reaches PCSX2, bind `SDL-0/Back` or a chord.
+
+## The iconic PS2 boot animation
+
+`EnableFastBoot = true` (the default) skips the BIOS entirely and jumps to the
+game's ELF. Set it `false` for the full Sony logo and tower animation before
+each game. Costs ~10-15s per launch. The tower count reflects saves on the
+memory card. `-bios` (or Big Picture's **Start Game** with no disc) boots to the
+PS2 System Menu instead.
+
+## Audio — Sunshine was never the problem
+
+An early session appeared to have no audio and `sunshine-sink` looked "inactive".
+Both readings were wrong:
+
+- **`sunshine-sink` is not a systemd unit.** It is a PipeWire filter-chain node
+  (`pipewire -c filter-chain.conf`). Querying it with `systemctl` is meaningless.
+- **The audio stack runs as `gdm`, not `jay`** — so `pactl` as jay finds nothing.
+  If gdm's session restarts, the sink goes with it.
+
+Sunshine's own log shows the pipeline healthy on every session including the
+silent one:
+
+```
+Setting default sink to: [sink-sunshine-stereo]
+Found default monitor by name: sunshine-sink.monitor
+Opus initialized: 48 kHz, 2 channels, 96 kbps (total), LOWDELAY
+```
+
+Sunshine also flips the default sink to `sink-sunshine-stereo` for the duration
+of a session and back to `sunshine-sink` afterwards. **Check the application's
+audio device before suspecting Sunshine.** Cause of the original silence
+(RetroArch) remains unconfirmed.
+
+## PCSX2 — settled 2026-08-15
+
+Jay's words: "this is exactly what I want the PS2 emulator to be like." Working
+loop, fully controller-driven, no mouse or keyboard anywhere:
+
+**Big Picture → pick game → PS2 BIOS animation → play → Guide → Close Game → Big Picture**
+
+Config: `SDL-0/*` pad bindings, `OpenPauseMenu = SDL-0/Guide`,
+`EnableFastBoot = false`, renderer Vulkan on the P400.
+Backups: `PCSX2.ini.bak-desk-20260815`, `PCSX2.ini.bak-prehotkey-20260815`.
+
+Still gated by the Big Picture launch bug — see
+`pcsx2-bigpicture-vulkan-present-queue.md`.
