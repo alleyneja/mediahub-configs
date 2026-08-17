@@ -5,9 +5,10 @@ After=systemd-user-sessions.service
 
 [Service]
 Type=simple
-# vt7 + -novtswitch so this never steals the foreground console from GDM on vt1.
-ExecStart=/usr/bin/X :1 -config /etc/X11/xorg-dummy-headless.conf -auth /etc/X11/headless.xauth -nolisten tcp -novtswitch vt7
-# X grabs its VT on start; hand the console straight back to GDM on vt1.
+# vt7 + -novtswitch so this never steals the foreground console from the text tty.
+# GDM is disabled on this host (headless, no monitor); nothing else owns a VT.
+ExecStart=/usr/bin/X :1 -config /etc/X11/xorg-p400-headless.conf -auth /etc/X11/headless.xauth -nolisten tcp -novtswitch vt7
+# X grabs its VT on start; hand the console straight back to tty1.
 ExecStartPost=/bin/sh -c "sleep 2; /usr/bin/chvt 1"
 Restart=on-failure
 RestartSec=5
