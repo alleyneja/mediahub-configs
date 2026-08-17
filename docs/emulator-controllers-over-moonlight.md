@@ -259,3 +259,51 @@ way to pick GameCube/Wii games with a pad, which Dolphin cannot do alone.
 **Deferred until the mini-DP plug is fitted.** A frontend needs its own GPU
 context and may hit the same present-queue failure as PCSX2's Big Picture. Build
 it only once that is resolved, or two unknowns get debugged at once.
+
+---
+
+## 2026-08-17 — Dolphin's "verified" binding was a FALSE POSITIVE
+
+**Dolphin had never actually been controllable over Moonlight.** The 08-15 entry
+recording `SDL/0/Microsoft Xbox One` as verified was wrong, and the reason is the
+verification method, not the binding syntax.
+
+**What happened:** that binding was confirmed by driving Wind Waker with a
+**synthetic `/dev/uinput` pad** built with Xbox VID/PID. SDL derives a device's
+friendly name from VID/PID, so the synthetic pad and Sunshine's real virtual pad
+got **different SDL names**. The test passed against a device that is never used
+in real play.
+
+**Sunshine's actual virtual pad**, as reported by SDL:
+
+```
+"Xbox One S Controller"  GUID 03008d205e040000ea02000008040000
+```
+
+That GUID is VID `045e` / PID `02ea` — Microsoft Xbox One S. The evdev name stays
+`Sunshine X-Box One (virtual) pad`; only the SDL name differs.
+
+**Fix:** `GCPadNew.ini` → `[GCPad1]` → `Device = SDL/0/Xbox One S Controller`.
+Confirmed by Jay with Super Mario Sunshine: pad responsive, audio correct.
+
+**Why only Dolphin was affected:** it is the only emulator here that binds by
+device *name*. PCSX2 binds by **player id** (`SDL-0`) and RetroArch uses **udev**
+with the evdev name — both are immune to SDL renaming, which is why those two
+genuinely worked at the projector while Dolphin's success was illusory.
+
+### Lesson: synthetic input cannot verify a name-bound device
+
+Injecting from `/dev/uinput` still works for *timing* and *button-mapping* tests,
+but it **cannot validate a binding that keys on the device name** — the synthetic
+device is a different device. For anything name-bound, test with the real pad
+through a real Moonlight session. This compounds with the 08-17 finding that
+framebuffer capture no longer works on the P400, so there is now no way to
+validate Dolphin input without a human at the projector.
+
+### Still open: Wii input is not mapped at all
+
+`WiimoteNew.ini` has every slot on `XInput2/0/Virtual core pointer` — the mouse.
+Wii games launch but do not respond to the pad. This is the long-standing
+"Wii Remote + MotionPlus configured separately" Phase 3 item, never done. Note
+Wii Sports Resort cannot be solved this way regardless (needs real MotionPlus);
+titles with Classic Controller support are the ones worth mapping.
