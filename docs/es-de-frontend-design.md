@@ -150,12 +150,31 @@ the plain launch. Re-add `-bigpicture -fullscreen` now that it works mid-stream.
 
 ## Scraping
 
-**Prerequisite: a free ScreenScraper account** (screenscraper.fr). Scraping is
-heavily rate-limited without one. Jay must create it; it cannot be automated.
+**ScreenScraper account created 2026-08-17 on a deliberately disposable email.**
+That is a considered choice, not an oversight — do not "fix" it later:
 
-First full scrape is slow and should run unattended. Media lands in ES-DE's own
-`downloaded_media` tree and is entirely separate from RomM's database — the two
-catalogues coexist without interacting.
+- The library is **11 titles** (gba 1, n64 1, ngc 3, ps2 3, wii 3, with ps3 and
+  switch hidden). ScreenScraper's rate limits exist to stop ten-thousand-ROM
+  overnight scrapes; this finishes in minutes and never approaches them.
+- **Scraped media is stored locally** in `downloaded_media`. The account is an API
+  key, not custody of the artwork. Losing it costs a signup form and pasting new
+  credentials — nothing is re-downloaded.
+
+Swap in a real email later if the library ever grows enough to matter.
+
+### ⚠️ The credentials must not reach the public mirror
+
+ES-DE stores the ScreenScraper username and password in its settings file.
+**`mediahub-configs` is a PUBLIC repo** — see the Vaultwarden `ADMIN_TOKEN`
+exposure for the precedent.
+
+**Therefore:** either keep ES-DE's settings file out of the mirror entirely, or
+commit a scrubbed copy with the credential fields emptied. Decide which at
+implementation time, once the real file is on disk and the field names are known.
+**Verify with `git diff --cached` before the first commit that touches it** —
+not after.
+
+This applies regardless of which email was used.
 
 ## Hiding PS3 and Switch
 
