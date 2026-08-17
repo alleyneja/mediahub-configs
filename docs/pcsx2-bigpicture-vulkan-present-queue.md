@@ -1,8 +1,15 @@
-# PCSX2 Big Picture fails to start while Sunshine is streaming — OPEN
+# PCSX2 Big Picture fails to start while Sunshine is streaming — ✅ RESOLVED 2026-08-17
+
+**Resolved by fitting the mini-DP dummy plug and moving Xorg to
+`xorg-p400-headless.conf` with NvFBC capture** (commits `6391791`, `0a094f4`).
+No PCSX2 change and no change to Sunshine's encoder were needed. Details in the
+"Resolution" section at the end; the original investigation is kept below because
+the reasoning that led to the fix is worth preserving.
 
 ## 2026-08-15 — `VK: Failed to find an acceptable present queue`
 
-**Status: unresolved.** Workaround known, root cause inferred rather than proven.
+**Status when written: unresolved.** Workaround known, root cause inferred rather
+than proven. **The inference turned out to be correct — see Resolution below.**
 
 **Symptom:** launching PCSX2 from the Moonlight app list with `-bigpicture` shows:
 
@@ -95,3 +102,52 @@ issue is a Big-Picture annoyance or a fundamental blocker.
 `sunshine/apps.json` is reverted to the plain `flatpak run net.pcsx2.PCSX2`
 so the entry is not outright broken. Re-add `-bigpicture -fullscreen` once the
 dummy plug is fitted and this retests clean.
+
+---
+
+## Resolution — 2026-08-17
+
+**The inferred diagnosis was right.** The failure was NVIDIA's presentation path
+under `xf86-video-dummy`, not GPU contention between PCSX2 and Sunshine's NVENC
+session. Once a real DRM connector existed, the failure vanished with no change
+to PCSX2 and no move of Sunshine's encoder to the Intel iGPU.
+
+**What changed** (both already committed for the NvFBC work, not for this bug):
+
+- mini-DP `DP1080P60` dummy plug fitted on **DFP-5**
+- `xorg-headless.service` → `xorg-p400-headless.conf`, `ConnectedMonitor DFP-0`
+  override dropped so NVIDIA auto-selects DFP-5
+- `nvidia_drm modeset=0`, GDM disabled, `capture = nvfbc`
+- `ExecStartPost` changed `chvt 1` → `chvt 7` so NvFBC keeps an active display
+
+**Verification, in the direction that used to fail** (connect the client *first*,
+then launch — the order that failed every time on 08-15):
+
+1. Moonlight connected to the **Desktop** tile; confirmed live with
+   `nvidia-smi --query-gpu=encoder.stats.sessionCount,encoder.stats.averageFps`
+   → `1, 30`, and visually with `xsetroot -solid "#B22222"` showing red on the
+   projector. **That `xsetroot` test is the fast capture check** — under the old
+   config it changed not one pixel.
+2. `flatpak run net.pcsx2.PCSX2 -bigpicture -fullscreen` on `DISPLAY=:1`.
+3. Result: **0** occurrences of `present queue` / `Failed to create GS device`,
+   full `Vulkan Graphics Driver Info` init on the Quadro P400 at `[0.7823]`, and
+   a `1852x1011` `PCSX2 v2.6.3` window mapped on `:1`. Process alive well past
+   the `[0.6281]` mark where it used to die. Confirmed on the projector by Jay.
+
+**Consequences:**
+
+- The "**untested and it matters**" question — whether booting a game from the
+  plain game list also failed mid-stream — is moot. Big Picture is the harder
+  case (it demands a render device immediately at startup); if it succeeds, the
+  plain list does too.
+- **The ES-DE frontend is unblocked.** It was deferred specifically because "a
+  frontend needs its own GPU context and may hit the same present-queue failure."
+  That risk is retired. Caveat: this was proven on the **Vulkan** path, and ES-DE
+  is expected to render through SDL + **OpenGL** — the fix is at the connector /
+  presentation level and should cover both, but confirm at install time.
+- **Do not** move Sunshine's encode to the Intel iGPU. That was step (2) of the
+  planned fix and is now unnecessary.
+- A black screen on the **Desktop** tile is **normal** — bare openbox with no
+  wallpaper. Check `xwininfo -root -children` on `:1`; if the only entries are
+  Sunshine's 16x16 tray icon and openbox's 1x1 helpers, there is genuinely
+  nothing to draw. Do not re-diagnose it as a capture regression.
