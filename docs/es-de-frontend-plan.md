@@ -305,7 +305,23 @@ grep -E "input_exit_emulator|input_enable_hotkey" \
 
 ES-DE → game → quit via pad → back in ES-DE, with no keyboard or mouse touched.
 
-**Testing without walking to the projector:** `/dev/uinput` is writable, so a synthetic Xbox-VID/PID pad can be created and driven from a script, verified by framebuffer capture. **Time injected presses to the game, not the launch** — pressing during boot looks exactly like a broken binding.
+**⚠️ Framebuffer capture no longer works — corrected 2026-08-17.** Input can still
+be *injected* headlessly (`/dev/uinput` is writable, so a synthetic Xbox-VID/PID
+pad can be created and driven from a script), but the **result can no longer be
+observed from the host**. X11 screen capture on `:1` returns near-black on the
+NVIDIA driver: with the root set to `#00FF00`, `ffmpeg -f x11grab` read `020002`
+while the projector showed green. This is a property of the NVIDIA driver path,
+**not** of `xf86-video-dummy` — fitting the plug did not fix it, and the old
+technique worked only because the dummy driver kept its framebuffer in RAM.
+
+**Consequence:** only NvFBC sees the screen, and NvFBC's output goes to the
+Moonlight client. Verification of anything visual requires a human at the
+projector. Substitute host-side evidence where possible — emulator logs (PCSX2's
+`emulog.txt` shows ELF loads and CRCs), process liveness, and
+`nvidia-smi --query-gpu=encoder.stats.sessionCount,encoder.stats.averageFps`.
+
+**Time injected presses to the game, not the launch** — pressing during boot
+looks exactly like a broken binding.
 
 - [ ] **Step 5: Commit**
 
