@@ -8,8 +8,16 @@ Type=simple
 # vt7 + -novtswitch so this never steals the foreground console from the text tty.
 # GDM is disabled on this host (headless, no monitor); nothing else owns a VT.
 ExecStart=/usr/bin/X :1 -config /etc/X11/xorg-p400-headless.conf -auth /etc/X11/headless.xauth -nolisten tcp -novtswitch vt7
-# X grabs its VT on start; hand the console straight back to tty1.
-ExecStartPost=/bin/sh -c "sleep 2; /usr/bin/chvt 1"
+# The console must STAY on vt7. NvFBC cannot create a capture session unless the X
+# server is the active display owner: with the foreground console on tty1 the NVIDIA
+# driver releases the display (nvidia-smi reports "Display Active: Disabled") and
+# capture fails with "Cannot create capture session: the display server is in modeset"
+# -- the same string the nvidia_drm modeset=1 problem produces, which is why this was
+# misdiagnosed as a modeset issue. This line used to run "chvt 1" (to hand the console
+# back to the text tty) and silently broke Sunshine capture on every boot.
+# No monitor is attached and the only logins are over Tailscale/SSH, so nothing needs
+# the foreground console. Revert with "chvt 1" if a local text console is ever needed.
+ExecStartPost=/bin/sh -c "sleep 2; /usr/bin/chvt 7"
 Restart=on-failure
 RestartSec=5
 
