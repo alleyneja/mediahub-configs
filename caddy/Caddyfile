@@ -225,12 +225,5 @@ pterodactyl.lan:8090 {
 
 stirling.lan {
     tls internal
-    # Temporary: diagnosing a white screen on iOS Safari over cellular.
-    # Caddy logs only errors by default, so successful/partial transfers were
-    # invisible. Remove once the remote-load issue is settled.
-    log {
-        output stdout
-        format json
-    }
     reverse_proxy stirling-pdf:8080
 }
