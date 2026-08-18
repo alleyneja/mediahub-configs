@@ -1,0 +1,15 @@
+# Set the port to listen on for incoming VPN packets.
+# Remote nodes will automatically be informed about the new port number,
+# but you might want to configure this in order to set external firewall
+# settings.
+PORT="41641"
+
+# Extra flags you might want to pass to tailscaled.
+FLAGS=""
+
+# Cellular path to jays-iphone measured (2026-08-18) at an effective inner MTU
+# of 1256B: packets at 1264B saw 100% loss with no ICMP back, so large
+# transfers blackholed and stalled (Stirling's 1MB JS bundle died at 343KB;
+# Sonarr's bundles hit the same wall). Tailscale's 1280 default does not fit.
+# 1200 sits under both that wall and the worse DERP-relay path measured earlier.
+TS_DEBUG_MTU=1200
