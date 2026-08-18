@@ -1,0 +1,4 @@
+melondsds_libretro.so
+melonds_libretro.so
+mgba_libretro.so
+mupen64plus_next_libretro.so
