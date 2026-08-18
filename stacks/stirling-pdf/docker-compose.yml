@@ -1,0 +1,52 @@
+services:
+  stirling-pdf:
+    # Pinned deliberately — no blanket auto-updates on this host.
+    # 2.14.3 released 2026-08-07. The default tag already bundles OCR +
+    # LibreOffice; -fat is the same image, tagged explicitly so a future
+    # bump can't silently land us on ultra-lite (which drops OCR).
+    image: stirlingtools/stirling-pdf:2.14.3-fat
+    container_name: stirling-pdf
+    environment:
+      TZ: America/Chicago
+      # No login screen. OIDC/SAML are paid features in Stirling's open-core
+      # model, and the tailnet is the gate here — same posture as Vaultwarden.
+      DISABLE_ADDITIONAL_FEATURES: "true"
+      SECURITY_ENABLELOGIN: "false"
+      SYSTEM_DEFAULTLOCALE: en-US
+      # Private instance: no search indexing, no telemetry prompts.
+      SYSTEM_GOOGLEVISIBILITY: "false"
+      METRICS_ENABLED: "false"
+      SHOW_SURVEY: "false"
+      SYSTEM_MAXFILESIZE: "500"
+      UI_APPNAME: Stirling PDF
+      UI_APPNAMENAVBAR: Stirling PDF
+      UI_HOMEDESCRIPTION: PDF toolkit for the mediahub
+    volumes:
+      # NVMe only. Stirling is stateless for user files — these are just OCR
+      # language packs, app settings and logs — but nothing goes on the
+      # mergerfs pool regardless (cache.files=off blocks mmap).
+      #
+      # NOTE: upstream docs say to mount tessdata at /usr/share/tessdata.
+      # That path is IGNORED in 2.14.3 — tesseract reads
+      # /usr/share/tesseract-ocr/5/tessdata. Mounting the documented path
+      # silently gives you no extra OCR languages. This dir was seeded from
+      # the image (eng/deu/fra/por/chi_sim/osd + configs + pdf.ttf) and then
+      # spa.traineddata added, so the bind mount does not mask the builtins.
+      - /srv/docker/stirling-pdf/tessdata:/usr/share/tesseract-ocr/5/tessdata:rw
+      - /srv/docker/stirling-pdf/config:/configs:rw
+      - /srv/docker/stirling-pdf/logs:/logs:rw
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/info/status | grep -q 'UP'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    networks:
+      - mediahub_internal
+    # No published host port. Caddy reaches it by container name on the
+    # shared network, same as mealie.
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true
