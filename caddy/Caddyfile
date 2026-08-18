@@ -218,3 +218,12 @@ pterodactyl.lan:8090 {
         header_up Upgrade {>Upgrade}
     }
 }
+
+# ─────────────────────────────────────────
+# UTILITIES
+# ─────────────────────────────────────────
+
+stirling.lan {
+    tls internal
+    reverse_proxy stirling-pdf:8080
+}

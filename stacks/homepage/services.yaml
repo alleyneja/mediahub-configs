@@ -169,6 +169,10 @@
         href: https://nextcloud.lan
         description: File storage & sync
         icon: nextcloud.png
+    - Stirling PDF:
+        href: https://stirling.lan
+        description: PDF toolkit - merge, split, convert, OCR
+        icon: stirling-pdf.png
     - Vaultwarden:
         href: https://vaultwarden.lan
         description: Password manager
