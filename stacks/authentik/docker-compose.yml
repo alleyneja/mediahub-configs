@@ -47,11 +47,17 @@ services:
       AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
       AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      # Consumed by /blueprints/custom/romm-oidc.yaml via the !Env tag, so the
+      # blueprint itself carries no secrets and is safe in the public repo.
+      ROMM_OIDC_CLIENT_ID: ${ROMM_OIDC_CLIENT_ID}
+      ROMM_OIDC_CLIENT_SECRET: ${ROMM_OIDC_CLIENT_SECRET}
       AUTHENTIK_HOST: https://auth.lan
       AUTHENTIK_HOST_BROWSER: https://auth.lan
     volumes:
       - /srv/docker/authentik/media:/media
       - /srv/docker/authentik/certs:/certs
+      # Custom blueprints (RomM OIDC). authentik discovers everything under here.
+      - /srv/docker/authentik/blueprints:/blueprints/custom:ro
     ports:
       - "9001:9000"
       - "9444:9443"
@@ -76,9 +82,14 @@ services:
       AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD}
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY}
       AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      # Consumed by /blueprints/custom/romm-oidc.yaml via the !Env tag, so the
+      # blueprint itself carries no secrets and is safe in the public repo.
+      ROMM_OIDC_CLIENT_ID: ${ROMM_OIDC_CLIENT_ID}
+      ROMM_OIDC_CLIENT_SECRET: ${ROMM_OIDC_CLIENT_SECRET}
     volumes:
       - /srv/docker/authentik/media:/media
       - /srv/docker/authentik/certs:/certs
+      - /srv/docker/authentik/blueprints:/blueprints/custom:ro
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - mediahub_internal
