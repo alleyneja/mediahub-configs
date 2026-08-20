@@ -7,9 +7,21 @@ PORT="41641"
 # Extra flags you might want to pass to tailscaled.
 FLAGS=""
 
-# Cellular path to jays-iphone measured (2026-08-18) at an effective inner MTU
-# of 1256B: packets at 1264B saw 100% loss with no ICMP back, so large
-# transfers blackholed and stalled (Stirling's 1MB JS bundle died at 343KB;
-# Sonarr's bundles hit the same wall). Tailscale's 1280 default does not fit.
-# 1200 sits under both that wall and the worse DERP-relay path measured earlier.
-TS_DEBUG_MTU=1200
+# REVERTED 2026-08-20. TS_DEBUG_MTU=1200 was set on 2026-08-18 for a cellular
+# PMTU blackhole (inner MTU measured at 1256B; Stirling's 1MB JS bundle died at
+# 343KB, Sonarr's bundles hit the same wall).
+#
+# It broke everything else off-wifi. IPv6 has a hard minimum link MTU of 1280,
+# so at 1200 the kernel refuses to configure IPv6 on tailscale0 -- the interface
+# had no v6 address at all, while Tailscale kept advertising the node's ULA and
+# MagicDNS kept serving the AAAA. iOS prefers IPv6, so every connection tried a
+# black hole first and waited out the timeout before falling back to v4. Jay and
+# Maria saw Homepage, Lidarr, Plex and Seerr time out on cellular; wifi was fine
+# because *.lan resolves to LAN IPv4 and never touches the tailnet.
+#
+# Do not lower this below 1280 again. The supported remedy for the blackhole is
+# net.ipv4.tcp_mtu_probing=1 (already set, /etc/sysctl.d/99-tailscale-mtu.conf),
+# which makes TCP shrink its own segments when it detects the wall. If the
+# cellular stall returns, cap IPv4 tailnet traffic with a route-level MTU
+# instead, which leaves the interface legal for IPv6.
+# TS_DEBUG_MTU=1200
