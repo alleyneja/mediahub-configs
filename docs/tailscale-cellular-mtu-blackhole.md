@@ -99,3 +99,46 @@ says nothing about cellular.
 
 Caddy logs only errors by default. To see truncation you need an access log on
 the vhost; `size` in the access log versus `content-length` is the tell.
+
+---
+
+# ⚠️ REVERTED 2026-08-20 — the 1200 fix broke everything else off-wifi
+
+**Do not lower Tailscale's MTU below 1280 again.**
+
+**Symptom it caused:** Jay and Maria both got long waits and frequent timeouts on
+Homepage, Lidarr, Plex and Seerr — but **only off wifi**. At home everything was
+fine, which is what made it look unrelated to this change.
+
+**Mechanism.** IPv6 has a hard minimum link MTU of **1280**. With
+`TS_DEBUG_MTU=1200` the kernel refuses to configure IPv6 on `tailscale0` at all:
+
+```
+ip -6 addr show tailscale0     ->  (nothing)
+ping6 fd7a:115c:a1e0::c832:2b06 ->  Network is unreachable
+```
+
+Meanwhile Tailscale still advertised the node's IPv6 ULA and MagicDNS still served
+the AAAA record. **iOS prefers IPv6.** So every new connection tried an address
+that answered nothing, waited out the timeout, and only then fell back to IPv4 —
+on every service, on every connection. WiFi was unaffected because `*.lan`
+resolves to LAN IPv4 through AdGuard and never touches the tailnet.
+
+**The revert:** comment out `TS_DEBUG_MTU` in `/etc/default/tailscaled`,
+`systemctl restart tailscaled`. Verified after: interface MTU 1280, v6 address
+present, `ping6` 0% loss, and both `homepage.lan` and `romm.lan` returning 200
+over **both** the v4 and v6 tailnet paths in under 20 ms.
+
+**What still protects the original blackhole:** `net.ipv4.tcp_mtu_probing = 1`
+(`/etc/sysctl.d/99-tailscale-mtu.conf`) is **kept** — that is the supported remedy,
+and it makes TCP shrink its own segments when it detects the wall rather than
+stalling forever.
+
+**If the cellular stall returns:** cap IPv4 tailnet traffic with a route-level MTU
+(`ip route ... mtu 1256` on the 100.64.0.0/10 route) rather than the interface MTU.
+That leaves the link legal for IPv6. Also re-measure first — the 1256 figure was one
+carrier path on one day, and paths change.
+
+**Wider lesson:** a change scoped to one symptom on one device silently degraded
+every service for every user, in a place nobody was looking. The measurement that
+justified it was correct; the blast radius was never checked.
