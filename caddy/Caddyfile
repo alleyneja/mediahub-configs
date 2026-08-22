@@ -229,6 +229,12 @@ scanopy.lan {
 
 homepage.lan {
     tls internal
+    # TEMPORARY: server-side ground truth for the speedtest, since the client
+    # page has already produced one false reading. Remove with the speedtest dir.
+    log {
+        output file /config/homepage-access.log
+        format json
+    }
     import compress
     # Temporary: end-to-end path test reachable from a phone.
     # Added 2026-08-21 to measure real throughput phone -> tailnet -> mediahub,
