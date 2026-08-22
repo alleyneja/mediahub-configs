@@ -1,4 +1,24 @@
 # ─────────────────────────────────────────
+# TEMPORARY A/B TEST -- remove with the speedtest dir
+# Same files as homepage.lan/speedtest, but reached by raw LAN IP over plain
+# HTTP, so it bypasses Tailscale entirely. Comparing the two isolates whether
+# the tunnel (specifically iOS's Network Extension) is the throughput ceiling.
+# ─────────────────────────────────────────
+
+http://192.168.0.21 {
+    # Temporary access log so we can see whether the phone's requests arrive
+    # at all, instead of inferring from the absence of errors.
+    log {
+        output file /config/speedtest-access.log
+        format json
+    }
+    handle_path /speedtest* {
+        root * /config/speedtest
+        file_server browse
+    }
+}
+
+# ─────────────────────────────────────────
 # SHARED SNIPPETS
 # ─────────────────────────────────────────
 
@@ -210,6 +230,14 @@ scanopy.lan {
 homepage.lan {
     tls internal
     import compress
+    # Temporary: end-to-end path test reachable from a phone.
+    # Added 2026-08-21 to measure real throughput phone -> tailnet -> mediahub,
+    # instead of inferring it. Remove this handle block and /srv/docker/caddy/speedtest
+    # once the Aurral cellular investigation is closed.
+    handle_path /speedtest* {
+        root * /config/speedtest
+        file_server browse
+    }
     reverse_proxy homepage:3000
 }
 # ─────────────────────────────────────────
