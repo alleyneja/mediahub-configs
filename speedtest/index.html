@@ -1,0 +1,66 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>mediahub path test</title>
+<style>
+body{font:16px -apple-system,system-ui,sans-serif;margin:0;padding:20px;background:#111;color:#eee}
+h1{font-size:19px;margin:0 0 4px}p.sub{color:#888;font-size:13px;margin:0 0 18px}
+button{width:100%;padding:16px;font-size:17px;font-weight:600;border:0;border-radius:10px;background:#2b7;color:#012;margin-bottom:14px}
+button:disabled{opacity:.5}
+.row{padding:11px 13px;border-radius:9px;background:#1c1c1c;margin-bottom:8px;font-variant-numeric:tabular-nums}
+.lbl{color:#999;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+.val{font-size:20px;font-weight:600;margin-top:3px}
+.ok{color:#5d8}.bad{color:#f66}.warn{color:#fb4}
+#log{font:12px ui-monospace,Menlo,monospace;color:#888;white-space:pre-wrap;margin-top:14px;line-height:1.5}
+</style></head><body>
+<h1>mediahub path test</h1>
+<p class="sub">Measures this phone &rarr; mediahub over whatever network you're on right now.</p>
+<button id="go">Run test</button>
+<div id="out"></div>
+<div id="log"></div>
+<script>
+const out=document.getElementById('out'), log=document.getElementById('log'), go=document.getElementById('go');
+function line(l,v,c){const d=document.createElement('div');d.className='row';
+  d.innerHTML='<div class="lbl">'+l+'</div><div class="val '+(c||'')+'">'+v+'</div>';out.appendChild(d);}
+function p(s){log.textContent+=s+'\n';}
+async function one(file,bytes){
+  const t0=performance.now();
+  try{
+    const ctl=new AbortController();
+    const timer=setTimeout(()=>ctl.abort(),45000);
+    const r=await fetch('/speedtest/'+file+'?cb='+Math.random(),{cache:'no-store',signal:ctl.signal});
+    const b=await r.arrayBuffer();
+    clearTimeout(timer);
+    const dt=(performance.now()-t0)/1000;
+    const mbps=(b.byteLength*8/1e6)/dt;
+    p(file+': '+(b.byteLength/1e6).toFixed(1)+' MB in '+dt.toFixed(2)+'s = '+mbps.toFixed(1)+' Mbps');
+    return {ok:true,mbps,dt,bytes:b.byteLength};
+  }catch(e){
+    const dt=(performance.now()-t0)/1000;
+    p(file+': FAILED after '+dt.toFixed(2)+'s -- '+e.message);
+    return {ok:false,dt,err:e.message};
+  }
+}
+go.onclick=async()=>{
+  go.disabled=true; out.innerHTML=''; log.textContent='';
+  const t0=performance.now();
+  await fetch('/speedtest/1mb.bin?cb='+Math.random(),{cache:'no-store'}).catch(()=>{});
+  line('Latency (first byte, warm-up)',((performance.now()-t0)).toFixed(0)+' ms');
+  const res=[];
+  for(const [f,sz] of [['1mb.bin',1],['4mb.bin',4],['12mb.bin',12]]){
+    const r=await one(f,sz);
+    res.push([sz,r]);
+    line(sz+' MB download', r.ok? r.mbps.toFixed(1)+' Mbps ('+r.dt.toFixed(1)+'s)' : 'FAILED after '+r.dt.toFixed(1)+'s',
+         r.ok?(r.mbps>15?'ok':r.mbps>4?'warn':'bad'):'bad');
+  }
+  const good=res.filter(r=>r[1].ok);
+  if(good.length===0){ line('Verdict','Every transfer failed — the path is broken, not slow','bad'); }
+  else if(good.length<res.length){ line('Verdict','Small transfers work, large ones die — connection drops under sustained load','bad'); }
+  else {
+    const m=good[good.length-1][1].mbps;
+    line('Verdict', m>15? 'Path is healthy — Aurral’s 14 MB is the problem'
+       : m>4 ? 'Path is usable but slow — 14 MB ≈ '+(14*8/m).toFixed(0)+'s'
+             : 'Path is very slow — 14 MB ≈ '+(14*8/m).toFixed(0)+'s', m>15?'ok':m>4?'warn':'bad');
+  }
+  go.disabled=false;
+};
+</script></body></html>

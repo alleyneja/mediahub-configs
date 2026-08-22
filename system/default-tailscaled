@@ -2,7 +2,16 @@
 # Remote nodes will automatically be informed about the new port number,
 # but you might want to configure this in order to set external firewall
 # settings.
-PORT="41641"
+# 2026-08-22: moved off Tailscale's well-known 41641.
+# Evidence for carrier shaping on 41641: throughput to a cellular peer capped at
+# ~1 Mbps whether 1 stream or 6 ran in parallel (6 delivered LESS aggregate than
+# 1 - a shared pot, not loss-induced collapse), with loss 0-5%, jitter 10ms, and
+# no MTU wall. Same cap over IPv4-CGNAT and native IPv6. Ookla on the same radio,
+# same minute: 310 Mbps. Low loss + low jitter + hard ceiling = shaping.
+#
+# 4500/udp is IPsec NAT-T, which carriers rarely shape (it would break corporate
+# VPNs). Revert: set this back to 41641 and restart tailscaled.
+PORT="4500"
 
 # Extra flags you might want to pass to tailscaled.
 FLAGS=""
