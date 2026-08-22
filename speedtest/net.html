@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>mediahub network test</title>
+<style>
+:root{--bg:#0d0f12;--card:#171a1f;--line:#242932;--fg:#e8eaed;--dim:#8b929e;
+--ok:#3ddc84;--warn:#ffb454;--bad:#ff5c5c;--accent:#4ea1ff}
+*{box-sizing:border-box}
+body{margin:0;padding:18px;background:var(--bg);color:var(--fg);
+font:16px/1.45 -apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+-webkit-text-size-adjust:100%}
+h1{font-size:19px;margin:0 0 2px}
+.sub{color:var(--dim);font-size:13px;margin:0 0 16px}
+button{width:100%;padding:16px;font-size:17px;font-weight:600;border:0;border-radius:12px;
+background:var(--accent);color:#04121f;margin-bottom:8px;-webkit-appearance:none}
+button.alt{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+button:disabled{opacity:.45}
+.big{background:var(--card);border:1px solid var(--line);border-radius:14px;
+padding:20px;text-align:center;margin-bottom:10px}
+.big .n{font-size:42px;font-weight:700;letter-spacing:-1px;font-variant-numeric:tabular-nums}
+.big .u{font-size:13px;color:var(--dim);text-transform:uppercase;letter-spacing:1px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.cell{background:var(--card);border:1px solid var(--line);border-radius:11px;padding:12px}
+.cell .k{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px}
+.cell .v{font-size:19px;font-weight:600;margin-top:3px;font-variant-numeric:tabular-nums}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;margin-top:14px}
+.bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+#verdict{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--accent);
+border-radius:11px;padding:14px;margin-bottom:10px;font-size:14px;display:none}
+#log{font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim);
+white-space:pre-wrap;margin-top:14px;word-break:break-all}
+.status{color:var(--dim);font-size:13px;text-align:center;min-height:20px;margin-bottom:10px}
+</style></head><body>
+
+<h1>mediahub network test</h1>
+<p class="sub">Measures this device &rarr; mediahub, over whatever network you're on.</p>
+
+<button id="go">Run full test</button>
+<button id="quick" class="alt">Quick test (single stream)</button>
+<div class="status" id="status"></div>
+
+<div class="big"><div class="n" id="speed">&mdash;</div><div class="u" id="speedu">Mbps down</div>
+<div class="bar"><i id="bar"></i></div></div>
+
+<div class="grid">
+  <div class="cell"><div class="k">Latency</div><div class="v" id="lat">&mdash;</div></div>
+  <div class="cell"><div class="k">Jitter</div><div class="v" id="jit">&mdash;</div></div>
+  <div class="cell"><div class="k">Single stream</div><div class="v" id="single">&mdash;</div></div>
+  <div class="cell"><div class="k">Parallel &times;6</div><div class="v" id="multi">&mdash;</div></div>
+</div>
+
+<div id="verdict"></div>
+<div id="log"></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const log=s=>{$('log').textContent+=s+'\n'};
+const fmt=n=>n>=100?n.toFixed(0):n>=10?n.toFixed(1):n.toFixed(2);
+const cls=m=>m>50?'ok':m>10?'warn':'bad';
+function setSpeed(m){$('speed').textContent=fmt(m);$('speed').className='n '+cls(m);
+  $('bar').style.width=Math.min(100,(m/100)*100)+'%';}
+
+async function measureLatency(n=8){
+  const t=[];
+  for(let i=0;i<n;i++){
+    const s=performance.now();
+    try{ await fetch('/speedtest/ping.txt?cb='+Math.random(),{cache:'no-store'}); }
+    catch(e){ continue; }
+    t.push(performance.now()-s);
+  }
+  if(!t.length) return {avg:NaN,jit:NaN};
+  const avg=t.reduce((a,b)=>a+b,0)/t.length;
+  const jit=Math.sqrt(t.reduce((a,b)=>a+(b-avg)**2,0)/t.length);
+  return {avg,jit};
+}
+
+// One stream. Returns {bytes, secs, ok}
+async function stream(file,timeoutMs){
+  const ctl=new AbortController();
+  const timer=setTimeout(()=>ctl.abort(),timeoutMs);
+  const t0=performance.now();
+  let bytes=0;
+  try{
+    const r=await fetch('/speedtest/'+file+'?cb='+Math.random(),
+      {cache:'no-store',signal:ctl.signal});
+    const reader=r.body.getReader();
+    for(;;){
+      const {done,value}=await reader.read();
+      if(done) break;
+      bytes+=value.length;
+    }
+    clearTimeout(timer);
+    return {bytes,secs:(performance.now()-t0)/1000,ok:true};
+  }catch(e){
+    clearTimeout(timer);
+    return {bytes,secs:(performance.now()-t0)/1000,ok:false,err:e.name};
+  }
+}
+
+async function parallel(file,n,timeoutMs){
+  const t0=performance.now();
+  const rs=await Promise.all(Array.from({length:n},()=>stream(file,timeoutMs)));
+  const secs=(performance.now()-t0)/1000;
+  const bytes=rs.reduce((a,r)=>a+r.bytes,0);
+  const failed=rs.filter(r=>!r.ok).length;
+  return {bytes,secs,mbps:(bytes*8/1e6)/secs,failed,n};
+}
+
+async function run(full){
+  $('go').disabled=$('quick').disabled=true;
+  $('log').textContent='';$('verdict').style.display='none';
+  ['speed','lat','jit','single','multi'].forEach(i=>$(i).textContent='—');
+  $('bar').style.width='0';
+
+  $('status').textContent='Measuring latency…';
+  const L=await measureLatency();
+  $('lat').textContent=isNaN(L.avg)?'fail':Math.round(L.avg)+' ms';
+  $('jit').textContent=isNaN(L.jit)?'fail':Math.round(L.jit)+' ms';
+  $('jit').className='v '+(L.jit<30?'ok':L.jit<80?'warn':'bad');
+  log(`latency avg=${Math.round(L.avg)}ms jitter=${Math.round(L.jit)}ms`);
+
+  $('status').textContent='Single stream…';
+  const s1=await stream('4mb.bin',30000);
+  const m1=(s1.bytes*8/1e6)/s1.secs;
+  $('single').textContent=s1.bytes?fmt(m1)+' Mbps':'failed';
+  $('single').className='v '+(s1.bytes?cls(m1):'bad');
+  log(`single: ${(s1.bytes/1e6).toFixed(2)}MB in ${s1.secs.toFixed(1)}s = ${fmt(m1)} Mbps${s1.ok?'':' (INCOMPLETE '+s1.err+')'}`);
+  setSpeed(m1||0);
+
+  let mp={mbps:0,failed:0,n:6};
+  if(full){
+    $('status').textContent='6 parallel streams (like Ookla)…';
+    mp=await parallel('4mb.bin',6,30000);
+    $('multi').textContent=mp.bytes?fmt(mp.mbps)+' Mbps':'failed';
+    $('multi').className='v '+(mp.bytes?cls(mp.mbps):'bad');
+    log(`parallel x6: ${(mp.bytes/1e6).toFixed(2)}MB in ${mp.secs.toFixed(1)}s = ${fmt(mp.mbps)} Mbps${mp.failed?', '+mp.failed+' stream(s) incomplete':''}`);
+    if(mp.mbps>m1) setSpeed(mp.mbps);
+  }
+
+  $('status').textContent='';
+  const best=Math.max(m1||0,mp.mbps||0);
+  const v=$('verdict'); v.style.display='block';
+  let msg;
+  if(best<1){
+    msg='<b class="bad">Path is broken, not just slow.</b> Under 1 Mbps to your own server. '+
+        'Compare against a public speed test on this same connection — if that is fast, the problem is the path to mediahub, not your internet.';
+  }else if(best<10){
+    msg='<b class="warn">Path is degraded.</b> Usable for small pages, painful for anything large. '+
+        `Aurral's 14 MB would take about ${Math.round(14*8/best)}s.`;
+  }else if(best<50){
+    msg='<b class="warn">Path is workable.</b> Most services will feel fine; big media may stutter.';
+  }else{
+    msg='<b class="ok">Path is healthy.</b> Anything slow at this point is the application, not the network.';
+  }
+  if(full&&mp.mbps>m1*2&&m1>0){
+    msg+='<br><br><b>Parallel streams are '+(mp.mbps/m1).toFixed(1)+'x faster than one.</b> '+
+         'That signature means packet loss or high latency, not a bandwidth cap — each single connection keeps backing off.';
+  }
+  if(full&&mp.failed){ msg+='<br><br><b class="bad">'+mp.failed+' of '+mp.n+' streams did not finish.</b> Connections are dying mid-transfer.'; }
+  v.innerHTML=msg;
+  $('go').disabled=$('quick').disabled=false;
+}
+$('go').onclick=()=>run(true);
+$('quick').onclick=()=>run(false);
+</script></body></html>

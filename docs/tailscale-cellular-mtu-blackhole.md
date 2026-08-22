@@ -366,3 +366,67 @@ endpoints — `Self.Endpoints` in `status --json` is empty on this version) and
 IPv6 endpoints and cracked this open. Note `tailscale netcheck`'s reported port
 is its **own** STUN socket, not tailscaled's — it is useless for judging whether
 a port forward took effect.
+
+---
+
+## 2026-08-22 (final round) — a hard ~1 Mbps ceiling on the cellular tunnel
+
+Continued after the IPv6 fix did not restore cellular speed. Four more theories
+died here. Recording the measurements and the instrument bugs, because three of
+the four failures were bad instruments rather than bad reasoning.
+
+### Instrument bugs that produced false conclusions
+
+1. **HTTP/2 multiplexing.** The "6 parallel streams" test ran all six over **one**
+   TCP connection (verified: 27 requests, 1 client port). Six h2 streams sharing
+   one socket obviously split its bandwidth — that is not evidence of a cap. Fixed
+   by testing over `http://192.168.0.21` (HTTP/1.1), which the access log confirms
+   gives genuinely separate connections (16 transfers, 16 distinct ports).
+2. **Throughput computed from offered rate.** Claimed "17 Mbps achieved" from
+   `ping -i`, never measuring elapsed time. Real figures, from received count and
+   elapsed: **0.74 / 1.11 / 0.71 Mbps**. There was no 17 Mbps.
+3. **ICMP loss to public hosts.** 9.33% "loss" to Google over IPv6 was
+   deprioritisation. TCP over the same v6 path: **300 Mbps at 0.01% retransmits**.
+   Same trap as the Comcast misdiagnosis on 2026-08-21.
+
+### What actually holds
+
+| Path | Result |
+|---|---|
+| Phone, cellular, through tunnel | **~1 Mbps ceiling** — 0% loss at 1.11 Mbps, loss only above |
+| Ceiling applies to **ICMP** as well as TCP | rules out BBR, MSS clamp, Caddy, HTTP/2 |
+| Phone, **wifi**, through tunnel | 106-355 Mbps |
+| Phone, cellular, **Ookla** | 310 Mbps |
+| mediahub -> internet | 300-496 Mbps, 0.00-0.01% retransmits |
+| LAN peer through same tunnel (**control**) | 0% loss |
+
+The ceiling is specific to **phone + cellular + tunnel**. Because it caps ICMP
+too, nothing TCP-side explains it.
+
+### Ruled out with evidence
+
+Comcast (TCP 458-531 Mbps, ~0% retransmits), artwork size (Sonarr failed at
+0.13 MB), MTU (clamp firing, wall re-verified at 1260, packets at 1240, underlay
+passes 1248-1448), CGNAT/IPv6 (same cap on both families), carrier port-shaping
+on 41641 (moved to 4500/udp, unchanged — and the phone's own port varies with
+CGNAT anyway), iOS Low Power Mode (off, and predates the low battery).
+
+### Changes kept from this round
+
+- `system/default-tailscaled`: `PORT="4500"` (IPsec NAT-T). Did not lift the cap;
+  kept because 41641 is the well-known Tailscale port and there is no reason to
+  advertise it. Revert by restoring `41641`.
+- BBR applied inside the **caddy network namespace**. `tcp_congestion_control` is
+  per-netns, so the host setting never reached the container that terminates every
+  TLS connection — Caddy was still on CUBIC. Applied live via `nsenter`; **not yet
+  persistent**, needs a `sysctls:` entry and a Portainer recreate.
+- `speedtest/net.html`: multi-stream test page (latency, jitter, single vs
+  parallel, real timeouts, plain-language verdict). Serve over **HTTP/1.1** for a
+  true parallel test — over HTTP/2 it measures one connection.
+
+### Still open
+
+Whether the carrier throttles the tunnel, or something in the path to the house
+does. The decisive test is reaching mediahub from cellular **without** Tailscale.
+Plex is already forwarded on TCP 32400 and can serve as that test at zero new
+exposure.
