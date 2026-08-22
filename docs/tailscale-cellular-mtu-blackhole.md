@@ -309,3 +309,60 @@ feels fine. Ad blocking would have been unaffected either way — `filters:` (li
   distinguishes DERP relay from direct, and proves bytes actually moved.
 - Temporary: `homepage.lan/speedtest` and an `http://192.168.0.21` block in the
   Caddyfile, plus `/srv/docker/caddy/config/speedtest/`. **Remove when closed.**
+
+---
+
+## 2026-08-22 (later) — the actual root cause: mediahub had no IPv6
+
+Everything above narrowed the failure to "cellular reaching this house over UDP,"
+with the radio, the line, the server and Tailscale each cleared by a control.
+The reason turned out to be one sysctl.
+
+**Mechanism.** Linux ignores IPv6 router advertisements when `forwarding=1`
+unless `accept_ra=2`. Tailscale enables IPv6 forwarding for subnet routing, so
+turning on the `192.168.0.0/24` subnet route silently disabled this host's own
+IPv6. `enp3s0` held only a link-local address and there was no default v6 route,
+while every other device on the LAN had a real address.
+
+**Why that wrecked cellular specifically.** T-Mobile is IPv6-native; its IPv4 is
+reached through CGNAT/464XLAT translation. With no IPv6 here, Tailscale had no
+choice but the translated IPv4 path — measured at 0-16% loss and 0.2-0.6 Mbps,
+while Ookla on the same handset, same minute, did 250 Mbps over IPv6. Home wifi
+was unaffected because it never leaves the LAN.
+
+**Five signals agreed before the change was made:**
+1. Gateway advertises Comcast prefix `2601:4c1:c400:17b0::`
+2. RAs arriving on the wire every ~3 s from `fe80::dea6:33ff:fe89:ca17` (tcpdump)
+3. Jay's phone holds an address in that prefix — the LAN's IPv6 works
+4. `enp3s0`: `forwarding=1` + `accept_ra=1` — the discard combination
+5. Result: link-local only, no default route, `ping6` unreachable
+
+**Fix.** `system/sysctl-99-ipv6-accept-ra.conf` sets
+`net.ipv6.conf.enp3s0.accept_ra = 2`.
+
+**Verified after:** global address `2601:4c1:c400:17b0:56bf:64ff:fe6b:e252`,
+default v6 route present, `ping6` to Google 0% loss at 20 ms, HTTPS over v6
+working, and `tailscale netcheck` flipping from `IPv6: no` to
+`IPv6: yes, [2601:4c1:c400:17b0:...]:37638`.
+
+**Security checked, not assumed.** IPv6 has no NAT, so this could have exposed
+services. It did not: `ip6tables INPUT` policy is DROP, ufw6 chains are in the
+INPUT path with only `lo`, `tailscale0` and `41641/udp` allowed, and Docker's
+ip6tables `DOCKER` chain holds a blanket DROP — Docker opens no v6 ports.
+
+### Also done this round
+
+- Static port forward `UDP 41641 -> 192.168.0.21` added on the SBG8300. Kept, but
+  **it was not the fix**: `tailscale debug netmap` showed the daemon still
+  advertising the stale UPnP port `19038`, never `41641`, because the gateway
+  randomises outbound source ports. Recorded so nobody re-litigates it.
+- The gateway's UPnP table holds seven `tailscale-portmap` leases including three
+  duplicates for one device and one for an IP abandoned hours earlier. Cosmetic;
+  UPnP recreates them. Left alone deliberately to keep one variable at a time.
+
+**Useful instruments found:** `tailscale debug netmap` (real advertised
+endpoints — `Self.Endpoints` in `status --json` is empty on this version) and
+`tailscale debug peer-endpoint-changes <ip>`, which is what exposed the phone's
+IPv6 endpoints and cracked this open. Note `tailscale netcheck`'s reported port
+is its **own** STUN socket, not tailscaled's — it is useless for judging whether
+a port forward took effect.
