@@ -1,4 +1,30 @@
 # ─────────────────────────────────────────
+# SHARED SNIPPETS
+# ─────────────────────────────────────────
+
+# Caddy does not compress by default, and several upstreams here ship their
+# JS/CSS as plain text. That is invisible on the LAN but expensive over the
+# tailnet on cellular. Only text types are matched -- images and video are
+# already compressed, so squeezing them just burns CPU.
+#
+# Import this ONLY into sites whose upstream does not already compress.
+# Verified 2026-08-21 as already self-compressing (do NOT add): seer, lidarr,
+# radarr, prowlarr, immich, mealie, romm, uptimekuma, pterodactyl.
+(compress) {
+    encode {
+        zstd
+        gzip
+        match {
+            header Content-Type text/*
+            header Content-Type application/json*
+            header Content-Type application/javascript*
+            header Content-Type application/xml*
+            header Content-Type image/svg+xml*
+        }
+    }
+}
+
+# ─────────────────────────────────────────
 # PERSONAL CLOUD
 # ─────────────────────────────────────────
 
@@ -36,6 +62,7 @@ obsidian-sync.lan {
 
 calibre-web.lan {
     tls internal
+    import compress
     reverse_proxy calibre-web-automated:8083 {
         header_up X-Forwarded-Proto https
         header_up X-Forwarded-For {remote_host}
@@ -49,6 +76,7 @@ calibre-content.lan {
 
 audiobookshelf.lan {
     tls internal
+    import compress
     reverse_proxy audiobookshelf:80 {
         header_up X-Forwarded-Proto https
         header_up X-Forwarded-For {remote_host}
@@ -83,6 +111,7 @@ jellyfin.lan {
 
 aurral.lan {
     tls internal
+    import compress
     reverse_proxy aurral:3001
 }
 
@@ -174,11 +203,13 @@ glances.lan {
 
 scanopy.lan {
     tls internal
+    import compress
     reverse_proxy scanopy-server-1:60072
 }
 
 homepage.lan {
     tls internal
+    import compress
     reverse_proxy homepage:3000
 }
 # ─────────────────────────────────────────
