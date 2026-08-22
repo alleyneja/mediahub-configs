@@ -142,3 +142,92 @@ carrier path on one day, and paths change.
 **Wider lesson:** a change scoped to one symptom on one device silently degraded
 every service for every user, in a place nobody was looking. The measurement that
 justified it was correct; the blast radius was never checked.
+
+---
+
+## 2026-08-21 — the stall returned, and the actual fix
+
+Reported symptom: Aurral taking ~30s to load or crashing on an iPhone on cellular,
+while feeling normal on wifi on both phone and desktop. Lidarr and Seerr felt slow
+off-wifi too.
+
+**Re-measured, per the instruction above.** With the phone live on T-Mobile
+(107 ms, CGNAT `172.58.135.182`), DF-set pings over `tailscale0`:
+
+| inner IP packet | result |
+|---|---|
+| 1028 B | 0% loss |
+| 1260 B | 0% loss |
+| 1262 / 1264 / 1266 B | 100% loss |
+| 1268 / 1276 / 1280 B | 100% loss |
+| 1288 B and up | local `EMSGSIZE` (exceeds the 1280 interface MTU) |
+
+So the real wall is **1260**, not the 1256 recorded in August. The 1288+ rows
+matter: those fail *locally* with counted errors, which is how we know 1262–1280
+are genuine silent drops on the path rather than the kernel refusing them here.
+
+`tailscale0` is at MTU 1280 and cannot go lower (see above). Every full-size
+packet was being dropped.
+
+**Why it looked like an application bug:** small responses fit under the wall and
+worked fine, so the app authenticated and rendered its shell. Only the large
+transfers died — Aurral's 280 KB JS bundle and its ~95 KB artwork. `tcp_mtu_probing=1`
+does eventually recover, but only after several retransmit timeouts, and
+`ip tcp_metrics` held no cached MSS for any peer, so each new connection re-paid
+that cost. That is the 30 seconds.
+
+**Why wifi was fine:** `aurral.lan` resolves to `100.104.43.6` — an **A record only,
+no AAAA** — so this is IPv4 over the tunnel in both cases. On wifi Tailscale uses a
+direct LAN path (`192.168.0.x`, MTU 1500) and 1280 fits easily. On cellular it does not.
+
+### The fix: TCP MSS clamping, not interface MTU
+
+Route-level MTU was the plan recorded above. It was rejected on inspection:
+tailscaled installs **per-peer `/32` routes in table 52** and rewrites them as peers
+come and go, so any `mtu` set there gets clobbered.
+
+Instead, clamp TCP MSS on `tailscale0` — `/etc/nftables-ts-mss.conf`, applied at boot
+by `ts-mss-clamp.service`. MSS is a TCP-level constraint, so it is **legal below the
+IPv6 1280 floor** and never touches addressing. It structurally cannot repeat the
+August outage.
+
+    inner budget 1240 (20 B margin under the measured 1260 wall)
+    IPv4 MSS = 1240 - 20 - 20 = 1200
+    IPv6 MSS = 1240 - 40 - 20 = 1180
+
+Both `prerouting` (rewrites what a peer advertises to us, capping what *we* send)
+and `postrouting` (capping what *they* send) are required. Interfaces are matched by
+**name**, so the rules survive tailscaled recreating `tailscale0`.
+
+`nftables.service` is deliberately left **disabled** — its `/etc/nftables.conf` opens
+with `flush ruleset`, which would wipe Docker's and Tailscale's rules. The dedicated
+`table inet ts-mss` coexists with the iptables-nft tables without touching them.
+
+**Verified:** a new tailnet connection negotiates `mss:1188` (+12 B timestamps
++20 TCP +20 IP = 1240 B on the wire); a LAN/docker connection is untouched at
+`mss:1448 pmtu:1500`. `tailscale0` still holds both IPv6 addresses at MTU 1280.
+
+**Revert:** `sudo systemctl disable --now ts-mss-clamp.service`
+
+### Also fixed: compression was off everywhere Caddy served it
+
+Caddy does not compress by default and no site block asked it to. Aurral's upstream
+ships plain text, so a cold load was **425 KB** of uncompressed JS/CSS — on top of a
+broken MTU. Added a `(compress)` snippet, imported only where the upstream does not
+already compress:
+
+| site | before | after |
+|---|---|---|
+| audiobookshelf | 2,549,852 B | 688,800 B (72% smaller) |
+| calibre-web | 842,909 B | 507,515 B (39%) |
+| aurral | 425,281 B | 131,407 B (69%) |
+| homepage | 310,213 B | 72,656 B (76%) |
+| scanopy | 68,200 B | 28,902 B (57%) |
+
+Measured as already self-compressing — **do not add** the snippet to these: seer,
+lidarr, radarr, prowlarr, immich, mealie, romm, uptimekuma, pterodactyl. Notably
+**Seerr already compressed**, so its slowness was the MTU wall, not payload size.
+
+**Lesson, extending the one above:** the August measurement was right and the
+prescribed remedy was still wrong, because it was written without checking that
+tailscaled owns those routes. Re-measure *and* re-check the mechanism.

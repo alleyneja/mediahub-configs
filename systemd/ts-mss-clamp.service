@@ -1,0 +1,16 @@
+[Unit]
+Description=TCP MSS clamp for Tailscale (cellular PMTU blackhole workaround)
+Documentation=file:/etc/nftables-ts-mss.conf
+# Rules match tailscale0 by NAME, so they can load before the interface exists
+# and keep working when tailscaled recreates it. No ordering on tailscaled needed.
+After=network-pre.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/nftables-ts-mss.conf
+ExecStop=-/usr/sbin/nft delete table inet ts-mss
+
+[Install]
+WantedBy=multi-user.target
