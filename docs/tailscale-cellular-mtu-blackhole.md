@@ -231,3 +231,81 @@ lidarr, radarr, prowlarr, immich, mealie, romm, uptimekuma, pterodactyl. Notably
 **Lesson, extending the one above:** the August measurement was right and the
 prescribed remedy was still wrong, because it was written without checking that
 tailscaled owns those routes. Re-measure *and* re-check the mechanism.
+
+---
+
+## 2026-08-22 — it was never the MTU, and never the ISP
+
+The Aurral investigation continued and overturned most of the section above.
+Recording what the evidence actually showed, including the wrong turns, because
+three of them were caused by concluding from a single signal.
+
+### Wrong turns (each from one unconfirmed reading)
+
+1. **"Comcast is dropping 8% of packets."** Based on ICMP loss to public DNS
+   resolvers. ISPs deprioritise ping. A TCP test showed **458 Mbps down / 36 Mbps
+   up at 0.07-0.23% retransmits** — the line is healthy. Nearly sent Jay to
+   support with a fabricated problem.
+2. **"Aurral's 14 MB of artwork is the cause."** Killed by Sonarr failing at
+   **0.13 MB**, smaller than pages that worked fine.
+3. **"The LAN path measures 0 Mbps."** The test page's relative URLs resolved to
+   a path with no handler; Caddy returned **200 OK with an empty body**, so the
+   page computed 0 Mbps from a "successful" empty response. Validate the
+   instrument before trusting the reading.
+
+### What the evidence actually supports
+
+| Path | Result |
+|---|---|
+| Phone → `192.168.0.21` direct, no tunnel, wifi | **95 / 421 / 477 Mbps** |
+| Phone → tunnel, home wifi | **106 / 355 Mbps** (39 MB in ~6 s on TS counters) |
+| Phone → tunnel, **cellular** | **14-22 KB/s**, 1 MB files truncating at 232-798 KB after 11-56 s |
+| Ping through tunnel → phone on cellular | **7.5% / 10% / 16% loss**, RTT 137 ms, jitter 47 ms |
+| Ping through tunnel → Gaming-PC on LAN (**control**) | **0% loss**, RTT 4.5 ms |
+
+The control is what makes this conclusive: same tunnel, same interface, same
+server, zero loss to a LAN peer. **The loss is on the cellular radio leg.**
+
+Ruled out with evidence, not assumption:
+- **Not MTU.** The MSS clamp is firing (172 in / 455 out), the wall re-measured
+  at exactly 1260 (reproducible), and our packets are 1240 — comfortably under.
+- **Not DERP.** Direct UDP path confirmed, `curaddr=172.58.135.4:62205`.
+- **Not the server.** 0% loss to a LAN peer; files serve locally at 6,480+ Mbps.
+- **Not the home internet.** See the TCP numbers above.
+
+Arithmetic closes: Mathis gives MSS/(RTT·√p) = 1200/(0.137·0.316) ≈ **27 KB/s**
+for 10% loss at 137 ms. Caddy measured **14-22 KB/s**. Same ballpark.
+
+### The fix: BBR congestion control
+
+`system/sysctl-99-tcp-bbr.conf`. CUBIC (the default) treats every lost packet as
+congestion and backs off. On a radio link the loss is interference and handoffs,
+not congestion, so CUBIC throttles itself for the whole transfer — exactly the
+collapse measured above. BBR models bandwidth and RTT instead of reading loss as
+a stop sign, and holds throughput on lossy links. At least as good as CUBIC on
+clean LAN paths.
+
+Verified three ways: `sysctl` reports bbr; live sockets negotiate it (new
+connections show bbr while pre-existing ones keep cubic until they close);
+`sysctl --system` reapplies at boot. Revert by deleting the file and
+`sysctl -w net.ipv4.tcp_congestion_control=cubic`.
+
+### Considered and deprioritised
+
+Pointing the 33 AdGuard `.lan` rewrites at `192.168.0.21` instead of the tailnet
+IP would stop LAN devices tunnelling to a server ten feet away (477 vs ~1 Mbps at
+the time). All three prerequisites verify — `ip_forward=1`, subnet route
+`192.168.0.0/24` advertised **and** approved, and cellular requests to
+`192.168.0.21` confirmed arriving in Caddy's access log. **Not done:** Jay's pain
+is cellular and away-from-home, and this only helps home wifi, which already
+feels fine. Ad blocking would have been unaffected either way — `filters:` (line
+107) and `rewrites:` (line 267) are independent sections.
+
+### Diagnostic tooling added
+
+- `scripts/netcheck.sh` — repeatable baseline (loss, RTT, TCP throughput with
+  retransmit counting, latency under load). Run before/after a change and diff.
+- `scripts/ts-watch.sh` — samples the tailnet path to a peer during a transfer;
+  distinguishes DERP relay from direct, and proves bytes actually moved.
+- Temporary: `homepage.lan/speedtest` and an `http://192.168.0.21` block in the
+  Caddyfile, plus `/srv/docker/caddy/config/speedtest/`. **Remove when closed.**
