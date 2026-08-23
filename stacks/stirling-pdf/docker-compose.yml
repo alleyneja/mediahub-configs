@@ -6,6 +6,9 @@ services:
     # bump can't silently land us on ultra-lite (which drops OCR).
     image: stirlingtools/stirling-pdf:2.14.3-fat
     container_name: stirling-pdf
+    labels:
+      # Keep the -fat variant. WUD otherwise proposes plain 2.14.3, which looks like a harmless same-version update but SILENTLY DROPS the bundled OCR language packs - the slim image has no Spanish tessdata. See docs/ for the tessdata path gotcha.
+      - wud.tag.include=^\d+\.\d+\.\d+-fat$$
     environment:
       TZ: America/Chicago
       # No login screen. OIDC/SAML are paid features in Stirling's open-core

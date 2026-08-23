@@ -15,6 +15,9 @@ services:
   couchdb:
     image: couchdb:3.4
     container_name: couchdb
+    labels:
+      # Constrain WUD to plain CouchDB 3.x. Without it, 3.5-nouveau (a different build variant with the Nouveau search engine) is reported as an upgrade.
+      - wud.tag.include=^3\.\d+$$
     environment:
       TZ: America/Chicago
       COUCHDB_USER: admin

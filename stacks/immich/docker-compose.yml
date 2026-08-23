@@ -34,6 +34,9 @@ services:
   immich-redis:
     image: redis:7-alpine
     container_name: immich-redis
+    labels:
+      # Constrain WUD to the Redis 7 line. Without it, 32bit-stretch is reported as an update - a 32-bit build on a decade-old Debian base.
+      - wud.tag.include=^7(\.\d+)*-alpine$$
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - /srv/docker/immich/redis:/data
@@ -45,6 +48,9 @@ services:
   immich-postgres:
     image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
     container_name: immich-postgres
+    labels:
+      # Immich pins its own Postgres build (pgvector/vectorchord extensions). Constrain WUD to the 14-vectorchord line: an 18-vectorchord tag is BOTH a Postgres major jump and an extension-version jump, and Immich's schema expects the matching pair.
+      - wud.tag.include=^14-vectorchord.*$$
     environment:
       POSTGRES_USER: immich
       POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}
