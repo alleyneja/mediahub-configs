@@ -10,6 +10,11 @@ services:
     # the docker-internal 172.x IP, so clients (phone app, app.plex.tv) got
     # "server unreachable" after any container restart.
     network_mode: host
+    # Live TV: Plex must reach Threadfin by name. On host networking it does not
+    # share the compose network's DNS, so the name is pinned here explicitly.
+    # Dropping this silently breaks Live TV while Plex itself looks perfectly fine.
+    extra_hosts:
+      - threadfin=192.168.0.21
     environment:
       - PUID=1000
       - PGID=1000
