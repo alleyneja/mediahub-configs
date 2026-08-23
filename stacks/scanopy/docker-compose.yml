@@ -19,6 +19,11 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
   postgres:
     image: postgres:17-alpine
+    labels:
+      # Constrain WUD to the Postgres 17 line. Without it, 19beta3-trixie is
+      # reported as an update: a beta, on a different base OS, two majors ahead.
+      # A Postgres major upgrade needs pg_upgrade -- never a click-to-update.
+      - wud.tag.include=^17(\.\d+)*-alpine$$
     environment:
       POSTGRES_DB: scanopy
       POSTGRES_USER: postgres
