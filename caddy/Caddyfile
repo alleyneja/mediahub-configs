@@ -292,3 +292,8 @@ stirling.lan {
     tls internal
     reverse_proxy stirling-pdf:8080
 }
+
+wud.lan {
+    tls internal
+    reverse_proxy wud:3000
+}

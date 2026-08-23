@@ -147,6 +147,13 @@
           type: uptimekuma
           url: http://uptime-kuma:3001
           slug: mediahub
+    - Container Updates:
+        href: https://wud.lan
+        description: What's Up Docker - image update tracker
+        icon: mdi-package-up
+        widget:
+          type: whatsupdocker
+          url: http://wud:3000
     - Netdata:
         href: https://netdata.lan
         description: Resource monitoring

@@ -1,0 +1,22 @@
+services:
+  wud:
+    image: getwud/wud:8.3.1
+    container_name: wud
+    environment:
+      TZ: America/Chicago
+      # Weekly sweep, Mondays 09:00 -- same cadence Diun used.
+      WUD_WATCHER_LOCAL_CRON: "0 9 * * 1"
+      # Report on every running container, not just ones with a wud.watch label.
+      WUD_WATCHER_LOCAL_WATCHALL: "true"
+      WUD_LOG_LEVEL: info
+    volumes:
+      # Read-only: WUD only needs to enumerate containers and read image tags.
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /srv/docker/visibility/wud:/store
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true
