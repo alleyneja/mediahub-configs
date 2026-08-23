@@ -23,7 +23,7 @@ Requirements first, then network needs, then design, then hardware. In that orde
 | R3 | Household internet must survive mediahub-production being down | stated |
 | R4 | Trust set is closed and known: Jay, Mafe, brother, household devices. No public wifi guests, no strangers on the LAN | stated |
 | R5 | Local Moonlight: ceiling-mounted Dangbei projector, wifi, ~40 ft, one interior wall | stated |
-| R6 | Storage traffic and client traffic currently share one 1 Gb NIC | measured |
+| R6 | Storage traffic and client traffic share one 1 Gb NIC — but see §5, the penalty is far smaller than first assumed | measured |
 | R7 | AdGuard is functional but is a single point of failure for all LAN DNS | measured |
 
 ### Non-requirements
@@ -60,8 +60,9 @@ of **concerns**, not the count of boxes.
 ### As-is (2026-08-22)
 
 ```
-CORE          does not exist.
-              Server<->NAS NFS traffic shares the client path.
+CORE          does not exist as a separate path.
+              Server<->NAS NFS shares enp3s0 with client traffic, but the
+              link is full duplex, so the two directions do not contend.
 
 DISTRIBUTION  ARRIS SBG8300 — routing, NAT, DHCP, firewall.
               0 VLANs. One flat 192.168.0.0/24.
@@ -77,7 +78,7 @@ back on them. Checking each:
 |---|---|---|
 | Distribution | R1 needs one working inbound forward. Verified working — 441 distinct public source IPs were observed arriving on `enp3s0`. R4 removes the VLAN pressure. | **Adequate** |
 | Access | R5 is the only hard performance floor. **Unmeasured.** | **Unproven** |
-| Core | R6 has no configuration workaround. | **Genuine gap** |
+| Core | Measured: shared 1 GbE read ceiling, ~948 Mbps. Not reached under real load. | **Not currently a constraint** |
 
 ---
 
@@ -100,15 +101,9 @@ transcode — was caused by Plex advertising a WAN address that dies at the host
 while a working tailnet route to the same server sat unused. This is a Plex configuration
 defect. No hardware is involved.
 
-### 4.3 Storage fabric ("core")
+### 4.3 Storage fabric ("core") — deferred, see §5
 
-A dedicated point-to-point link between mediahub-production and the NAS, on its own
-subnet, carrying only NFS.
-
-Today a client playing a NAS-hosted file moves that data across `enp3s0` twice: inbound
-from the NAS, outbound to the client. The practical ceiling is roughly half a gigabit
-before contention. A second NIC and a direct cable removes storage traffic from the client
-path entirely — no switch, no VLAN, no router.
+No change. The original justification for this section did not survive measurement.
 
 ### 4.4 DNS
 
@@ -124,15 +119,42 @@ The single-point-of-failure in R7 is **known and accepted** — see section 6.
 
 **Measurement precedes every change.** Approved 2026-08-22.
 
-1. **Measure.** Moonlight path quality at the projector (jitter and airtime under load,
-   with Plex streaming as competing traffic) and the NAS double-traffic penalty on
-   `enp3s0`. Establish numbers before touching configuration.
+1. **Measure.** *(storage: done 2026-08-22 — see §5.1. Moonlight: still outstanding,
+   requires the projector powered on and actively streaming.)*
 2. **Phase A — configuration only, $0.** Remove the 32400 forward. Give Plex a tailnet
    connection URL and disable its remote-access advertisement. Point the server's resolver
    at AdGuard. Verify the Pterodactyl forward.
-3. **Phase B — storage fabric, ~$25–60.** Second NIC plus a direct cable to the NAS, if
-   and only if the step 1 measurement confirms the contention penalty.
+3. **Phase B — storage fabric. Not justified. See §5.1.**
 4. **Phase C — deferred.** See below.
+
+### 5.1 Storage measurement, 2026-08-22 — and a corrected claim
+
+The first draft of this document asserted that a NAS-hosted file "crosses `enp3s0` twice,"
+giving "a practical ceiling of roughly half a gigabit." **That was wrong, and it was the
+sole justification for Phase B.**
+
+`enp3s0` negotiates **1000 Mb/s full duplex**. NAS→server is RX; server→client is TX.
+They are independent budgets and do not contend. Nothing is halved.
+
+Measured:
+
+| Test | Result |
+|---|---|
+| Single sequential NFS read from NAS | 85.7 MB/s (686 Mbps) |
+| Two parallel NFS reads | 60.2 + 58.3 = **118.5 MB/s aggregate (948 Mbps)** |
+| Control: local disk read | 141 MB/s (proves `dd` was not the limiter) |
+
+Aggregate *rose* with concurrency and stopped at wire rate. So the real shape is: one NFS
+stream cannot saturate the link, and all NAS reads together share a ~948 Mbps ceiling.
+That ceiling is roughly ten concurrent 4K remuxes, or dozens of the compressed files this
+library actually favours. Real load is nowhere near it.
+
+**Why Phase B is not merely unjustified but probably useless:** the ~948 Mbps cap could sit
+on the server's 1 GbE port *or* the NAS's — both are 1 GbE, so this test cannot tell them
+apart. Adding a faster NIC to the server changes nothing unless the NAS also exceeds
+1 GbE. Confirm the NAS's link speed before this is ever reconsidered.
+
+**Net effect: no hardware purchase is justified by any requirement in this document.**
 
 ### Phase C and its triggers
 
@@ -140,7 +162,7 @@ Full build: bridge the ARRIS, dedicated router, managed switch with VLANs, separ
 Not justified by R1–R7. It becomes justified only when one of these is true:
 
 - The trust set opens up — real guests, or IoT that shouldn't reach the media server (invalidates R4)
-- Step 1 shows the projector's wifi path is inadequate for Moonlight — note the fix then is an **access point**, not a router
+- The outstanding Moonlight measurement shows the projector's wifi path is inadequate — note the fix then is an **access point**, not a router
 - A second internet-facing service appears, making a DMZ worth building
 
 ### What is explicitly *not* being bought
@@ -149,7 +171,9 @@ Not justified by R1–R7. It becomes justified only when one of these is true:
   rather than inferred. No requirement it fails to meet.
 - **Switch.** No VLAN requirement exists while R4 holds.
 
-The only hardware pointing at a purchase is a network card.
+- **Network card.** Was provisionally justified; withdrawn after measurement (§5.1).
+
+Nothing is being bought.
 
 ---
 
