@@ -56,7 +56,7 @@ Lowest blast radius first, so the procedure is boring by the time it matters.
 | Order | Stack | Risk | Status |
 |-------|-------|------|--------|
 | 1 | jellyfin | low - single container, bind mounts only | **Done 2026-08-23** |
-| 2 | audiobookshelf | low | pending |
+| 2 | audiobookshelf | low - bind mounts only, sqlite | **Done 2026-08-23** |
 | 3 | calibre-web-automated | medium - databases | pending |
 | ... | arr-stack (5), romm (33), immich (29), nextcloud (17) | medium | pending |
 | last | authentik (18) | high - SSO outage affects many services | pending |
@@ -86,3 +86,29 @@ identical including the read-only flag on `/mnt/media`, config directory still
 Unrelated but noted: Jellyfin still tracks `:latest`, so its running version is
 whatever was last pulled. Pin it during a deliberate version bump, not during a
 migration — one change at a time.
+
+### audiobookshelf -- 2026-08-23
+
+Portainer stack 10 -> `stacks/audiobookshelf/`. Five bind mounts, **zero**
+volume-type mounts, no `stack.env`.
+
+One drift, and it was in the repo's favour: Portainer hardcoded
+`dns: 192.168.0.21`, the repo parameterises it as `dns: ${SERVER_IP}`. Rather
+than assume those were equivalent, both files were rendered through
+`docker compose config` and the **resolved** outputs diffed -- identical. The
+repo version was kept. Confirmed after the migration that the running container
+really does have `dns=[192.168.0.21]`, so the substitution took effect rather
+than silently resolving to empty.
+
+Stopped cleanly first (exit 143 = SIGTERM) so sqlite could checkpoint; no WAL
+file remained and `pragma integrity_check` returned `ok` *before* the container
+was removed.
+
+Verified after: project label `audiobookshelf`, config path in this repo, image
+SHA unchanged (`a52dc5db...`), all five mounts identical including the
+read-only flag on the mounted Caddy CA cert, config still 44 MB, metadata still
+15 MB, `absdatabase.sqlite` still 45,109,248 bytes, API reporting
+`isInit: true, version 2.32.1`, database models loaded and listening on :80,
+zero errors in the startup log.
+
+**Still to do:** delete the stale Portainer stack 10 entry in the Portainer UI.
