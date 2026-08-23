@@ -57,7 +57,7 @@ Lowest blast radius first, so the procedure is boring by the time it matters.
 |-------|-------|------|--------|
 | 1 | jellyfin | low - single container, bind mounts only | **Done 2026-08-23** |
 | 2 | audiobookshelf | low - bind mounts only, sqlite | **Done 2026-08-23** |
-| 3 | calibre-web-automated | medium - databases | pending |
+| 3 | calibre-web-automated | medium - databases | **Done 2026-08-23** |
 | ... | arr-stack (5), romm (33), immich (29), nextcloud (17) | medium | pending |
 | last | authentik (18) | high - SSO outage affects many services | pending |
 | last | adguardhome (3) | high - DNS for the whole LAN | pending |
@@ -112,3 +112,39 @@ read-only flag on the mounted Caddy CA cert, config still 44 MB, metadata still
 zero errors in the startup log.
 
 **Still to do:** delete the stale Portainer stack 10 entry in the Portainer UI.
+
+### calibre-web-automated -- 2026-08-23
+
+Portainer stack 19 -> `stacks/calibre/`. **Note the directory name does not match
+the service name** -- the repo dir is `calibre`, the container is
+`calibre-web-automated`. The compose project is therefore now `calibre`.
+
+The repo copy was *better* than Portainer's, not merely equal: identical once
+resolved, but carrying the two comments that explain why the config is the shape
+it is -- the `REQUESTS_CA_BUNDLE` replacement trap
+(`docs/calibre-web-ca-bundle.md`) and the bind-the-ext4-branch-not-the-pool rule
+(`docs/calibre-library-on-ext4.md`). Portainer's copy had neither. A rebuild from
+Portainer would have silently dropped both warnings. This is the clearest single
+argument for repo ownership found so far.
+
+Backed up first, because this library has been truncated once before:
+`sqlite3 .backup` (safe on a live DB, unlike `cp`) to
+`/srv/docker/_backups/calibre/metadata-pre-migration-*.db`, then the backup
+itself was verified -- `integrity_check ok`, 56 books, matching the source.
+Plus a tar of `/srv/docker/calibre-web/config`.
+
+Verified after: image SHA unchanged (`c31a738b...`), all five mounts identical,
+library still on ext4 (`/dev/sda1`), `metadata.db` still 491,520 bytes with
+`integrity_check ok` and 56 books, `app.db` `integrity_check ok` with 4 users,
+`REQUESTS_CA_BUNDLE` correctly set, and the app serving 302 -> /login -> 200.
+
+**Anonymous volume confirmed orphaned, exactly as the procedure predicts.**
+`/cwa-book-ingest` moved from volume `266d2c72...` to a fresh `847ce239...`.
+Both are empty here so nothing was lost -- but this is a live demonstration of
+the mechanism that would silently strand RomM's 13 MB of save states. The old
+volume still exists and can be removed once confirmed unwanted.
+
+Unproven: the `xdg-desktop-menu` errors in the startup log could not be compared
+against the old container's logs, which were removed with it. They are calibre's
+headless desktop-integration noise and the app functions, but they were not
+verified as pre-existing.
