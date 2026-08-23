@@ -125,6 +125,26 @@ services:
       - PGID=1000
       - TZ=America/Chicago
       - HOMEPAGE_ALLOWED_HOSTS=${SERVER_IP}:3080,homepage.lan,${TAILSCALE_HOSTNAME}:3080
+      # Widget credentials. Portainer's copy of this stack had these HARDCODED
+      # in the compose file; this repo is public, so they are parameterised and
+      # the real values live in the gitignored .env (see .env.example).
+      # Without them every Homepage widget silently renders blank -- the tiles
+      # still appear, they just show no data, so it is easy to miss.
+      - HOMEPAGE_VAR_ADGUARD_HOME_PASSWORD=${HOMEPAGE_VAR_ADGUARD_HOME_PASSWORD}
+      - HOMEPAGE_VAR_ADGUARD_HOME_USERNAME=${HOMEPAGE_VAR_ADGUARD_HOME_USERNAME}
+      - HOMEPAGE_VAR_AUDIOBOOKS_BOOKSHELF_KEY=${HOMEPAGE_VAR_AUDIOBOOKS_BOOKSHELF_KEY}
+      - HOMEPAGE_VAR_BAZARR_KEY=${HOMEPAGE_VAR_BAZARR_KEY}
+      - HOMEPAGE_VAR_EBOOKS_BOOKSHELF_KEY=${HOMEPAGE_VAR_EBOOKS_BOOKSHELF_KEY}
+      - HOMEPAGE_VAR_IMMICH_KEY=${HOMEPAGE_VAR_IMMICH_KEY}
+      - HOMEPAGE_VAR_LIDARR_KEY=${HOMEPAGE_VAR_LIDARR_KEY}
+      - HOMEPAGE_VAR_MEALIE_KEY=${HOMEPAGE_VAR_MEALIE_KEY}
+      - HOMEPAGE_VAR_PROWLARR_KEY=${HOMEPAGE_VAR_PROWLARR_KEY}
+      - HOMEPAGE_VAR_QBITTORRENT_PASSWORD=${HOMEPAGE_VAR_QBITTORRENT_PASSWORD}
+      - HOMEPAGE_VAR_QBITTORRENT_USERNAME=${HOMEPAGE_VAR_QBITTORRENT_USERNAME}
+      - HOMEPAGE_VAR_RADARR_KEY=${HOMEPAGE_VAR_RADARR_KEY}
+      - HOMEPAGE_VAR_SABNZBD_KEY=${HOMEPAGE_VAR_SABNZBD_KEY}
+      - HOMEPAGE_VAR_SEERR_KEY=${HOMEPAGE_VAR_SEERR_KEY}
+      - HOMEPAGE_VAR_SONARR_KEY=${HOMEPAGE_VAR_SONARR_KEY}
     networks:
       - mediahub_internal
 
