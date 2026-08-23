@@ -2,6 +2,13 @@ services:
   mealie-postgres:
     image: postgres:16-alpine
     container_name: mealie-postgres
+    labels:
+      # Constrain What's Up Docker to the Postgres 16 line. Without this it
+      # "helpfully" reports 19beta3-trixie as an available update: a beta, on a
+      # different base OS, three majors ahead. A Postgres major upgrade needs
+      # pg_upgrade and a planned migration -- it is never a click-to-update.
+      # Pinned to the major line so WUD still surfaces real 16.x patch releases.
+      - wud.tag.include=^16(\.\d+)*-alpine$$
     environment:
       POSTGRES_USER: mealie
       POSTGRES_DB: mealie

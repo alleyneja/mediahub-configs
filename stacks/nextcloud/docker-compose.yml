@@ -4,6 +4,9 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: nextcloud-postgres
+    labels:
+      # Constrain WUD to the Postgres 16 line; otherwise it proposes 19beta3-trixie. Major upgrades need pg_upgrade.
+      - wud.tag.include=^16(\.\d+)*-alpine$$
     environment:
       POSTGRES_DB: nextcloud
       POSTGRES_USER: nextcloud
@@ -22,6 +25,9 @@ services:
   redis:
     image: redis:7-alpine
     container_name: nextcloud-redis
+    labels:
+      # Constrain WUD to the Redis 7 line; otherwise 32bit-stretch is reported as an update.
+      - wud.tag.include=^7(\.\d+)*-alpine$$
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - /srv/docker/nextcloud/redis:/data
@@ -32,6 +38,9 @@ services:
   nextcloud:
     image: nextcloud:29-apache
     container_name: nextcloud
+    labels:
+      # Two problems without this: WUD proposes 34-fpm-alpine, which (a) switches the variant from apache to fpm-alpine, a different serving model this stack is not configured for, and (b) jumps five majors at once. Nextcloud majors MUST be applied sequentially - 29 to 30 to 31 - so only the next valid hop is allowed here. BUMP THIS RANGE after each major upgrade, or WUD will go quiet about Nextcloud entirely.
+      - wud.tag.include=^(29|30)-apache$$
     depends_on:
       postgres:
         condition: service_healthy

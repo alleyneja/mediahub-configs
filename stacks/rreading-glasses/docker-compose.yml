@@ -4,6 +4,9 @@ services:
     cpus: "1.0"
     image: postgres:17
     container_name: rreading-glasses-db
+    labels:
+      # Constrain WUD to the Postgres 17 line; otherwise it proposes 19beta3-trixie. This DB is ~197 GB - a major upgrade is a planned migration, not an update.
+      - wud.tag.include=^17(\.\d+)*$$
     environment:
       POSTGRES_USER: rreading-glasses
       POSTGRES_PASSWORD: ${RG_POSTGRES_PASSWORD}
