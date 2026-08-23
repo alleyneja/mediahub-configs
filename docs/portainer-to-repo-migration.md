@@ -58,7 +58,10 @@ Lowest blast radius first, so the procedure is boring by the time it matters.
 | 1 | jellyfin | low - single container, bind mounts only | **Done 2026-08-23** |
 | 2 | audiobookshelf | low - bind mounts only, sqlite | **Done 2026-08-23** |
 | 3 | calibre-web-automated | medium - databases | **Done 2026-08-23** |
-| ... | arr-stack (5), romm (33), immich (29), nextcloud (17) | medium | pending |
+| 4 | sabnzbd (4) | low | **Done 2026-08-23** |
+| 5 | plex (7) | low, but host networking + nvidia | **Done 2026-08-23** |
+| 6 | romm (33) | medium - anonymous volume with save states | **Done 2026-08-23** |
+| ... | stack 9, arr-stack (5), visibility (30), immich (29), nextcloud (17), scanopy (31) | medium | pending |
 | last | authentik (18) | high - SSO outage affects many services | pending |
 | last | adguardhome (3) | high - DNS for the whole LAN | pending |
 | last | caddy | high - blips every proxied service | pending |
@@ -148,3 +151,38 @@ Unproven: the `xdg-desktop-menu` errors in the startup log could not be compared
 against the old container's logs, which were removed with it. They are calibre's
 headless desktop-integration noise and the app functions, but they were not
 verified as pre-existing.
+
+### sabnzbd -- 2026-08-23
+Portainer stack 4 -> `stacks/sabnzbd/`. Resolved configs identical, no volumes,
+no `stack.env`. Image SHA and mounts unchanged.
+
+### plex -- 2026-08-23
+Portainer stack 7 -> `stacks/plex/`. **Real drift found and reconciled toward the
+running config**: Portainer's copy had `extra_hosts: threadfin=192.168.0.21`, the
+repo copy did not. Plex is on host networking so it does not share the compose
+network's DNS -- without that entry Live TV silently breaks while Plex itself
+looks perfectly healthy. Added to the repo copy with a comment before migrating.
+
+Verified after: `network_mode: host` (mandatory -- see the comment in the compose;
+bridge networking makes clients report "server unreachable"), `runtime: nvidia`,
+`extra_hosts` present, Quadro P400 visible inside the container, threadfin
+resolving, and the same `machineIdentifier` so clients do not see a new server.
+
+### romm -- 2026-08-23
+Portainer stack 33 -> `stacks/romm/`. This is the stack the whole anonymous-volume
+warning was written for, and it paid off.
+
+`/romm/assets` held **13 MB in an anonymous volume no compose file mentioned** --
+two Pokemon Mystery Dungeon save states from 2026-08-19. Migrating without
+handling it would have created a fresh empty volume and stranded them.
+
+Handled by copying the data to `/srv/docker/romm/assets` (verified byte-for-byte
+with `diff -r` before switching) and declaring it as a bind mount, so it is now
+visible, backup-able, and immune to a project rename. Same for the empty
+`/romm/config`. Backup taken first to `/srv/docker/_backups/romm/`.
+
+The three named volumes stayed pinned to their `33_` names via `external: true`.
+Verified after: `33_mysql-data`, `33_romm-resources` and `33_romm-redis-data` all
+attached, **no stray `romm_*` volumes created**, both save states present through
+the bind mount, and the database holding 25 roms across 8 platforms -- the real
+one, not a fresh empty.
