@@ -71,24 +71,6 @@ services:
     networks:
       - mediahub_internal
 
-  diun:
-    image: crazymax/diun:latest
-    container_name: diun
-    restart: unless-stopped
-    volumes:
-      - /srv/docker/visibility/diun:/data
-      - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - LOG_LEVEL=info
-      - LOG_JSON=false
-      - DIUN_WATCH_WORKERS=20
-      - DIUN_WATCH_SCHEDULE=0 9 * * 1
-      - DIUN_WATCH_JITTER=30s
-      - DIUN_PROVIDERS_DOCKER=true
-      - DIUN_PROVIDERS_DOCKER_WATCHBYDEFAULT=true
-    networks:
-      - mediahub_internal
-
   glances:
     image: nicolargo/glances:latest
     container_name: glances
