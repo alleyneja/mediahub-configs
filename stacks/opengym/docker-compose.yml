@@ -1,0 +1,91 @@
+name: opengym
+
+# openGym — self-hosted gym & body-weight tracker.
+#
+# WHY THE SOURCE IS NOT IN THIS REPO
+# ----------------------------------
+# Upstream (github.com/DuarteSantos8/openGym) is DELETED — 404. What exists is a
+# re-upload at github.com/arvids-unavailable/openGym. Its prebuilt images
+# (ghcr.io/duartesantos8/opengym-{api,web}) are NOT anonymously pullable (HTTP 403),
+# so `docker compose pull` cannot work and we build from source instead.
+#
+# The source is a pinned checkout at /srv/docker/opengym/src (commit c42ba6b).
+# It is not vendored here because it carries 137 MB of exercise media + 125 MB of
+# git history — and because this repo is PUBLIC.
+#
+# TWO UPSTREAM DEFECTS ARE WORKED AROUND BELOW. See stacks/opengym/README.md.
+
+services:
+  # One-time exercise media fetch (~140 MB). The pinned checkout already ships
+  # media/img + media/gif populated, so this is a no-op that exits 0 immediately.
+  # Kept anyway: it self-heals if the media dirs are ever lost.
+  media:
+    image: alpine/git
+    container_name: opengym-media-init
+    labels:
+      # Locally-pinned bootstrap container, not a service to keep updated.
+      - wud.watch=false
+    volumes:
+      - /srv/docker/opengym/src/media/img:/out/img
+      - /srv/docker/opengym/src/media/gif:/out/gif
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$$(ls -A /out/img 2>/dev/null)" ]; then
+          echo "downloading exercise media (~140 MB, one time)"
+          git clone --depth 1 https://github.com/hasaneyldrm/exercises-dataset /tmp/ds
+          cp /tmp/ds/images/*.jpg /out/img/ && cp /tmp/ds/videos/*.gif /out/gif/
+        else
+          echo "exercise media already present - skipping"
+        fi
+    restart: "no"
+
+  # Passkey auth + per-user data. Node, no framework, JSON-file storage.
+  # Service key MUST stay `api`: web/nginx.conf proxies to http://api:3000 by name.
+  api:
+    build: /srv/docker/opengym/src/api
+    image: opengym-api:c42ba6b
+    container_name: opengym-api
+    labels:
+      # Built locally from a pinned commit — there is no registry tag for WUD to
+      # track, and leaving it watched just adds to WUD's error count.
+      - wud.watch=false
+    env_file: .env
+    environment:
+      # Internal port only; nginx proxies here. Not published.
+      - PORT=3000
+      - DATA_DIR=/data
+    volumes:
+      # Users, passkeys, per-user workout state, and the session signing secret.
+      # NVMe, not the mergerfs pool. BACK THIS UP — losing it loses every passkey.
+      - /srv/docker/opengym/data:/data
+    restart: unless-stopped
+
+  # Builds the React frontend and serves it, proxying /api -> api.
+  # Single origin is mandatory for WebAuthn: passkeys are bound to one hostname.
+  web:
+    build:
+      context: /srv/docker/opengym/src
+      # UPSTREAM BUG: shipped compose says `web/Dockerfile`, but web/ contains only
+      # nginx.conf — the multi-stage build file is at the repo root. As shipped,
+      # `docker compose up --build` fails outright.
+      dockerfile: Dockerfile
+    image: opengym-web:c42ba6b
+    container_name: opengym-web
+    labels:
+      - wud.watch=false
+    depends_on:
+      media:
+        condition: service_completed_successfully
+      api:
+        condition: service_started
+    ports:
+      # Bound to loopback ONLY. `tailscale serve` terminates TLS in front of this.
+      # Docker publishes past UFW (DOCKER-FORWARD precedes ufw-* in FORWARD), so a
+      # 0.0.0.0 bind here would be reachable from the whole LAN despite the firewall.
+      # 8080 is sabnzbd; 8085 was free.
+      - "127.0.0.1:${WEB_PORT:-8085}:80"
+    volumes:
+      - /srv/docker/opengym/src/media/img:/usr/share/nginx/html/img:ro
+      - /srv/docker/opengym/src/media/gif:/usr/share/nginx/html/gif:ro
+    restart: unless-stopped
