@@ -88,6 +88,24 @@ back on them. Checking each:
 
 One forward, for Pterodactyl. Nothing else.
 
+**Status 2026-08-22: R1 is NOT currently met.** An external node probed TCP/25500 while
+`tcpdump` watched `enp3s0` from inside the boundary — **zero packets arrived**. Unlike the
+Plex case this is a true negative, because the instrument was inside. The gateway is not
+forwarding the Pterodactyl ports (25500-25502). Recent container logs show no external
+players either, so this looks like a forward that was never configured rather than
+something that broke. If strangers are meant to connect, these ports need forwarding.
+
+**Docker publishes container ports around UFW.** `DOCKER-USER` is empty, so Docker's DNAT
+rules are not subject to UFW's `deny (incoming)` policy. 32 container ports are bound to
+`0.0.0.0` — *arr stack, RomM, Authentik, Calibre, Homepage and others. What actually keeps
+them off the internet is the gateway's NAT, not the firewall. Consistent with R4 (LAN is
+trusted) but worth knowing precisely:
+
+- UFW's rule list overstates the protection in place. Host-networked services (Plex,
+  AdGuard) obey it; container-published ports do not.
+- Anything that can create a port forward — notably **UPnP**, which had stale leases on
+  this gateway — can expose a container port without touching UFW. UPnP should be off.
+
 The TCP/32400 forward is **removed**. It contradicts R2, and it was drawing scans from
 441 distinct public addresses to no benefit. UFW's default-deny was already enforcing the
 correct policy; the gateway forward was the misconfiguration.
