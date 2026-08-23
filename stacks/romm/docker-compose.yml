@@ -65,6 +65,25 @@ networks:
     external: true
 
 volumes:
+  # These volumes were created by the Portainer-managed stack, whose project name
+  # is "33" -- so the real volumes on disk are 33_romm-resources, 33_romm-redis-data
+  # and 33_mysql-data.
+  #
+  # Compose derives volume names from the project name, and running compose from
+  # THIS directory yields project "romm" -- which would look for romm_mysql-data,
+  # find nothing, and silently create a brand new EMPTY database. RomM would come
+  # up looking like no ROM had ever been added, while the real data sat orphaned
+  # in 33_mysql-data awaiting the next `docker volume prune`.
+  #
+  # Pinning the real names, plus external:true, makes that impossible: compose now
+  # attaches to the actual volumes, and fails loudly if they are ever absent
+  # instead of quietly inventing empty ones.
   romm-resources:
+    name: 33_romm-resources
+    external: true
   romm-redis-data:
+    name: 33_romm-redis-data
+    external: true
   mysql-data:
+    name: 33_mysql-data
+    external: true
