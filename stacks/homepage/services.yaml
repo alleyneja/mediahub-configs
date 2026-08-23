@@ -198,3 +198,7 @@
           url: http://mealie:9000
           key: "{{HOMEPAGE_VAR_MEALIE_KEY}}"
           version: 2
+    - openGym:
+        href: https://mediahub-production.tail3b4ccf.ts.net:8443
+        description: Gym & body-weight tracker (tailnet only)
+        icon: mdi-dumbbell
