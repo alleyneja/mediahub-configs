@@ -88,38 +88,36 @@ back on them. Checking each:
 
 One forward, for Pterodactyl. Nothing else.
 
-**Status 2026-08-22: R1 is NOT met, and the only missing piece is on the gateway.**
+**Status 2026-08-22 (corrected): R1 is PARTIALLY met. The gateway forward works.**
 
-Everything on the host is correct and verified: DNAT rules exist for 25500-25502 on both
-TCP and UDP, `docker-proxy` is listening on `0.0.0.0` for all six, and the `FORWARD` chain
-reaches `DOCKER-FORWARD` at position 3 — before any `ufw-*` chain — so **no UFW rule is
-needed or would help**. Plex needed one only because it is host-networked and therefore
-hits `INPUT`. Adding UFW rules for game ports would be cargo-culting.
+An earlier entry in this document claimed R1 was not met at all, based on an external probe
+of TCP/25500 that saw zero packets arrive. **That conclusion was wrong twice over**, and both
+mistakes are worth keeping:
 
-**Required action: forward TCP+UDP 25500-25502 to 192.168.0.21 on the gateway.** Nothing
-else.
+1. The gateway rule covers **25502 only**, not 25500. The probe was aimed at a port that was
+   never forwarded, so "nothing arrived" was true and meaningless.
+2. The probe used **TCP against Minecraft Bedrock, which is UDP-only**. Even on the right
+   port, a TCP probe gets a refusal from a perfectly healthy server.
 
-Original evidence below. An external node probed TCP/25500 while
-`tcpdump` watched `enp3s0` from inside the boundary — **zero packets arrived**. Unlike the
-Plex case this is a true negative, because the instrument was inside. The gateway is not
-forwarding the Pterodactyl ports (25500-25502). Recent container logs show no external
-players either, so this looks like a forward that was never configured rather than
-something that broke. If strangers are meant to connect, these ports need forwarding.
+Re-probing 25502 with `tcpdump` watching from inside: **7 external SYNs arrived** and the
+external nodes reported `Connection refused` rather than a timeout — packets in, RST out, a
+fully working path. The forward has been fine all along.
 
-**Docker publishes container ports around UFW.** `DOCKER-USER` is empty, so Docker's DNAT
-rules are not subject to UFW's `deny (incoming)` policy. 32 container ports are bound to
-`0.0.0.0` — *arr stack, RomM, Authentik, Calibre, Homepage and others. What actually keeps
-them off the internet is the gateway's NAT, not the firewall. Consistent with R4 (LAN is
-trusted) but worth knowing precisely:
+The three servers do not share a protocol, which is the whole trap here:
 
-- UFW's rule list overstates the protection in place. Host-networked services (Plex,
-  AdGuard) obey it; container-published ports do not.
-- Anything that can create a port forward — notably **UPnP**, which had stale leases on
-  this gateway — can expose a container port without touching UFW. UPnP should be off.
+| Port | Server | Listens on | Gateway forward |
+|---|---|---|---|
+| 25500 | Minecraft **Java** 1.21.11 | **TCP** 25500 | missing |
+| 25501 | Minecraft **Bedrock** | **UDP** 25501 | missing |
+| 25502 | Minecraft **Bedrock** | **UDP** 25502 | present, working |
 
-The TCP/32400 forward is **removed**. It contradicts R2, and it was drawing scans from
-441 distinct public addresses to no benefit. UFW's default-deny was already enforcing the
-correct policy; the gateway forward was the misconfiguration.
+**Required action:** widen the existing rule from `25502-25502` to `25500-25502`, protocol
+Both, target `192.168.0.21`. One rule then covers all three, and the unused halves (TCP on a
+Bedrock port, UDP on a Java port) are harmless.
+
+**Testing rule adopted:** probe a game port with the protocol the game actually uses, and
+confirm the port is in the forwarded range first. A TCP probe against a UDP server produces
+a confident, wrong answer.
 
 ### 4.2 Plex path
 
