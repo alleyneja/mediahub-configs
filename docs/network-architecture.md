@@ -19,7 +19,7 @@ Requirements first, then network needs, then design, then hardware. In that orde
 | # | Requirement | Origin |
 |---|---|---|
 | R1 | Exactly one internet-facing service: **Pterodactyl** (strangers connect inbound) | stated |
-| R2 | Plex, RomM / arcade downloads, and all remote admin are **tailnet-only** | stated |
+| R2 | **Amended 2026-08-22.** RomM / arcade downloads and remote admin are tailnet-only. **Plex is not** — it is shared with people outside the tailnet (e.g. Ed), so it must work without Tailscale. Relay is an accepted fallback. | stated |
 | R3 | Household internet must survive mediahub-production being down | stated |
 | R4 | Trust set is closed and known: Jay, Mafe, brother, household devices. No public wifi guests, no strangers on the LAN | stated |
 | R5 | Local Moonlight: ceiling-mounted Dangbei projector, wifi, ~40 ft, one interior wall | stated |
@@ -32,7 +32,7 @@ Recorded deliberately, so they are not re-litigated:
 
 - **Guest network isolation.** R4 says the trust set is closed. Revisit if that changes.
 - **IoT segmentation.** No untrusted IoT of consequence today.
-- **Public Plex access.** R2 is explicit. Plex is tailnet-only *by policy*, not by accident.
+- ~~**Public Plex access.**~~ Withdrawn 2026-08-22 — see R2 as amended. Plex is shared beyond the tailnet.
 
 ---
 
@@ -112,12 +112,29 @@ correct policy; the gateway forward was the misconfiguration.
 
 ### 4.2 Plex path
 
-Plex stops advertising a WAN connection and is reached over the tailnet.
+**Revised 2026-08-22.** Remote access stays **on**, so relay is always available and Plex
+works for people who will never be on the tailnet. `customConnections` publishes the
+tailnet address, so anyone who *is* on Tailscale gets a direct, full-quality path instead.
 
-The observed relay fallback — remote playback capped at ~1500 kbps, SD, server-side
-transcode — was caused by Plex advertising a WAN address that dies at the host firewall,
-while a working tailnet route to the same server sat unused. This is a Plex configuration
-defect. No hardware is involved.
+Design intent: *always works, sometimes badly.* Tailnet clients direct-play; everyone else
+falls back to relay at roughly 1500 kbps SD with a server-side transcode.
+
+Briefly configured tailnet-only earlier the same evening. That failed **closed** — a phone
+off the tailnet could not see the libraries at all — which is unacceptable for a shared
+server. The lesson is that "tailnet-only" and "shared with friends" are incompatible, and
+the requirement, not the implementation, was wrong.
+
+**Open decision — quality for off-tailnet users.** Relay is permanently SD for them. Giving
+Ed full quality needs *both* of these, and neither works alone:
+
+1. the gateway forwarding TCP/32400, and
+2. a UFW rule allowing tcp/32400 (Plex is host-networked, so UFW's INPUT policy applies to
+   it — unlike the container-published ports in §4.1)
+
+Until both exist, Plex still advertises `68.59.111.64:32400` whenever remote access is on,
+and every remote client wastes a connection attempt on it before falling back to relay.
+Leaving that path advertised-but-broken is worse than either committing to it or accepting
+relay-only.
 
 ### 4.3 Storage fabric ("core") — deferred, see §5
 
