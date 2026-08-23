@@ -44,7 +44,12 @@ services:
       SCANOPY_PUBLIC_URL: ${SCANOPY_PUBLIC_URL:-http://localhost:60072}
       SCANOPY_INTEGRATED_DAEMON_URL: http://host.docker.internal:60073
     volumes:
-      - ./data:/data
+      # Absolute, not ./data. A relative bind resolves against whichever
+      # directory holds the compose file, so this silently pointed at
+      # Portainer's internal stack dir before 2026-08-23 and would have moved
+      # again on every relocation. It also kept service data inside a PUBLIC
+      # git repo. Empty in practice -- real state is in the postgres volume.
+      - /srv/docker/scanopy/data:/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

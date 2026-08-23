@@ -64,7 +64,9 @@ Lowest blast radius first, so the procedure is boring by the time it matters.
 | 7 | stack 9 (rreading-glasses + bookshelf + calibre-content) | medium - 197 GB postgres | **Done 2026-08-23** |
 | 8 | arr-stack (5) | medium - 7 containers, stack.env | **Done 2026-08-23** |
 | 9 | visibility (30) | medium - homepage credentials | **Done 2026-08-23** |
-| ... | immich (29), nextcloud (17), scanopy (31) | medium | pending |
+| 10 | scanopy (31) | medium | **Done 2026-08-23** |
+| 11 | immich (29) | medium - 109 GB photos | **Done 2026-08-23** |
+| 12 | nextcloud (17) | medium | **Done 2026-08-23** |
 | last | authentik (18) | high - SSO outage affects many services | pending |
 | last | adguardhome (3) | high - DNS for the whole LAN | pending |
 | last | caddy | high - blips every proxied service | pending |
@@ -242,3 +244,52 @@ extra_hosts) and zero Portainer-only lines. Verified after: all 15 credentials
 present and none empty, AdGuard's widget returning real queried-domain data,
 netdata keeping `pid=host` with CAP_SYS_ADMIN/CAP_SYS_PTRACE, and uptime-kuma
 applying 30 extra_hosts.
+
+### scanopy -- 2026-08-23
+Portainer stack 31 -> `stacks/scanopy/`. Named volumes already carried the
+`scanopy_` prefix and the repo dir is also `scanopy`, so the project name -- and
+therefore the volume names and the compose-generated `-1` container suffixes --
+stayed identical.
+
+**Fixed a relative bind mount.** Both copies said `- ./data:/data`. A relative
+bind resolves against whichever directory holds the compose file, so it had been
+silently pointing at Portainer's internal stack dir, and would have moved again
+on any relocation -- as well as putting service data inside a PUBLIC git repo.
+Changed to an absolute `/srv/docker/scanopy/data`, matching every other service.
+The directory was empty in practice; real state lives in the postgres volume.
+
+Verified after: both named volumes reattached, no strays, 11 MB database with
+the real schema (a fresh init is ~7 MB), server returning HTTP 200.
+
+### immich -- 2026-08-23
+Portainer stack 29 -> `stacks/immich/`. Previously split -- `immich-redis` was
+already repo-owned while the other three came from Portainer.
+
+The repo copy was again the more correct one: it assigns
+`ipv4_address: 172.18.0.100` to `immich-redis`, which that container genuinely
+has, while Portainer's copy omitted it entirely.
+
+Postgres stopped last with `-t 90` and a confirmed clean shutdown. Verified
+after: 109 GB photo library untouched, 440 MB database (a fresh init is ~8 MB)
+holding 24,051 asset-job-status rows and 325 assets with EXIF, redis keeping
+172.18.0.100, server returning version 2.5.6, no errors in 387 log lines.
+
+The empty anonymous `/data` volume on immich-server was replaced with a fresh one
+as expected. It held nothing -- the photos are a bind mount.
+
+### nextcloud -- 2026-08-23
+Portainer stack 17 -> `stacks/nextcloud/`. **Defused a latent :8443 landmine.**
+
+Portainer's copy set `OVERWRITECLIURL=https://nextcloud.lan:8443`, but Caddy
+serves on 443 and Nextcloud's own `config.php` had already been corrected by hand
+to `https://nextcloud.lan`. So the running container carried a stale, wrong env
+var that disagreed with the authoritative config file -- harmless until something
+caused the image to reapply env to config.php, at which point the fix would have
+silently reverted.
+
+This repo's copy already had the corrected value, so migrating removed the stale
+env. Env and config.php now agree. `config.php` was backed up to
+`/srv/docker/_backups/nextcloud/` first.
+
+Verified after: installed, version 29.0.16, not in maintenance mode, 16 MB
+database with 1,484 oc_filecache rows.
