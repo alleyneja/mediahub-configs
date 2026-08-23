@@ -1,7 +1,7 @@
 version: "3.9"
 services:
   vaultwarden:
-    image: vaultwarden/server:latest
+    image: vaultwarden/server:1.37.2
     container_name: vaultwarden
     environment:
       TZ: America/Chicago
