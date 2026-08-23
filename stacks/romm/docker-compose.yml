@@ -31,6 +31,16 @@ services:
       - /mnt/media/games/roms/switch:/romm/library/roms/switch
       - romm-resources:/romm/resources
       - romm-redis-data:/redis-data
+      # /romm/assets holds user save states and screenshots. The image declares it
+      # as a VOLUME, so before 2026-08-23 it lived in an ANONYMOUS volume that no
+      # compose file mentioned. Anonymous volumes are only carried across a
+      # recreate when the compose project name is unchanged -- so moving this
+      # stack out of Portainer (project "33") would have silently stranded it and
+      # started a fresh empty one. 13 MB of save states were sitting in there.
+      # Bound to a real path so the data is visible, backup-able, and cannot be
+      # orphaned by a project rename. Do not revert to an undeclared volume.
+      - /srv/docker/romm/assets:/romm/assets
+      - /srv/docker/romm/config:/romm/config
     ports:
       - "8084:8080"
     networks:
