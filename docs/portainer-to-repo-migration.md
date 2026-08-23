@@ -61,7 +61,10 @@ Lowest blast radius first, so the procedure is boring by the time it matters.
 | 4 | sabnzbd (4) | low | **Done 2026-08-23** |
 | 5 | plex (7) | low, but host networking + nvidia | **Done 2026-08-23** |
 | 6 | romm (33) | medium - anonymous volume with save states | **Done 2026-08-23** |
-| ... | stack 9, arr-stack (5), visibility (30), immich (29), nextcloud (17), scanopy (31) | medium | pending |
+| 7 | stack 9 (rreading-glasses + bookshelf + calibre-content) | medium - 197 GB postgres | **Done 2026-08-23** |
+| 8 | arr-stack (5) | medium - 7 containers, stack.env | **Done 2026-08-23** |
+| 9 | visibility (30) | medium - homepage credentials | **Done 2026-08-23** |
+| ... | immich (29), nextcloud (17), scanopy (31) | medium | pending |
 | last | authentik (18) | high - SSO outage affects many services | pending |
 | last | adguardhome (3) | high - DNS for the whole LAN | pending |
 | last | caddy | high - blips every proxied service | pending |
@@ -186,3 +189,56 @@ Verified after: `33_mysql-data`, `33_romm-resources` and `33_romm-redis-data` al
 attached, **no stray `romm_*` volumes created**, both save states present through
 the bind mount, and the database holding 25 roms across 8 platforms -- the real
 one, not a fresh empty.
+
+### stack 9 -- rreading-glasses + bookshelf + calibre-content -- 2026-08-23
+
+One Portainer file (stack 9) defining five services, but deployed under **two
+different project names** -- `9` for the rreading-glasses pair and
+`calibre-readarr` for the three book services. Migrating unified all five under
+`rreading-glasses`.
+
+The database is 197 GB, so it was stopped **last and with `docker stop -t 90`**
+rather than the default 10-second grace, and the shutdown was confirmed in the
+log (`checkpoint complete`, `database system is shut down`) before anything was
+removed. Verified after: 195 GB `rreading-glasses` database present, app
+connected and listening on :8788, all five image SHAs unchanged.
+
+Note `rreading-glasses` exits with code 2 on SIGTERM rather than 0. That appears
+to be its own signal handling, not a fault, but it is worth knowing.
+
+Note also: this postgres runs with the password `rg_change_me_no_symbols` -- a
+placeholder that was never changed. It is not exposed outside the compose
+network, but it should be rotated.
+
+### arr-stack -- 2026-08-23
+
+Portainer stack 5 -> `stacks/arr-stack/`. Seven containers. The five unpackerr
+API keys in Portainer's `stack.env` were hash-compared against this repo's
+`.env` before migrating -- all five matched.
+
+**The check that mattered:** unpackerr previously ran "healthy" for two weeks
+while extracting nothing, because empty API keys silently overrode its config
+file. Confirmed after migration that all five servers report `apikey:true`, and
+that neither `0 servers` nor `Missing ... API Key` appears in the log.
+
+### visibility -- 2026-08-23
+
+Portainer stack 30 -> `stacks/uptime-kuma/`. Five services, previously split
+**three ways**: `uptime-kuma` already repo-owned, `glances` under project `30`,
+and `netdata`/`diun`/`homepage` under `visibility`.
+
+Drift ran in both directions here, and one side was dangerous:
+
+- Portainer's copy had **15 `HOMEPAGE_VAR_*` widget credentials hardcoded** that
+  this repo's copy lacked entirely. Migrating as-is would have left every
+  Homepage widget rendering BLANK -- tiles still present, just no data, which is
+  very easy to miss. Recovered from the running container into the gitignored
+  `.env` and parameterised in the compose, because this repo is public.
+- This repo had **29 `.lan` extra_hosts entries** Portainer's copy lacked, which
+  uptime-kuma uses to monitor those URLs. Kept.
+
+After reconciling, the repo is a strict superset: 29 repo-only lines (all
+extra_hosts) and zero Portainer-only lines. Verified after: all 15 credentials
+present and none empty, AdGuard's widget returning real queried-domain data,
+netdata keeping `pid=host` with CAP_SYS_ADMIN/CAP_SYS_PTRACE, and uptime-kuma
+applying 30 extra_hosts.
