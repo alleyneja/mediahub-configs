@@ -120,9 +120,19 @@ The single-point-of-failure in R7 is **known and accepted** — see section 6.
 **Measurement precedes every change.** Approved 2026-08-22.
 
 1. **Measure.** *(done 2026-08-22 — storage in §5.1, Moonlight in §5.2.)*
-2. **Phase A — configuration only, $0.** Remove the 32400 forward. Give Plex a tailnet
-   connection URL and disable its remote-access advertisement. Point the server's resolver
-   at AdGuard. Verify the Pterodactyl forward.
+2. **Phase A — configuration only, $0.** *(applied 2026-08-22, except the gateway step.)*
+   - **Done** — Plex: `customConnections="http://100.104.43.6:32400"`,
+     `PublishServerOnPlexOnlineKey="0"`. Verified against the plex.tv resources API:
+     `relay: False`, the `68.59.111.64` connection is gone, and `100.104.43.6:32400`
+     is published with `local=False` for remote clients. Prefs backed up alongside the
+     original; not committed here because it contains `PlexOnlineToken`.
+   - **Done** — DNS: `/etc/resolv.conf` now `127.0.0.1` (AdGuard) then `1.1.1.1` as an
+     availability fallback. Verified both directions: `doubleclick.net` -> `0.0.0.0`,
+     `example.com` -> real address. Copy in `system/resolv.conf`.
+   - **Outstanding** — remove the TCP/32400 forward on the gateway. Now cosmetic rather
+     than functional: Plex no longer advertises or uses it, and UFW drops the port anyway.
+     Must be done by hand in the gateway UI; its admin pages are JS-rendered with no
+     postable form, and it 401s any request without a browser User-Agent.
 3. **Phase B — storage fabric. Not justified. See §5.1.**
 4. **Phase C — deferred.** See below.
 
