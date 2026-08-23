@@ -77,7 +77,7 @@ back on them. Checking each:
 | Tier | Requirement pressure | Verdict |
 |---|---|---|
 | Distribution | R1 needs one working inbound forward. Verified working — 441 distinct public source IPs were observed arriving on `enp3s0`. R4 removes the VLAN pressure. | **Adequate** |
-| Access | R5 is the only hard performance floor. **Unmeasured.** | **Unproven** |
+| Access | Measured 2026-08-22: -52 dBm, 702 Mbps PHY, 5 GHz, 0% loss, 1.9 ms jitter. ~4-5x Moonlight's need. | **Adequate** |
 | Core | Measured: shared 1 GbE read ceiling, ~948 Mbps. Not reached under real load. | **Not currently a constraint** |
 
 ---
@@ -119,8 +119,7 @@ The single-point-of-failure in R7 is **known and accepted** — see section 6.
 
 **Measurement precedes every change.** Approved 2026-08-22.
 
-1. **Measure.** *(storage: done 2026-08-22 — see §5.1. Moonlight: still outstanding,
-   requires the projector powered on and actively streaming.)*
+1. **Measure.** *(done 2026-08-22 — storage in §5.1, Moonlight in §5.2.)*
 2. **Phase A — configuration only, $0.** Remove the 32400 forward. Give Plex a tailnet
    connection URL and disable its remote-access advertisement. Point the server's resolver
    at AdGuard. Verify the Pterodactyl forward.
@@ -155,6 +154,27 @@ apart. Adding a faster NIC to the server changes nothing unless the NAS also exc
 1 GbE. Confirm the NAS's link speed before this is ever reconsidered.
 
 **Net effect: no hardware purchase is justified by any requirement in this document.**
+
+### 5.2 Moonlight / access-layer measurement, 2026-08-22
+
+Dangbei DBX3 Pro at 192.168.0.56, associated to the ARRIS 5 GHz radio (`TheDoghouse`,
+BSSID `dc:a6:33:89:ca:16`), read directly off the device over ADB:
+
+| Metric | Value | Comment |
+|---|---|---|
+| RSSI | **-52 dBm** | strong; anything above -65 is comfortable |
+| Link speed | **702 Mbps** | near ceiling for AC2350 at 80 MHz / 2 streams |
+| Band | 5240 MHz (5 GHz) | not stuck on 2.4 |
+| Loss @ 1400B | **0%** | wired control also 0% |
+| Jitter (mdev) | **1.9 ms** | wired control 1.4 ms |
+| Added latency vs wired | **~3.8 ms** | 5.44 ms vs 1.66 ms average |
+
+Moonlight needs roughly 20-30 Mbps at 1080p60, ~80 Mbps at 4K60. The link carries several
+times that. **The access layer meets R5. No access point purchase is justified.**
+
+Caveat worth re-testing if Moonlight ever feels bad: this measures the link, not airtime
+contention with simultaneous Plex streaming to other wifi clients. The headroom is large
+enough that contention is unlikely to be the first suspect.
 
 ### Phase C and its triggers
 
