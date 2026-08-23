@@ -282,6 +282,30 @@ Nothing is being bought.
 
 ---
 
+## 5.3 Verification, 2026-08-22 (all four paths confirmed working)
+
+After widening the gateway rule to 25500-25502/Both and re-enabling the tcp/32400 forward,
+every path was confirmed with **two independent instruments**: `tcpdump` on `enp3s0` from
+inside the boundary, and an external prober using the protocol the service actually speaks.
+
+| Path | Packets arrived | External result |
+|---|---|---|
+| Plex tcp/32400 | 16 | OPEN from 5/5 nodes (41 ms from the US node) |
+| Minecraft Java tcp/25500 | 20 | online, 1.21.11, 0/20 |
+| Minecraft Bedrock udp/25501 | 2 | online, 1.26.20, 0/10, "Dedicated Server" |
+| Minecraft Bedrock udp/25502 | 2 | online, 1.26.20, 0/10, "MediaHub Public" |
+
+Control: 25500 previously captured **zero** packets under the same method. Same instrument,
+same vantage point, opposite result once the forward covered it — so the negative earlier was
+a real negative and the positive now is a real positive.
+
+R1 is met. Off-tailnet Plex viewers now get a direct path instead of relay.
+
+**Note:** the plex.tv resources API reports `presence: False` with a stale `lastSeenAt`, while
+the server is simultaneously serving live requests (logged, 200 OK over TLS) and answering on
+tcp/32400 from five continents. Treated as a cosmetic staleness on Plex's side, not a fault.
+Worth a second look only if remote clients actually report the server offline.
+
 ## 6. Known and accepted
 
 **DNS is a single point of failure.** AdGuard runs only on mediahub-production. When that
