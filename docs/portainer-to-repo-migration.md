@@ -1,6 +1,6 @@
 # Migrating stack ownership from Portainer to this repo
 
-**Status: in progress. Started 2026-08-23.**
+**Status: COMPLETE. Started and finished 2026-08-23. All 17 stacks migrated; 0 containers remain Portainer-owned.**
 
 ## Why
 
@@ -67,9 +67,9 @@ Lowest blast radius first, so the procedure is boring by the time it matters.
 | 10 | scanopy (31) | medium | **Done 2026-08-23** |
 | 11 | immich (29) | medium - 109 GB photos | **Done 2026-08-23** |
 | 12 | nextcloud (17) | medium | **Done 2026-08-23** |
-| last | authentik (18) | high - SSO outage affects many services | pending |
-| last | adguardhome (3) | high - DNS for the whole LAN | pending |
-| last | caddy | high - blips every proxied service | pending |
+| 16 | authentik (18) | high - SSO | **Done 2026-08-23** |
+| 15 | adguardhome (3) | high - LAN DNS | **Done 2026-08-23** |
+| n/a | caddy | was already repo-owned | n/a |
 
 `romm` needs its anonymous `/romm/assets` volume (13 MB of save states and
 screenshots) declared explicitly **before** it is migrated, or that data is
@@ -293,3 +293,42 @@ env. Env and config.php now agree. `config.php` was backed up to
 
 Verified after: installed, version 29.0.16, not in maintenance mode, 16 MB
 database with 1,484 oc_filecache rows.
+
+### adguardhome -- 2026-08-23
+Portainer stack 3 -> `stacks/adguard/`. Resolved configs identical, no volumes,
+host networking, and both config directories are bind mounts so all rewrites
+persisted across the recreate.
+
+This one briefly takes LAN DNS down, since the host's own resolver points at it.
+Verified after: DNS answering again for `.lan` names and upstream (`github.com`),
+34 rewrites present including the `wud.lan` entry added earlier today,
+`protection_enabled: true`.
+
+(An earlier grep suggested 35 rewrites; that was a loose match on `domain:` in
+the YAML. The API's count of 34 is authoritative and matches 33 + wud.lan.)
+
+### authentik -- 2026-08-23
+Portainer stack 18 -> `stacks/authentik/`. The highest-blast-radius stack, saved
+for last: SSO for Jellyfin, Calibre-Web and RomM.
+
+All four secrets (postgres password, secret key, and both RomM OIDC values) were
+hash-compared against the running containers before touching anything -- all
+matched. Postgres stopped last with `-t 90` and a confirmed clean shutdown.
+
+**Expect a 502 for the first 60-90 seconds.** Authentik reports its container as
+`healthy` well before it actually serves traffic, so a 502 immediately after
+recreate is normal startup, not a failure. Wait for it rather than rolling back.
+
+Verified after: 302 -> default-authentication-flow -> 200, OIDC discovery live at
+`https://auth.lan/application/o/romm/.well-known/openid-configuration` with the
+correct issuer and endpoints, `blueprints_discovery` task returning SUCCESS, and
+the database intact at 86 MB with 2 OAuth2 providers and 2 applications.
+
+## Final state
+
+- **50 containers repo-owned, 0 Portainer-owned.**
+- 4 containers carry no compose labels: Portainer itself, and 3 Pterodactyl
+  game-server containers it manages directly.
+- All 14 Portainer stack entries (3,4,5,7,9,10,17,18,19,29,30,31,32,33) now have
+  **zero** containers claiming them, so deleting those entries in the Portainer
+  UI cannot remove anything.
