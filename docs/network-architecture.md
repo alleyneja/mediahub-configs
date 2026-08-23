@@ -88,7 +88,18 @@ back on them. Checking each:
 
 One forward, for Pterodactyl. Nothing else.
 
-**Status 2026-08-22: R1 is NOT currently met.** An external node probed TCP/25500 while
+**Status 2026-08-22: R1 is NOT met, and the only missing piece is on the gateway.**
+
+Everything on the host is correct and verified: DNAT rules exist for 25500-25502 on both
+TCP and UDP, `docker-proxy` is listening on `0.0.0.0` for all six, and the `FORWARD` chain
+reaches `DOCKER-FORWARD` at position 3 — before any `ufw-*` chain — so **no UFW rule is
+needed or would help**. Plex needed one only because it is host-networked and therefore
+hits `INPUT`. Adding UFW rules for game ports would be cargo-culting.
+
+**Required action: forward TCP+UDP 25500-25502 to 192.168.0.21 on the gateway.** Nothing
+else.
+
+Original evidence below. An external node probed TCP/25500 while
 `tcpdump` watched `enp3s0` from inside the boundary — **zero packets arrived**. Unlike the
 Plex case this is a true negative, because the instrument was inside. The gateway is not
 forwarding the Pterodactyl ports (25500-25502). Recent container logs show no external
@@ -139,6 +150,37 @@ relay-only.
 ### 4.3 Storage fabric ("core") — deferred, see §5
 
 No change. The original justification for this section did not survive measurement.
+
+### 4.4a AdGuard is bypassed on home wifi — root cause found 2026-08-22
+
+**On the tailnet you are protected.** Proven from AdGuard's own query log, not inferred:
+5,486 queries from tailnet clients (`jays-iphone` alone accounts for 668) versus 279 from
+LAN addresses. Tailscale's coordination server pushes `100.104.43.6` as the tailnet
+resolver, and it filters correctly (`doubleclick.net` -> `0.0.0.0` when queried at that
+address).
+
+**On home wifi, IPv6-preferring devices bypass it.** The gateway emits a router
+advertisement every ~3 seconds carrying an RDNSS option for Comcast's resolvers:
+
+```
+RA from fe80::dea6:33ff:fe89:ca17  (the ARRIS)
+  rdnss option (25): 2001:558:feed::1, 2001:558:feed::2   lifetime 300s
+  prefix info (3):   2601:4c1:c400:17b0::/64
+```
+
+The gateway hands out `192.168.0.21` over IPv4 DHCP, but RDNSS over IPv6 takes precedence
+on clients that prefer IPv6. The Dangbei projector shows exactly this — `net.dns1` and
+`net.dns2` are the Comcast addresses, AdGuard is third and never consulted. It has never
+appeared in the query log. The Fire TV, which prefers IPv4, does use AdGuard.
+
+This is a router behaviour, not a client misconfiguration, and no change on this host can
+fix it. Options, none yet chosen:
+
+1. **Disable IPv6 on the gateway LAN.** Kills the RDNSS, so all clients fall back to the
+   IPv4 DHCP setting and AdGuard covers the household. Cost: no LAN IPv6, and it interacts
+   with the IPv6 work done 2026-08-22 (commit `c14e66f`).
+2. **Rely on Tailscale on every device.** Already works today and needs nothing.
+3. **Accept the gap** for wifi-only devices that prefer IPv6.
 
 ### 4.4 DNS
 
