@@ -1,4 +1,8 @@
-# Refresh Threadfin live-only M3U from Xtream Codes API daily at 4am.
-# Pulls current live streams from provider and rebuilds the channel list
-# at /srv/docker/threadfin/conf/live_only.m3u used by Threadfin on startup.
-0 4 * * * python3 /srv/docker/threadfin/conf/generate_live_m3u.py >> /var/log/threadfin-m3u.log 2>&1
+# Refresh Threadfin live-only M3U from Xtream Codes API nightly at 23:45.
+# Pulls current live streams from provider and rebuilds the channel list at
+# /srv/docker/threadfin/conf/live_only.m3u, which Threadfin then ingests during
+# its own scheduled update at 00:00 (settings.json "update": ["0000"]).
+# The 15-minute lead matters: at the old 04:00 slot Threadfin had already read
+# the previous day's file four hours earlier, so the refresh never reached Plex.
+45 23 * * * python3 /srv/docker/threadfin/conf/generate_live_m3u.py >> /home/jay/logs/threadfin-m3u.log 2>&1
+* * * * * /home/jay/joyboy-watchdog.sh

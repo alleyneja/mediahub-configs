@@ -4,12 +4,20 @@ Generates a curated live-only M3U from the Xtream Codes API.
 Run this script to refresh the channel list (cron refreshes daily at 4am).
 """
 import json
+import os
+import tempfile
 import urllib.request
 
 USERNAME = "alleyneja"
 PASSWORD = "68fcMcytqb"
 HOST = "http://link4tv.cc:80"
 OUTPUT = "/srv/docker/threadfin/conf/live_only.m3u"
+
+# Refuse to publish a lineup smaller than this. The provider can answer 200 OK with an
+# empty or truncated stream list (expired auth, upstream hiccup); without this floor the
+# nightly cron would happily overwrite a working 361-channel M3U with a header and nothing
+# else. Current lineup is ~361, so 100 is a wide margin that still catches a wipe.
+MIN_CHANNELS = 100
 
 # Override broken/missing provider logos with stable ones (matched by name substring,
 # case-insensitive). The provider's EPG lists a dead Bing search-thumbnail as CBS's
@@ -119,7 +127,8 @@ kept = 0
 skipped = 0
 
 print(f"Writing curated M3U to {OUTPUT}...")
-with open(OUTPUT, "w", encoding="utf-8") as f:
+tmp_fd, tmp_path = tempfile.mkstemp(dir=os.path.dirname(OUTPUT), suffix=".m3u.tmp")
+with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
     f.write("#EXTM3U\n")
     for s in streams:
         name = s.get("name", "")
@@ -146,5 +155,15 @@ with open(OUTPUT, "w", encoding="utf-8") as f:
             kept += 1
         else:
             skipped += 1
+
+if kept < MIN_CHANNELS:
+    os.unlink(tmp_path)
+    raise SystemExit(
+        f"ABORT: only {kept} channels matched (minimum {MIN_CHANNELS}). "
+        f"Existing {OUTPUT} left untouched."
+    )
+
+os.chmod(tmp_path, 0o664)
+os.replace(tmp_path, OUTPUT)
 
 print(f"Done. {kept} channels kept, {skipped} skipped.")
