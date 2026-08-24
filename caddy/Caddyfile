@@ -297,3 +297,12 @@ wud.lan {
     tls internal
     reverse_proxy wud:3000
 }
+
+# openGym — gym & body-weight tracker.
+# Passkeys (WebAuthn) require a cert the DEVICE trusts. That is satisfied here by the
+# Caddy internal CA, which Jay's and Maria's phones already trust — see
+# docs/opengym-gym-lan-passkeys.md for what that costs a NEW device.
+gym.lan {
+    tls internal
+    reverse_proxy opengym-web:80
+}
