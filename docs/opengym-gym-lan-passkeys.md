@@ -87,10 +87,15 @@ Jay's original account (`N4S91qKxLNW34FgR`, "Jay A.") was registered under
 `RP_ID=mediahub-production.tail3b4ccf.ts.net` and its passkey died with the switch. The
 account was cleared from `db.json` so it would not linger as an unusable orphan.
 
-- Full backup: `/srv/docker/_backups/opengym-pre-gymlan-20260823-230939.tar.gz`
-- The old workout state file `state-N4S91qKxLNW34FgR.json` was **left in place**. After
-  re-registering, that file can be copied onto the new uid to restore the history:
-  `sudo cp state-N4S91qKxLNW34FgR.json state-<newuid>.json` then reload the app.
+Nothing of value was lost: that account held zero workouts and zero bodyweight entries —
+one routine plus display settings, from an evening of browsing the exercise archive. The
+orphaned state file and the pre-migration backup tarball were both **deleted on 2026-08-24**
+at Jay's request; a transplant onto the new uid was judged not worth the sync race for one
+routine and a colour preference.
+
+Current account: `o1Hhgi8Uz2zeJI6M` ("Jay A."), admin via `ADMIN_UIDS`, passkey held in
+iCloud Keychain. A copy was placed in Bitwarden but does not currently sign in, so iCloud
+is the live credential — and note Vaultwarden itself has no scheduled backup.
 
 ## Reverting
 
