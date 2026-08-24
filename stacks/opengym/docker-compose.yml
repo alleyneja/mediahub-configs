@@ -80,7 +80,8 @@ services:
       api:
         condition: service_started
     ports:
-      # Bound to loopback ONLY. `tailscale serve` terminates TLS in front of this.
+      # Loopback ONLY, and no longer the front door — Caddy serves gym.lan and reaches
+      # this container over mediahub_internal. Kept for host-side debugging (curl).
       # Docker publishes past UFW (DOCKER-FORWARD precedes ufw-* in FORWARD), so a
       # 0.0.0.0 bind here would be reachable from the whole LAN despite the firewall.
       # 8080 is sabnzbd; 8085 was free.
@@ -88,4 +89,14 @@ services:
     volumes:
       - /srv/docker/opengym/src/media/img:/usr/share/nginx/html/img:ro
       - /srv/docker/opengym/src/media/gif:/usr/share/nginx/html/gif:ro
+    networks:
+      # `default` keeps nginx's `proxy_pass http://api:3000` resolving.
+      # `mediahub_internal` is how Caddy reaches this container — Caddy is on that
+      # network only, so without it `reverse_proxy opengym-web:80` cannot resolve.
+      - default
+      - mediahub_internal
     restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true

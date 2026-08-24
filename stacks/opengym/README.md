@@ -2,7 +2,7 @@
 
 Self-hosted gym & body-weight tracker. Multi-user, passkey auth, per-user isolated data.
 
-- **URL:** https://mediahub-production.tail3b4ccf.ts.net:8443 (tailnet only)
+- **URL:** https://gym.lan (tailnet + Caddy internal CA — see docs/opengym-gym-lan-passkeys.md)
 - **Source:** pinned checkout at `/srv/docker/opengym/src` @ `c42ba6b`
 - **Data:** `/srv/docker/opengym/data` — **back this up**, it holds every passkey
 
@@ -44,31 +44,31 @@ Verify after any source update:
    `Dockerfile`. As shipped, `docker compose up --build` fails outright.
 2. Committed `data/` secrets, above.
 
-## Why :8443 and not Caddy
+## Served by Caddy at gym.lan
 
-Passkeys (WebAuthn) require a certificate the *device* already trusts. Every `.lan` host
-here uses Caddy's `tls internal` CA, and a browser will refuse to show the passkey prompt
-on a connection it does not trust — with no click-through. Phones would each need the
-Caddy root CA installed and, on iOS, separately set to full trust.
+Moved off `tailscale serve` on 2026-08-23. Caddy serves it with `tls internal` like every
+other `.lan` host, so its certificate renews in the same closed loop as the rest of the
+stack — Caddy is both issuer and renewer, and the leaf certs rotate every 12 hours
+unattended.
 
-Tailscale issues a real Let's Encrypt cert for the ts.net name (verified: issuer
-`C=US, O=Let's Encrypt, CN=YE2`), which every phone trusts with nothing installed.
+The trade: passkeys need a cert the *device* trusts, so **every device must install and
+trust the Caddy root CA** (`/srv/docker/caddy/caddy-root.crt`, valid to 2036-01-19), and
+the failure mode when it hasn't is silent. Jay's and Maria's phones already trust it.
 
-Port 8443 rather than 443 because **Caddy owns `0.0.0.0:443`**, which covers the tailnet
-interface — `tailscale serve --https=443` silently receives no traffic there. This is a
-deliberate exception to the ":8443 is always wrong" rule in
-`docs/8443-port-mismatch.md`: here Tailscale, not Caddy, terminates TLS.
+`reverse_proxy opengym-web:80` over `mediahub_internal` — Caddy is on that network only,
+which is why `opengym-web` joins it. The `127.0.0.1:8085` publish is kept for host-side
+debugging, not as a front door. `gym.lan` resolves to `100.104.43.6` (Tailscale), so the
+tailnet is still the outer gate.
 
-    sudo tailscale serve --bg --https=8443 http://127.0.0.1:8085
-
-Funnel is **off** — tailnet only. Verified not reachable via the LAN IP.
+**Read `docs/opengym-gym-lan-passkeys.md` before changing any of this.** Passkeys are the
+only sign-in, one account holds exactly one passkey forever, and `RP_ID` is now
+effectively permanent.
 
 ## RP_ID is permanent; ORIGIN is not
 
-`RP_ID` binds every passkey. Changing it invalidates all of them. `ORIGIN` (including the
-port) is only checked at assertion time, so moving off :8443 later — e.g. fronting the
-ts.net name with Caddy using a `tailscale cert` — keeps existing passkeys valid, as long
-as `RP_ID` stays the same hostname and `ORIGIN` is updated to match.
+`RP_ID` binds every passkey, and because there is no add-a-device endpoint, changing it
+forces everyone into brand-new accounts and abandons their history. `ORIGIN` is only
+checked at assertion time and can change freely.
 
 ## First-run setup
 
