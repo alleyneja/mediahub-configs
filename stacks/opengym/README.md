@@ -74,10 +74,13 @@ checked at assertion time and can change freely.
 
 1. Register your profile at the URL above.
 2. Read your id: `sudo python3 -c "import json;print([u['id'] for u in json.load(open('/srv/docker/opengym/data/db.json'))['users']])"`
-3. Put it in `ADMIN_UIDS` in `.env`, set `INVITE_ONLY=1`, then `docker compose up -d api`.
-4. Generate invite codes from the admin dashboard for Mafe / your brother.
+3. Put it in `ADMIN_UIDS` in `.env`, then `docker compose up -d api`.
 
-Signup is open until step 3. Do it before sharing the URL.
+**Signup is intentionally left open.** Maria (and anyone else Jay wants) registers
+directly — no invite code. The gate is the tailnet plus the Caddy root CA, both of which
+are required just to load the page, and that is a stronger barrier than an invite code.
+This matches how Vaultwarden is run here. `INVITE_ONLY=1` is available if that ever
+changes.
 
 ## Backup
 
