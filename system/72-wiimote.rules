@@ -1,0 +1,8 @@
+# Wii Remotes for Dolphin. jay's sessions have no seat, so 70-uaccess.rules never
+# tags these nodes and Dolphin (flatpak, uid 1000) cannot open them. Grant via group.
+# 0306 = RVL-CNT-01 (original), 0330 = RVL-CNT-01-TR (Wii Remote Plus / "MotionPlus Inside").
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", KERNELS=="*057E:0306*", MODE="0660", GROUP="input"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", KERNELS=="*057E:0330*", MODE="0660", GROUP="input"
+
+# TP-Link UB500 dongle, for Dolphin's Bluetooth Passthrough fallback (needs raw USB access).
+SUBSYSTEM=="usb", ATTR{idVendor}=="2357", ATTR{idProduct}=="0604", MODE="0660", GROUP="plugdev"
