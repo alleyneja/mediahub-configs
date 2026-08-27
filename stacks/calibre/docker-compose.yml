@@ -21,7 +21,11 @@ services:
       # means /mnt/media cannot mmap(), and SQLite in WAL mode requires it.
       # See docs/calibre-library-on-ext4.md.
       - /mnt/internal/ebooks/calibre-library:/calibre-library
-      - /mnt/media/ebooks/ingest:/ingest
+      # No /ingest bind on purpose. CWA's watcher reads ingest_folder from
+      # /app/calibre-web-automated/dirs.json, which is hardcoded to /cwa-book-ingest
+      # (an anonymous volume). A bind at /ingest is never watched, so it silently
+      # swallowed anything dropped in it. Books reach Calibre via
+      # Bookshelf -> calibre-content-server, or the Upload button in the web UI.
       - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-bundle-with-caddy.crt:ro
     extra_hosts:
       - "auth.lan:172.18.0.28"
