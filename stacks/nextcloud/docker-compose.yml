@@ -69,6 +69,36 @@ services:
     networks:
       - mediahub_internal
 
+  # Runs cron.php every 5 min. Without this the stack falls back to AJAX mode,
+  # where background jobs only fire on a web-UI page load - so an iOS-only user
+  # never runs them. Aug 28 2026: ScanFiles had not run since May 29 and
+  # UploadCleanup had never run at all, leaving filecache drifted from disk and
+  # chunked-upload sessions stranded. Image tag MUST match the nextcloud service.
+  cron:
+    image: nextcloud:29-apache
+    container_name: nextcloud-cron
+    labels:
+      - wud.tag.include=^(29|30)-apache$$
+    entrypoint: /cron.sh
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: nextcloud-postgres
+      POSTGRES_DB: nextcloud
+      POSTGRES_USER: nextcloud
+      POSTGRES_PASSWORD: ${NEXTCLOUD_POSTGRES_PASSWORD}
+      REDIS_HOST: nextcloud-redis
+    volumes:
+      - /srv/docker/nextcloud/html:/var/www/html
+      - /mnt/media/nextcloud/data:/var/www/html/data
+      - /srv/docker/caddy/caddy-root.crt:/etc/ssl/certs/caddy-root.crt:ro
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
 networks:
   mediahub_internal:
     external: true
