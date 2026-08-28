@@ -1,0 +1,18 @@
+[Unit]
+Description=Watch Nextcloud DAV saves and capture failures
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=jay
+Group=jay
+WorkingDirectory=/home/jay
+ExecStart=/usr/bin/python3 /home/jay/nextcloud-save-watch.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/home/jay/logs/nextcloud-save-watch.service.log
+StandardError=append:/home/jay/logs/nextcloud-save-watch.service.log
+
+[Install]
+WantedBy=multi-user.target
