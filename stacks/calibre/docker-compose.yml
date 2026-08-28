@@ -28,7 +28,7 @@ services:
       # Bookshelf -> calibre-content-server, or the Upload button in the web UI.
       - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-bundle-with-caddy.crt:ro
     extra_hosts:
-      - "auth.lan:172.18.0.28"
+      - "auth.lan:172.18.0.200"
     networks:
       - mediahub_internal
     restart: unless-stopped
