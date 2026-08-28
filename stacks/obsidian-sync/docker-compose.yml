@@ -1,5 +1,3 @@
-version: "3.9"
-
 # CouchDB backend for Obsidian Self-hosted LiveSync.
 #
 # NOTE: deliberately no `ports:` mapping. CouchDB is reachable only from the
