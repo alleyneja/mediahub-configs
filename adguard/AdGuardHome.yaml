@@ -359,6 +359,9 @@ filtering:
     - domain: mealie.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
+    - domain: health.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
   safe_fs_patterns:
     - /opt/adguardhome/work/userfilters/*
   safebrowsing_cache_size: 1048576

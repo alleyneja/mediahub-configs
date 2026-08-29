@@ -12,7 +12,13 @@ services:
       - /srv/docker/visibility/uptime-kuma:/app/data
     extra_hosts:
       - "${TAILSCALE_HOSTNAME}:${TAILSCALE_IP}"
-      # Route all .lan domains to Caddy's Docker IP (100.104.43.6 is unreachable from Docker bridge)
+      # Route all .lan domains to Caddy's Docker IP (100.104.43.6 is unreachable from Docker bridge).
+      # These monitors answer "is the service up?" -- they bypass tailscale, AdGuard and the
+      # host network entirely, so a broken front door does NOT turn them red.
+      #
+      # health.lan is deliberately NOT listed here. It resolves via AdGuard to the tailnet IP,
+      # so its monitor traverses the real client path and answers "can anyone get in?".
+      # Adding health.lan to this list silently disables that check. See Caddyfile: health.lan.
       - "vaultwarden.lan:172.18.0.200"
       - "auth.lan:172.18.0.200"
       - "nextcloud.lan:172.18.0.200"
@@ -42,6 +48,8 @@ services:
       - "homepage.lan:172.18.0.200"
       - "romm.lan:172.18.0.200"
       - "pterodactyl.lan:172.18.0.200"
+      - "mealie.lan:172.18.0.200"
+      - "threadfin.lan:172.18.0.200"
     ports:
       - "3003:3001"
     networks:

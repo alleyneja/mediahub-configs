@@ -306,3 +306,26 @@ gym.lan {
     tls internal
     reverse_proxy opengym-web:80
 }
+
+# ─────────────────────────────────────────
+# FRONT-DOOR CANARY
+# ─────────────────────────────────────────
+#
+# Answers 200 itself — no upstream, no container. The point is that this vhost
+# can ONLY fail if the path to it is broken: tailscale down or key expired,
+# AdGuard rewrite gone, host networking dead, Caddy not listening, or TLS broken.
+#
+# Uptime Kuma monitors this over the REAL client path. Every other Kuma monitor
+# is pinned to Caddy's container IP via extra_hosts, so those answer "is the
+# service up?" while this one answers "can anyone actually get in?".
+#
+# Deliberately absent from uptime-kuma's extra_hosts — that omission IS the
+# mechanism. If you add health.lan there, this monitor silently becomes
+# worthless. See stacks/uptime-kuma/docker-compose.yml.
+#
+# Added 2026-08-28 after a tailscale key expiry took the tunnel down for ~1h
+# and only 3 of 28 monitors noticed.
+health.lan {
+    tls internal
+    respond "OK" 200
+}
