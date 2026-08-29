@@ -1,3 +1,18 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# SANITIZED MIRROR -- this repo is PUBLIC. Do NOT copy the live file over it.
+#
+# Live file: /srv/docker/adguardhome/conf/AdGuardHome.yaml
+#
+# Three things are stripped on the way in, and a blind `cp` re-publishes all
+# three. Re-apply them by hand after any sync:
+#   1. users:              -> []                       (admin bcrypt password hash)
+#   2. clients.persistent: -> []                       (device names / MACs / IPs)
+#   3. filtering.rewrites  -> answer: SERVER_IP_PLACEHOLDER  (tailnet IP, all 36)
+#
+# Everything else should match live. Note AdGuard rewrites and re-sorts this
+# file itself, so a raw `diff` against live shows ~450 lines of pure ordering
+# noise -- compare parsed YAML, not text, or you will not find the real drift.
+# ─────────────────────────────────────────────────────────────────────────────
 http:
   pprof:
     port: 6060
@@ -264,7 +279,7 @@ filtering:
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites:
     - domain: obsidian-sync.lan
-      answer: 100.104.43.6
+      answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: vaultwarden.lan
       answer: SERVER_IP_PLACEHOLDER
@@ -360,6 +375,15 @@ filtering:
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: health.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
+    - domain: gym.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
+    - domain: stirling.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
+    - domain: wud.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
   safe_fs_patterns:
