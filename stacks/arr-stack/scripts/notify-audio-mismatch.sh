@@ -77,9 +77,21 @@ fi
 
 log "file_json: $FILE_JSON"
 
-ACTUAL_LANG=$(echo "$FILE_JSON" | jq -r '
-  (.mediaInfo.audioLanguages // (.languages // [] | map(.name) | join(",")))
-')
+# ACTUAL_LANG is Sonarr/Radarr's own reconciled "languages" field -- the
+# determination the app itself trusts and displays, not the raw container
+# tag. The raw tag (mediaInfo.audioLanguages) is kept separately, for
+# context only: it is frequently blank/"und" (undetermined) because a lot
+# of WEB-DL/WEBRip releases never bother tagging the audio stream's
+# language at all. Treating a missing raw tag as "confirmed wrong" was a
+# real bug -- Animal Farm (2026) and Batman (1989) both alerted on this,
+# and both were false alarms; Radarr's own reconciled field said English
+# for both the whole time. Also: jq's `//` only falls through on `null`,
+# not on `""`, so chaining the raw tag into the fallback (as the original
+# version did) silently produced a blank result whenever the raw tag was
+# an empty string rather than absent -- that's the Batman "Actual audio:"
+# blank case specifically.
+ACTUAL_LANG=$(echo "$FILE_JSON" | jq -r '(.languages // [] | map(.name) | join(","))')
+RAW_TAG=$(echo "$FILE_JSON" | jq -r '(.mediaInfo.audioLanguages // "")')
 
 # Most recent "grabbed" history record for THIS episode/movie specifically
 # -- reflects the title-parsed language Sonarr/Radarr assumed when it
@@ -95,22 +107,31 @@ HIST_FILTER='(if type == "array" then . else .records end) | [.[] | select(.even
 GRAB_LANG=$(echo "$HIST_JSON" | jq -r "${HIST_FILTER} | (.languages // [] | map(.name) | join(\",\"))")
 SOURCE_TITLE=$(echo "$HIST_JSON" | jq -r "${HIST_FILTER} | (.sourceTitle // \"unknown release\")")
 
-log "actual=$ACTUAL_LANG grabbed_as=$GRAB_LANG source=$SOURCE_TITLE"
+log "actual=$ACTUAL_LANG raw_tag=$RAW_TAG grabbed_as=$GRAB_LANG source=$SOURCE_TITLE"
 
-# Only alert when the grab was scored as English but the real audio isn't.
-if [[ "$GRAB_LANG" == *"English"* ]] && [[ "$ACTUAL_LANG" != *"English"* ]] && [[ "$ACTUAL_LANG" != *"eng"* ]]; then
+# Only alert when Radarr/Sonarr's own reconciled language for the file is
+# both non-empty (we actually know something) and disagrees with what was
+# assumed at grab time. An empty ACTUAL_LANG means the app itself couldn't
+# determine a language either -- that's genuine uncertainty, not a proven
+# mismatch, so stay quiet rather than cry wolf on a guess.
+if [[ -n "$ACTUAL_LANG" ]] && [[ "$GRAB_LANG" == *"English"* ]] && [[ "$ACTUAL_LANG" != *"English"* ]]; then
   if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
     log "MISMATCH found but DISCORD_WEBHOOK_URL not set in .env, alert not sent"
     exit 0
+  fi
+  RAW_TAG_NOTE="${RAW_TAG:-not tagged by the release}"
+  if [ "$RAW_TAG" = "und" ]; then
+    RAW_TAG_NOTE="und (release never tagged an audio language at all)"
   fi
   PAYLOAD=$(jq -n \
     --arg content "Audio language mismatch: **${TITLE}**
 File: \`${REL_PATH}\`
 Grabbed as: ${GRAB_LANG}  (release: ${SOURCE_TITLE})
-Actual audio: ${ACTUAL_LANG}" \
+Sonarr/Radarr's own detected audio: ${ACTUAL_LANG}
+Raw container tag (context only): ${RAW_TAG_NOTE}" \
     '{content: $content}')
   curl -s -H "Content-Type: application/json" -d "$PAYLOAD" "$DISCORD_WEBHOOK_URL" >>"$LOG_FILE" 2>&1
   log "ALERT sent"
 else
-  log "no mismatch, no alert"
+  log "no mismatch (or inconclusive), no alert"
 fi
