@@ -28,6 +28,8 @@ services:
     volumes:
       - /srv/docker/radarr:/config
       - /mnt/media:/data
+      - ./scripts:/config/scripts:ro
+      - ./discord.env:/config/discord.env:ro
 
   sonarr:
     image: lscr.io/linuxserver/sonarr:latest
@@ -43,6 +45,8 @@ services:
     volumes:
       - /srv/docker/sonarr:/config
       - /mnt/media:/data
+      - ./scripts:/config/scripts:ro
+      - ./discord.env:/config/discord.env:ro
 
   lidarr:
     image: lscr.io/linuxserver/lidarr:latest
