@@ -56,11 +56,16 @@ BASE="http://localhost:${PORT}/api/v3"
 
 if [ "$APP" = "sonarr" ]; then
   FILE_ID="${sonarr_episodefile_id:-}"
-  SERIES_ID="${sonarr_series_id:-}"
   TITLE="${sonarr_series_title:-unknown series}"
   REL_PATH="${sonarr_episodefile_relativepath:-unknown file}"
   FILE_JSON=$(curl -s "$BASE/episodefile/$FILE_ID?apikey=$API_KEY")
-  HIST_JSON=$(curl -s "$BASE/history/series?seriesId=$SERIES_ID&eventType=1&apikey=$API_KEY")
+  # episodefile has no episodeId field -- Sonarr only hands it to us via this
+  # env var. A series-wide history lookup (by seriesId) is NOT safe here: it
+  # returns every episode's grabs, and picking "most recent" would attribute
+  # a completely different episode's release to this file. Multi-episode
+  # files get several ids; the first is good enough to identify the grab.
+  EPISODE_ID="${sonarr_episodefile_episodeids%%,*}"
+  HIST_JSON=$(curl -s "$BASE/history?episodeId=${EPISODE_ID}&apikey=$API_KEY")
 else
   FILE_ID="${radarr_moviefile_id:-}"
   MOVIE_ID="${radarr_movie_id:-}"
@@ -76,18 +81,19 @@ ACTUAL_LANG=$(echo "$FILE_JSON" | jq -r '
   (.mediaInfo.audioLanguages // (.languages // [] | map(.name) | join(",")))
 ')
 
-# Most recent "grabbed" history record — reflects the title-parsed language
-# Sonarr/Radarr assumed when it decided this release was good enough.
-GRAB_LANG=$(echo "$HIST_JSON" | jq -r '
-  [.[]? // .records[]? | select(.eventType=="grabbed")]
-  | sort_by(.date) | reverse | .[0]
-  | (.languages // [] | map(.name) | join(","))
-')
-SOURCE_TITLE=$(echo "$HIST_JSON" | jq -r '
-  [.[]? // .records[]? | select(.eventType=="grabbed")]
-  | sort_by(.date) | reverse | .[0]
-  | (.sourceTitle // "unknown release")
-')
+# Most recent "grabbed" history record for THIS episode/movie specifically
+# -- reflects the title-parsed language Sonarr/Radarr assumed when it
+# decided this release was good enough.
+#
+# /api/v3/history?episodeId= returns a paged {records:[...]} object; the
+# older /history/movie route returns a bare array. Branch on type
+# explicitly -- `.[]? // .records[]?` is NOT a safe fallback here: on an
+# object, `.[]?` already yields output (the scalar field values), so `//`
+# never reaches `.records[]?`, and `select(.eventType==...)` then blows up
+# trying to index a non-object.
+HIST_FILTER='(if type == "array" then . else .records end) | [.[] | select(.eventType=="grabbed")] | sort_by(.date) | reverse | .[0]'
+GRAB_LANG=$(echo "$HIST_JSON" | jq -r "${HIST_FILTER} | (.languages // [] | map(.name) | join(\",\"))")
+SOURCE_TITLE=$(echo "$HIST_JSON" | jq -r "${HIST_FILTER} | (.sourceTitle // \"unknown release\")")
 
 log "actual=$ACTUAL_LANG grabbed_as=$GRAB_LANG source=$SOURCE_TITLE"
 
