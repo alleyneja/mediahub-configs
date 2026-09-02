@@ -27,6 +27,19 @@ MIN_CHANNELS = 100
 # the channel in xepg.json so Threadfin uses this M3U logo over the EPG icon.
 LOGO_OVERRIDES = {
     "CBS 2 WFMY GREENSBORO": "http://185.193.88.130:80/images/d90cbfe9c7b343dd2eafef8117272284.png",
+    # CBS 6 WKMG ORLANDO: every logo the provider offers for this channel is dead —
+    # its own tvg-logo/EPG icon (Bing thumbnail, 404s) AND the "mega-list" duplicate
+    # entry's icon (23.227.147.172 returns HTTP 200 but the body is a Swift object-
+    # storage "File not found" error page, not an image — check content, not just
+    # status). Using the real station logo from Wikimedia Commons instead, which is
+    # in fact the exact file the provider's dead link was trying to mirror (its
+    # error body literally names ".../WKMG-TV_Logo.jpg").
+    "CBS 6 WKMG ORLANDO": "https://upload.wikimedia.org/wikipedia/commons/d/d7/WKMG-TV_Logo.jpg",
+    # NBC 2 WESH ORLANDO: same story — its own tvg-logo (23.227.147.172) is also a
+    # broken-storage error page, not an image. The provider's "mega-list" duplicate
+    # entry (USA NBC Orlando WESH, stream 648655) has a genuinely live logo on the
+    # same host, confirmed by fetching and viewing it.
+    "NBC 2 WESH ORLANDO": "http://23.227.147.172:80/images/5b452bb5b4568013045bb1dedce45e80.png",
 }
 
 # Override a missing epg_channel_id (matched by name substring, case-insensitive).
