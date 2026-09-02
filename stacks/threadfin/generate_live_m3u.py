@@ -29,6 +29,20 @@ LOGO_OVERRIDES = {
     "CBS 2 WFMY GREENSBORO": "http://185.193.88.130:80/images/d90cbfe9c7b343dd2eafef8117272284.png",
 }
 
+# Override a missing epg_channel_id (matched by name substring, case-insensitive).
+# The provider gives this channel no epg_channel_id at all, which writes a literal
+# tvg-id="None" into the M3U. Threadfin then treats it as an unmapped/inactive
+# channel and silently backs its "url" field with a shared placeholder stream (a
+# dead-channel filler loop, not real content) EVERY time it re-ingests the
+# playlist — a direct xepg.json "url" edit gets clobbered on the next restart, so
+# the fix has to happen here, upstream of Threadfin, not in xepg.json.
+# nbcwesh.us is the real guide id for this affiliate group, borrowed from the
+# WESH Daytona Beach duplicate feed which does carry it (confirmed real programme
+# data). Broke live playback for ~30min on 2026-09-02 before this was found.
+EPG_ID_OVERRIDES = {
+    "NBC 2 WESH ORLANDO": "nbcwesh.us",
+}
+
 # Groups included entirely — no name filtering applied
 FULL_GROUPS = {
     "USA Latin UNIVISION",
@@ -145,6 +159,11 @@ with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
                 logo = ov_url
                 break
         epg_id = s.get("epg_channel_id", "")
+        if not epg_id:
+            for ov_key, ov_id in EPG_ID_OVERRIDES.items():
+                if ov_key.lower() in name.lower():
+                    epg_id = ov_id
+                    break
         cat_id = str(s.get("category_id", ""))
         group = cat_map.get(cat_id, "Uncategorized")
 
