@@ -85,15 +85,21 @@ CURATED_GROUPS = {
         "EPIX", "EPIX2", "The Film Detective", "RetroPlex East",
         "Sundance", "MGM+ UHD", "LIFETIME MOVIES HD",
     ],
-    # Broadcast locals — one reliable affiliate per network
+    # Broadcast locals — one reliable affiliate per network, plus Orlando locals
     "USA Local - FOX": [
         "FOX 5 WNYW NEW YORK",
+        "FOX 35 WOFL ORLANDO",
     ],
     "USA Local - ABC": [
         "ABC 7 WABC NEW YORK",
+        "ABC 9 WFTV ORLANDO",
     ],
     "USA Local - CBS": [
         "CBS 2 WFMY GREENSBORO",
+        "CBS 6 WKMG ORLANDO",
+    ],
+    "USA Local - NBC": [
+        "NBC 2 WESH ORLANDO",
     ],
     "USA Family & Kids": [
         "Cartoon Network East", "Disney Channel East", "Disney Junior East",
