@@ -38,8 +38,24 @@ LOGO_OVERRIDES = {
     # NBC 2 WESH ORLANDO: same story — its own tvg-logo (23.227.147.172) is also a
     # broken-storage error page, not an image. The provider's "mega-list" duplicate
     # entry (USA NBC Orlando WESH, stream 648655) has a genuinely live logo on the
-    # same host, confirmed by fetching and viewing it.
-    "NBC 2 WESH ORLANDO": "http://23.227.147.172:80/images/5b452bb5b4568013045bb1dedce45e80.png",
+    # same host, confirmed by fetching and viewing it directly.
+    #
+    # DO NOT point this at the provider's URL directly (tried both http and https,
+    # same result): Threadfin's own image-cache rewrite has a URL-construction bug
+    # that fires whenever it successfully downloads and caches a source image —
+    # it emits a malformed "/images//home/threadfin/conf/cache/images/<hash>.png"
+    # path (real leading absolute path baked into the URL) that 301-redirects
+    # instead of serving the picture, rendering as a blank/transparent tile in
+    # Plex rather than a broken-image icon. CBS's Wikimedia URL above only
+    # "works" because Threadfin's minimal image apparently can't complete a TLS
+    # fetch to a cert-validated host and silently falls back to passing the raw
+    # URL through uncached — an accidental workaround, not a real fix.
+    # The real fix: point tvg-logo at the file Threadfin ALREADY cached correctly
+    # on disk (confirmed valid 267x154 PNG at
+    # cache/images/5754cc8a4a5e72bb7cc79d3c0585559b.png) via its OWN clean
+    # /images/<hash> URL, bypassing the buggy rewrite path entirely since the
+    # source is already local. Confirmed 2026-09-02.
+    "NBC 2 WESH ORLANDO": "http://192.168.0.21:34400/images/5754cc8a4a5e72bb7cc79d3c0585559b.png",
 }
 
 # Override a missing epg_channel_id (matched by name substring, case-insensitive).
