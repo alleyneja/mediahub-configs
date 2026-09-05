@@ -45,12 +45,17 @@ services:
       # WUD pilot conversation (2026-09-05) for why this is scoped so
       # tightly on the trigger side.
       - /var/run/docker.sock:/var/run/docker.sock
-      # Bind the pilot compose files in at their real host path (matching
-      # each container's own com.docker.compose.project.config_files
-      # label) so the dockercompose trigger can find and edit them.
-      - /home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml:/home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml
-      - /home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml:/home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml
-      - /home/jay/mediahub-configs/stacks/audiobookshelf/docker-compose.yml:/home/jay/mediahub-configs/stacks/audiobookshelf/docker-compose.yml
+      # Bind the pilot stacks' whole DIRECTORIES in at their real host path
+      # (matching each container's own com.docker.compose.project.config_files
+      # label), not just the compose file. Mounting a single file makes Docker
+      # synthesize a container-only directory around it -- anything WUD then
+      # writes there (like the .back backup) lands inside WUD's own writable
+      # layer, invisible on the host and wiped on WUD's next redeploy. See
+      # the 2026-09-05 pilot conversation: confirmed .back files were being
+      # created, just never surfacing here, because of this exact mistake.
+      - /home/jay/mediahub-configs/stacks/stirling-pdf:/home/jay/mediahub-configs/stacks/stirling-pdf
+      - /home/jay/mediahub-configs/stacks/jellyfin:/home/jay/mediahub-configs/stacks/jellyfin
+      - /home/jay/mediahub-configs/stacks/audiobookshelf:/home/jay/mediahub-configs/stacks/audiobookshelf
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal
