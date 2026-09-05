@@ -1,0 +1,19 @@
+services:
+  iptvorg-epg:
+    image: ghcr.io/iptv-org/epg:master
+    container_name: iptvorg-epg
+    restart: unless-stopped
+    environment:
+      - TZ=America/Chicago
+      - CRON_SCHEDULE=0 6 * * *
+      - MAX_CONNECTIONS=2
+      - RUN_AT_STARTUP=true
+    volumes:
+      - /srv/docker/iptvorg-epg/channels.xml:/epg/public/channels.xml
+      - /srv/docker/threadfin/conf/iptvorg-epg:/epg/public
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true
