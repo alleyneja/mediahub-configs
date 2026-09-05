@@ -3,6 +3,15 @@ services:
     image: jellyfin/jellyfin:latest
     container_name: jellyfin
     restart: unless-stopped
+    labels:
+      # Opt this container into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (pilot, 2026-09-05).
+      - wud.trigger.include=dockercompose.jellyfin
+      # jellyfin runs on the floating `latest` tag (no semver), so WUD
+      # can't see updates at all without this -- confirmed by WUD logging
+      # "not a semver and digest watching is disabled" on startup before
+      # this label was added.
+      - wud.watch.digest=true
     entrypoint: ["/bin/sh", "-c", "cp /config/caddy-ca.crt /usr/local/share/ca-certificates/caddy-ca.crt && update-ca-certificates && exec /jellyfin/jellyfin"]
     environment:
       - PUID=1000
