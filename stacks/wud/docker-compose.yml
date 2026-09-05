@@ -9,9 +9,38 @@ services:
       # Report on every running container, not just ones with a wud.watch label.
       WUD_WATCHER_LOCAL_WATCHALL: "true"
       WUD_LOG_LEVEL: info
+      # --- Pilot: manual, per-container update triggers (2026-09-05) ---
+      # AUTO=false means these never fire on their own; they only run when
+      # clicked in the UI (or POSTed to the API). INCLUDEBYDEFAULT=false
+      # means each trigger applies to NO container except the one explicitly
+      # opted in via a `wud.trigger.include=dockercompose.<name>` label on
+      # that service -- without it, a single trigger definition would apply
+      # to every one of the ~50 containers WUD watches.
+      # BACKUP=true keeps a local .back copy of the compose file as a second
+      # safety net alongside git.
+      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_FILE: /home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_FILE: /home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_BACKUP: "true"
     volumes:
-      # Read-only: WUD only needs to enumerate containers and read image tags.
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Read-write as of 2026-09-05: required for the manual update triggers
+      # below to actually pull/recreate containers, not just read tags.
+      # This is a real privilege change -- anything with access to the WUD
+      # container (or wud.lan, gated only by the tailnet, same as
+      # Vaultwarden/Portainer) can now control any container on the host,
+      # not just the two pilots. See feedback_no_blanket_autoupdate + the
+      # WUD pilot conversation (2026-09-05) for why this is scoped so
+      # tightly on the trigger side.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Bind the pilot compose files in at their real host path (matching
+      # each container's own com.docker.compose.project.config_files
+      # label) so the dockercompose trigger can find and edit them.
+      - /home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml:/home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml
+      - /home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml:/home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal

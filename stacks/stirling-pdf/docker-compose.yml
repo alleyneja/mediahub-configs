@@ -9,6 +9,9 @@ services:
     labels:
       # Keep the -fat variant. WUD otherwise proposes plain 2.14.3, which looks like a harmless same-version update but SILENTLY DROPS the bundled OCR language packs - the slim image has no Spanish tessdata. See docs/ for the tessdata path gotcha.
       - wud.tag.include=^\d+\.\d+\.\d+-fat$$
+      # Opt this container into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (pilot, 2026-09-05).
+      - wud.trigger.include=dockercompose.stirlingpdf
     environment:
       TZ: America/Chicago
       # No login screen. OIDC/SAML are paid features in Stirling's open-core
