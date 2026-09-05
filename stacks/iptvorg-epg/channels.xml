@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<channels>
+  <channel site="tvguide.com" lang="en" xmltv_id="accnetwork.us" site_id="9200017734">USA ACC Network</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="amc.us" site_id="9233011832">USA AMC East LHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="animalplanet.us" site_id="9200018479">USA Animal Planet East UHD*</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="aymsports.mx" site_id="34863">MX: AYM Sports FHD</channel>
+  <channel site="mi.tv" lang="es" xmltv_id="azcinema.mx" site_id="cl#az-cinema">MX: AZ Cinema FHD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="azcorazon.mx" site_id="tv_azteca_corazon">MX: AZ Corazon FHD</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="azteca7.mx" site_id="116154">MX: AZTECA 7 FHD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="aztecauno.mx" site_id="azteca_uno">MX: AZTECA 1</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="bandamax.mx" site_id="54867">MX: Bandamax FHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="bbcamerica.us" site_id="9200014701">USA BBC America HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="bet.us" site_id="9233005931">USA BET East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="bether.us" site_id="9200020665">USA BET HER</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="bigtennetwork.us" site_id="9200004533">USA Big Ten Network UHD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="bitme.mx" site_id="bitme">MX: BitMe HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="bloombergtv.us" site_id="9233015798">USA Bloomberg</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="boomerang.us" site_id="9233015844">USA Boomerang*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="bravo.us" site_id="9200002886">USA Bravo East SD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="cartoonnetwork.us" site_id="9200004848">USA Cartoon Network East*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="cbssportsnetworkusa.us" site_id="9233013235">USA CBS Sports Network</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="cinemax.us" site_id="9233009829">USA Cinemax East UHD*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="cnbc.us" site_id="9200009413">USA CNBC UHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="cnn.us" site_id="9233013812">USA CNN*</channel>
+  <channel site="tvpassport.com" lang="en" xmltv_id="cnninternational.us" site_id="cnn-international-north-america/3008">USA CNN INTERNATIONAL*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="comedycentral.us" site_id="9200000657">USA Comedy Central FHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="cspan.us" site_id="9233007144">USA C-SPAN</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="cspan2.us" site_id="10162">USA C-SPAN 2</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="cspan3.us" site_id="17665">USA C-SPAN 3</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="discoverychannel.us" site_id="9233004102">USA Discovery East*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="discoveryfamily.us" site_id="9200004290">USA Discovery Family*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="disneychannel.us" site_id="9200018475">USA Disney Channel East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="disneyjunior.us" site_id="9233009788">USA Disney Junior East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="disneyxd.us" site_id="9200004852">USA Disney XD West</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="distritocomedia.mx" site_id="distrito_comedia">MX: Distrito Comedia FHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="espn.us" site_id="9200006937">USA ESPN HD (backup)</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="espn2.us" site_id="9200012351">USA ESPN 2</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="espnu.us" site_id="9233011350">USA ESPN U HD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="excelsiortv.mx" site_id="excelsior_tv">MX: Excelsior TV FHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="foodnetwork.us" site_id="9233009448">USA Food Network East UHD*</channel>
+  <channel site="tvpassport.com" lang="en" xmltv_id="foxdeportes.us" site_id="fox-deportes-hd/10502">USA FOX DEPORTES HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="foxsports1.us" site_id="9233008440">USA FOX SPORTS 1 HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="foxsports2.us" site_id="9200009884">USA FOX SPORTS 2 HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="freeform.us" site_id="9200006942">USA Freeform East LHD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="fx.mx" site_id="fx_mexico">MX: FX HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="fx.us" site_id="9200006932">USA FX East UHD</channel>
+  <channel site="mi.tv" lang="es" xmltv_id="fxm.us" site_id="ar#fx-movies">USA FXM</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="fxx.us" site_id="9200018644">USA FXX West</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="galavision.us" site_id="10222">USA Galavision</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="gameshownetwork.us" site_id="9200019858">USA GSN (Game Show Network)</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="golden.mx" site_id="golden_panregional">MX: Golden FHD</channel>
+  <channel site="mi.tv" lang="es" xmltv_id="goldenedge.mx" site_id="ar#golden-edge">MX: Golden Edge FHD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="goldenplus.mx" site_id="golden_plus">MX: Golden Plus FHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="golfchannel.us" site_id="9233005443">USA NBC GOLF HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="hallmarkmoviesmysteries.us" site_id="9233013351">USA Hallmark Movies &amp; Mysteries UHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="hbo.us" site_id="9200004886">USA HBO East*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="hbo2.us" site_id="9233003524">USA HBO Hits East*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="hbocomedy.us" site_id="9200006981">USA HBO Comedy*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="hbosignature.us" site_id="9233008160">USA HBO Drama*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="hgtv.us" site_id="9233004104">USA HGTV East UHD*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="hln.us" site_id="9200016601">USA HLN*</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="ingeniotv.mx" site_id="ingenio_tv_mexico">MX: Ingenio TV</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="investigationdiscovery.us" site_id="9200002243">USA Investigation Discovery East LHD*</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="lasestrellas.mx" site_id="de_las_estrellas_mexico">MX: Las Estrellas</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="lifetimemovies.us" site_id="9233009825">USA LIFETIME MOVIES HD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="mariavision.mx" site_id="maria_vision">MX: María+Visión HD</channel>
+  <channel site="programtv.onet.pl" lang="pl" xmltv_id="metro.pl" site_id="metro-535">MX: TLR</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="mileniotelevision.mx" site_id="milenio_tv">MX: Milenio TV FHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="moremax.us" site_id="9233015766">USA Cinemax Hits East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="mtv.us" site_id="9200014754">USA MTV East UHD</channel>
+  <channel site="tvpassport.com" lang="en" xmltv_id="newsmax2.us" site_id="newsmax2/37081">USA Newsmax 2</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="newsnation.us" site_id="9233013251">USA NewsNation</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="nflredzone.us" site_id="89351">USA NFL Redzone</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="nhlnetwork.us" site_id="9233009455">USA NHL NETWORK HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="nickelodeon.us" site_id="9200006939">USA Nickelodeon UHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="nickjr.us" site_id="9233007153">USA Nick Jr East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="nicktoons.us" site_id="9200020469">USA Nick Toon UHD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="oxygen.us" site_id="9200004949">USA Oxygen East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="paramountnetwork.us" site_id="9233013810">USA Paramount East UHD</channel>
+  <channel site="tvpassport.com" lang="en" xmltv_id="pbskids.us" site_id="pbs-kids-247/31867">USA PBS Kids</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="retroplex.us" site_id="49767">USA RetroPlex East</channel>
+  <channel site="tvpassport.com" lang="en" xmltv_id="scrippsnews.us" site_id="scripps-news/5999">USA Scripps News</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="secnetwork.us" site_id="9233008517">USA ESPN SEC Network</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="showtime2.us" site_id="9200018178">USA Showtime 2</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="showtimeextreme.us" site_id="9200004879">USA Showtime Extreme</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="showtimeshowcase.us" site_id="9233003805">USA Showtime Showcase*</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="stadium.us" site_id="104950">USA STADIUM 1 HD</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="starz.us" site_id="9233013809">USA StarZ East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="starzcinema.us" site_id="9233008357">USA Starz Cinema</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="starzencore.us" site_id="9200009649">USA Starz Encore East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="starzinblack.us" site_id="9200011898">USA Starz in Black East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="sundancetv.us" site_id="9233001687">USA Sundance</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="syfy.us" site_id="9200004316">USA Syfy East*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="teennick.us" site_id="9200006974">USA Teen Nick</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="teleformula.mx" site_id="teleformula">MX: Teleformula</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="telehit.mx" site_id="34394">MX: Telehit</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="telemundo.us" site_id="9200011927">LA: TELEMUNDO</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="tennischannel.us" site_id="9200017917">USA Tennis Channel*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="tlc.us" site_id="9233004112">USA TLC East LHD*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="tnt.us" site_id="9233011830">USA TNT East FHD*</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="trutv.us" site_id="9200009547">USA truTV East*</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="tudn.mx" site_id="tudn_mexico">MX: TUDN FHD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="tvcdeportes.mx" site_id="tvc_deportes">MX: TVC Deportes</channel>
+  <channel site="teleboy.ch" lang="de" xmltv_id="tvo.ch" site_id="85">MX: TVO FHD</channel>
+  <channel site="gatotv.com" lang="es" xmltv_id="unicable.mx" site_id="unicable">MX: Unicable FHD</channel>
+  <channel site="tvguide.com" lang="es" xmltv_id="univision.us" site_id="9200000867">LA: UnivisionNow Univision TDN</channel>
+  <channel site="tvtv.us" lang="en" xmltv_id="univisiontlnovelas.us" site_id="74550">LA: UNIVISION TLNOVELAS</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="usanetwork.us" site_id="9233004106">USA USA Network East</channel>
+  <channel site="tvguide.com" lang="en" xmltv_id="vh1.us" site_id="9233000037">USA VH1 UHD</channel>
+</channels>
