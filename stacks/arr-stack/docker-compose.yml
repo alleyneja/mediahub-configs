@@ -82,6 +82,13 @@ services:
     image: ghcr.io/seerr-team/seerr:latest
     container_name: seer
     restart: unless-stopped
+    labels:
+      # Opt ONLY seer into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-05). This file is shared
+      # with Radarr/Sonarr/Prowlarr/Bazarr/Lidarr/Unpackerr -- do NOT copy
+      # this label to them without re-verifying scoping on each one; the
+      # homepage/uptime-kuma test proved the mechanism, not every service.
+      - wud.trigger.include=dockercompose.seer
     networks: [mediahub_internal]
     environment:
       - PUID=1000
