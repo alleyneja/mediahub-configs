@@ -35,6 +35,18 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_AUDIOBOOKSHELF_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_AUDIOBOOKSHELF_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_AUDIOBOOKSHELF_BACKUP: "true"
+      # Fourth pilot (2026-09-05): homepage, deliberately chosen because its
+      # compose file (stacks/uptime-kuma/docker-compose.yml) is SHARED with
+      # uptime-kuma, netdata, and glances. Only homepage gets the
+      # wud.trigger.include label -- this is the test of whether the
+      # dockercompose trigger really only touches the one matching service
+      # in a multi-service file, before trusting it anywhere near arr-stack
+      # (Radarr/Sonarr/Prowlarr/Bazarr/Lidarr/Seer/Unpackerr all share ONE
+      # file there).
+      WUD_TRIGGER_DOCKERCOMPOSE_HOMEPAGE_FILE: /home/jay/mediahub-configs/stacks/uptime-kuma/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_HOMEPAGE_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_HOMEPAGE_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_HOMEPAGE_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -56,6 +68,7 @@ services:
       - /home/jay/mediahub-configs/stacks/stirling-pdf:/home/jay/mediahub-configs/stacks/stirling-pdf
       - /home/jay/mediahub-configs/stacks/jellyfin:/home/jay/mediahub-configs/stacks/jellyfin
       - /home/jay/mediahub-configs/stacks/audiobookshelf:/home/jay/mediahub-configs/stacks/audiobookshelf
+      - /home/jay/mediahub-configs/stacks/uptime-kuma:/home/jay/mediahub-configs/stacks/uptime-kuma
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal
