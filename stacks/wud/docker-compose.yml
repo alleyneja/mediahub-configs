@@ -26,6 +26,15 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_BACKUP: "true"
+      # Third pilot (2026-09-05): added specifically to get a second real
+      # trial of the missing-backup/permission-reset quirks found on
+      # jellyfin, since a container with no pending update can't be
+      # re-run and the "Test" button uses fake data that never reaches
+      # the file-write code path.
+      WUD_TRIGGER_DOCKERCOMPOSE_AUDIOBOOKSHELF_FILE: /home/jay/mediahub-configs/stacks/audiobookshelf/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_AUDIOBOOKSHELF_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_AUDIOBOOKSHELF_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_AUDIOBOOKSHELF_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -41,6 +50,7 @@ services:
       # label) so the dockercompose trigger can find and edit them.
       - /home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml:/home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml
       - /home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml:/home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml
+      - /home/jay/mediahub-configs/stacks/audiobookshelf/docker-compose.yml:/home/jay/mediahub-configs/stacks/audiobookshelf/docker-compose.yml
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal

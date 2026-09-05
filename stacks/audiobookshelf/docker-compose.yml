@@ -2,6 +2,10 @@ services:
   audiobookshelf:
     image: ghcr.io/advplyr/audiobookshelf:latest
     container_name: audiobookshelf
+    labels:
+      # Opt this container into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (third pilot, 2026-09-05).
+      - wud.trigger.include=dockercompose.audiobookshelf
     dns:
       - ${SERVER_IP}
     environment:
