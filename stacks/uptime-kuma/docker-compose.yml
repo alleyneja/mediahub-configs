@@ -103,6 +103,13 @@ services:
     image: ghcr.io/gethomepage/homepage:latest
     container_name: homepage
     restart: unless-stopped
+    labels:
+      # Opt ONLY homepage into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-05). This file is shared with
+      # uptime-kuma, netdata, and glances -- do NOT copy this label to them;
+      # this is deliberately the one-service test of multi-service-file
+      # scoping before trusting the trigger near arr-stack.
+      - wud.trigger.include=dockercompose.homepage
     ports:
       - "3080:3000"
     extra_hosts:
