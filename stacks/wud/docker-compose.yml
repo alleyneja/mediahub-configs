@@ -105,6 +105,15 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_SCANOPYSERVER_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_SCANOPYSERVER_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_SCANOPYSERVER_BACKUP: "true"
+      # First pilot on a real database itself (2026-09-06): couchdb, the
+      # Obsidian LiveSync backend. Own dedicated file, no siblings to
+      # protect -- the risk here isn't scoping, it's that this IS the data.
+      # wud.tag.include on the service already constrains WUD to plain 3.x
+      # (blocks the 3.5-nouveau variant and any major jump).
+      WUD_TRIGGER_DOCKERCOMPOSE_COUCHDB_FILE: /home/jay/mediahub-configs/stacks/obsidian-sync/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_COUCHDB_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_COUCHDB_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_COUCHDB_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -134,6 +143,7 @@ services:
       # worth knowing this trigger's blast radius includes those secrets.
       - /home/jay/mediahub-configs/stacks/arr-stack:/home/jay/mediahub-configs/stacks/arr-stack
       - /home/jay/mediahub-configs/stacks/scanopy:/home/jay/mediahub-configs/stacks/scanopy
+      - /home/jay/mediahub-configs/stacks/obsidian-sync:/home/jay/mediahub-configs/stacks/obsidian-sync
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal

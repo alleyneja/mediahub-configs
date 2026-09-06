@@ -16,6 +16,9 @@ services:
     labels:
       # Constrain WUD to plain CouchDB 3.x. Without it, 3.5-nouveau (a different build variant with the Nouveau search engine) is reported as an upgrade.
       - wud.tag.include=^3\.\d+$$
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06).
+      - wud.trigger.include=dockercompose.couchdb
     environment:
       TZ: America/Chicago
       COUCHDB_USER: admin
