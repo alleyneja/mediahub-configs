@@ -51,7 +51,14 @@ services:
         condition: service_healthy
 
   romm-db:
-    image: mariadb:latest
+    # Pinned to the 12.x line, not `latest` -- verified 2026-09-05 that
+    # mariadb:12 currently resolves to the exact same digest as mariadb:latest,
+    # so this is a no-op today, but it stops a future pull (WUD or manual)
+    # from silently jumping a major MariaDB version. Same convention as
+    # rreading-glasses-db (postgres:17) and scanopy's postgres (postgres:17-alpine).
+    image: mariadb:12
+    labels:
+      - wud.tag.include=^12(\.\d+)*$$
     container_name: romm-db
     restart: unless-stopped
     environment:
