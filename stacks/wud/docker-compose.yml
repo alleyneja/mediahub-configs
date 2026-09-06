@@ -114,6 +114,14 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_COUCHDB_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_COUCHDB_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_COUCHDB_BACKUP: "true"
+      # mealie (2026-09-06): same-major-line bump (v3.23.1 -> v3.25.1), own
+      # dedicated file. mealie-postgres in the same file is NOT opted in --
+      # it already has its own wud.tag.include major-line guard and no
+      # trigger, consistent with every other DB in this setup.
+      WUD_TRIGGER_DOCKERCOMPOSE_MEALIE_FILE: /home/jay/mediahub-configs/stacks/mealie/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_MEALIE_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_MEALIE_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_MEALIE_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -144,6 +152,7 @@ services:
       - /home/jay/mediahub-configs/stacks/arr-stack:/home/jay/mediahub-configs/stacks/arr-stack
       - /home/jay/mediahub-configs/stacks/scanopy:/home/jay/mediahub-configs/stacks/scanopy
       - /home/jay/mediahub-configs/stacks/obsidian-sync:/home/jay/mediahub-configs/stacks/obsidian-sync
+      - /home/jay/mediahub-configs/stacks/mealie:/home/jay/mediahub-configs/stacks/mealie
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal
