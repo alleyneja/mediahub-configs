@@ -40,6 +40,13 @@ services:
       - scanopy
   server:
     image: ghcr.io/scanopy/scanopy/server:latest
+    labels:
+      # Opt ONLY server into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-05). daemon and postgres in
+      # this same file must NOT get this label -- postgres is deliberately
+      # NOT update-triggerable (major bumps need pg_upgrade), and daemon
+      # is host-networked/privileged and hasn't been evaluated for this.
+      - wud.trigger.include=dockercompose.scanopyserver
     ports:
       - "60072:60072"
     environment:
