@@ -149,6 +149,15 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_NEXTCLOUD_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_NEXTCLOUD_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_NEXTCLOUD_BACKUP: "true"
+      # vaultwarden (2026-09-06): own dedicated file, no siblings. Real
+      # SQLite backup now exists (~/vaultwarden-backup.sh, daily 2:40am,
+      # via sqlite3 .backup -- the project's own recommended safe method
+      # against a live WAL-mode DB). No update pending as of this wiring;
+      # this just gets it ready for whenever one lands.
+      WUD_TRIGGER_DOCKERCOMPOSE_VAULTWARDEN_FILE: /home/jay/mediahub-configs/stacks/vaultwarden/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_VAULTWARDEN_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_VAULTWARDEN_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_VAULTWARDEN_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -182,6 +191,7 @@ services:
       - /home/jay/mediahub-configs/stacks/mealie:/home/jay/mediahub-configs/stacks/mealie
       - /home/jay/mediahub-configs/stacks/immich:/home/jay/mediahub-configs/stacks/immich
       - /home/jay/mediahub-configs/stacks/nextcloud:/home/jay/mediahub-configs/stacks/nextcloud
+      - /home/jay/mediahub-configs/stacks/vaultwarden:/home/jay/mediahub-configs/stacks/vaultwarden
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal

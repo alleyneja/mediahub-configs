@@ -2,6 +2,10 @@ services:
   vaultwarden:
     image: vaultwarden/server:1.37.2
     container_name: vaultwarden
+    labels:
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06).
+      - wud.trigger.include=dockercompose.vaultwarden
     environment:
       TZ: America/Chicago
       SIGNUPS_ALLOWED: "false"
