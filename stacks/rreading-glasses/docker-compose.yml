@@ -18,20 +18,28 @@ services:
       - mediahub_internal
 
   rreading-glasses:
-    image: blampe/rreading-glasses:latest
+    # Switched from :latest to :hardcover 2026-09-05. :latest is the old
+    # single-binary build (Goodreads scraping via --upstream, no auth
+    # support) and hasn't been rebuilt since Feb 2026, well before
+    # Hardcover started requiring an auth token on every call (broke
+    # 2026-08-27). :hardcover is the maintainer's separate build variant
+    # for the current Hardcover-backed upstream and natively supports
+    # HARDCOVER_AUTH. Built 2026-08-17 -- current as of this change.
+    image: blampe/rreading-glasses:hardcover
     container_name: rreading-glasses
     depends_on:
       - rreading-glasses-db
     entrypoint: ["/main", "serve"]
     command:
-      - --upstream=www.goodreads.com
       - --verbose
-      - --rpm=120
     environment:
       POSTGRES_HOST: rreading-glasses-db
       POSTGRES_DATABASE: rreading-glasses
       POSTGRES_USER: rreading-glasses
       POSTGRES_PASSWORD: ${RG_POSTGRES_PASSWORD}
+      # Required by :hardcover -- get one at hardcover.app/account/api.
+      # Must include "Bearer ". See .env.example.
+      HARDCOVER_AUTH: ${RG_HARDCOVER_AUTH}
     ports:
       - "8788:8788"
     mem_limit: 512m
