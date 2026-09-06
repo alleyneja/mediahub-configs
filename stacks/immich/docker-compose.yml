@@ -2,6 +2,13 @@ services:
   immich-server:
     image: ghcr.io/immich-app/immich-server:release
     container_name: immich-server
+    labels:
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06). Coupled with
+      # immich-postgres below -- update postgres first, confirm healthy,
+      # then this one. immich-redis and immich-machine-learning are NOT
+      # opted in.
+      - wud.trigger.include=dockercompose.immichserver
     depends_on:
       - immich-redis
       - immich-postgres
@@ -50,6 +57,10 @@ services:
     labels:
       # Immich pins its own Postgres build (pgvector/vectorchord extensions). Constrain WUD to the 14-vectorchord line: an 18-vectorchord tag is BOTH a Postgres major jump and an extension-version jump, and Immich's schema expects the matching pair.
       - wud.tag.include=^14-vectorchord.*$$
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06). Update THIS one first,
+      # confirm healthy, then immich-server -- see its comment above.
+      - wud.trigger.include=dockercompose.immichpostgres
     environment:
       POSTGRES_USER: immich
       POSTGRES_PASSWORD: ${IMMICH_DB_PASSWORD}

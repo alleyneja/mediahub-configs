@@ -122,6 +122,21 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_MEALIE_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_MEALIE_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_MEALIE_BACKUP: "true"
+      # immich (2026-09-06): server + postgres only. immich-redis and
+      # immich-machine-learning in the same file are NOT opted in.
+      # These two are COUPLED -- postgres bundles the vectorchord/pgvector
+      # extension immich-server checks on its own startup and refuses to
+      # run against if incompatible. Real pg_dump backup now exists
+      # (~/immich-db-backup.sh, daily 2:30am) before enabling this.
+      # Click order matters: postgres first, confirm healthy, THEN server.
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHPOSTGRES_FILE: /home/jay/mediahub-configs/stacks/immich/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHPOSTGRES_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHPOSTGRES_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHPOSTGRES_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHSERVER_FILE: /home/jay/mediahub-configs/stacks/immich/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHSERVER_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHSERVER_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_IMMICHSERVER_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -153,6 +168,7 @@ services:
       - /home/jay/mediahub-configs/stacks/scanopy:/home/jay/mediahub-configs/stacks/scanopy
       - /home/jay/mediahub-configs/stacks/obsidian-sync:/home/jay/mediahub-configs/stacks/obsidian-sync
       - /home/jay/mediahub-configs/stacks/mealie:/home/jay/mediahub-configs/stacks/mealie
+      - /home/jay/mediahub-configs/stacks/immich:/home/jay/mediahub-configs/stacks/immich
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal
