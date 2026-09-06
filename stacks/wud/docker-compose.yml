@@ -137,6 +137,18 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_IMMICHSERVER_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_IMMICHSERVER_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_IMMICHSERVER_BACKUP: "true"
+      # nextcloud (2026-09-06): the `nextcloud` service ONLY. nextcloud-cron
+      # in the same file runs the identical image tag by design (must always
+      # match), but is deliberately NOT wired as its own trigger -- WUD
+      # matches services by image string, and two services sharing the exact
+      # same image reference is an untested edge case for which one it would
+      # actually rewrite. Bump nextcloud-cron's tag by hand right after using
+      # this one, to whatever tag this trigger lands on.
+      # Real DB+config backup now exists (~/nextcloud-backup.sh, daily 2:35am).
+      WUD_TRIGGER_DOCKERCOMPOSE_NEXTCLOUD_FILE: /home/jay/mediahub-configs/stacks/nextcloud/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_NEXTCLOUD_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_NEXTCLOUD_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_NEXTCLOUD_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -169,6 +181,7 @@ services:
       - /home/jay/mediahub-configs/stacks/obsidian-sync:/home/jay/mediahub-configs/stacks/obsidian-sync
       - /home/jay/mediahub-configs/stacks/mealie:/home/jay/mediahub-configs/stacks/mealie
       - /home/jay/mediahub-configs/stacks/immich:/home/jay/mediahub-configs/stacks/immich
+      - /home/jay/mediahub-configs/stacks/nextcloud:/home/jay/mediahub-configs/stacks/nextcloud
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal

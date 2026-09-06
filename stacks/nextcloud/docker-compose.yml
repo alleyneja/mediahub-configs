@@ -39,6 +39,11 @@ services:
     labels:
       # Two problems without this: WUD proposes 34-fpm-alpine, which (a) switches the variant from apache to fpm-alpine, a different serving model this stack is not configured for, and (b) jumps five majors at once. Nextcloud majors MUST be applied sequentially - 29 to 30 to 31 - so only the next valid hop is allowed here. BUMP THIS RANGE after each major upgrade, or WUD will go quiet about Nextcloud entirely.
       - wud.tag.include=^(29|30)-apache$$
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06). nextcloud-cron below is
+      # deliberately NOT opted in -- see the trigger's comment in wud's
+      # compose file for why. Bump cron's tag by hand after using this one.
+      - wud.trigger.include=dockercompose.nextcloud
     depends_on:
       postgres:
         condition: service_healthy
