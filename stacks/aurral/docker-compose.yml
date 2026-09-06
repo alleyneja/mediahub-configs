@@ -4,15 +4,11 @@ services:
     container_name: aurral
     labels:
       # Opt into the manual dockercompose trigger defined in
-      # stacks/wud/docker-compose.yml (2026-09-06). Pinned to the exact
-      # current version for now -- v2.x moves the data mount from
-      # /app/backend/data to /config (see the volumes comment below), and
-      # there hasn't been a chance yet to review what else changed since
-      # 1.76.50 (this pin was originally added 2026-06-14 for missing
-      # artwork + MusicBrainz timeouts -- v2.8.0's changelog doesn't
-      # mention either fix, so that hasn't been confirmed resolved).
-      # Bump/remove this pin once ready to actually take the 2.x jump.
-      - wud.tag.include=^1\.76\.50$$
+      # stacks/wud/docker-compose.yml (2026-09-06). Version pin lifted
+      # 2026-09-06 -- changelog reviewed (v2.0.0 mount change handled
+      # below; Lidarr integration redesigned but remains, not replaced;
+      # v2.8.0's SQLite artwork persistence + BrainzMASH rate-limiting
+      # look like they address the original 2026-06-14 pin reason).
       - wud.trigger.include=dockercompose.aurral
     restart: unless-stopped
     ports:
@@ -30,6 +26,13 @@ services:
       # whenever the pin above gets opened up.
       - /srv/docker/aurral/data:/config
       - /mnt/media/music/_aurral_weeklyflow:/data/weeklyflow
+      # Added 2026-09-06 so the v2.x built-in yt-dlp downloader (optional
+      # additional source alongside Lidarr, useful for niche singles Lidarr
+      # can't find) has somewhere real to put files. Mirrors Lidarr's own
+      # mount exactly (stacks/arr-stack/docker-compose.yml) -- same device
+      # as the rest of the *arr stack's downloads, so nothing ends up
+      # stranded needing a copy instead of a hardlink.
+      - /mnt/media:/data
     networks:
       - mediahub_internal
 
