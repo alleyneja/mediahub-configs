@@ -1,8 +1,14 @@
 services:
   prowlarr:
-    image: lscr.io/linuxserver/prowlarr:latest
+    # Docker Hub mirror, not lscr.io -- WUD has no registry provider for
+    # lscr.io, so it can't see updates there at all. Verified 2026-09-05:
+    # identical manifest digest on lscr.io/docker.io/ghcr.io for this image.
+    image: linuxserver/prowlarr:latest
     container_name: prowlarr
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.prowlarr
+      - wud.watch.digest=true
     networks: [mediahub_internal]
     environment:
       - PUID=1000
@@ -15,9 +21,13 @@ services:
       - /mnt/media:/data
 
   radarr:
-    image: lscr.io/linuxserver/radarr:latest
+    # Docker Hub mirror, not lscr.io -- see prowlarr's comment above.
+    image: linuxserver/radarr:latest
     container_name: radarr
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.radarr
+      - wud.watch.digest=true
     networks: [mediahub_internal]
     environment:
       - PUID=1000
@@ -32,9 +42,13 @@ services:
       - ./discord.env:/config/discord.env:ro
 
   sonarr:
-    image: lscr.io/linuxserver/sonarr:latest
+    # Docker Hub mirror, not lscr.io -- see prowlarr's comment above.
+    image: linuxserver/sonarr:latest
     container_name: sonarr
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.sonarr
+      - wud.watch.digest=true
     networks: [mediahub_internal]
     environment:
       - PUID=1000
@@ -49,9 +63,13 @@ services:
       - ./discord.env:/config/discord.env:ro
 
   lidarr:
-    image: lscr.io/linuxserver/lidarr:latest
+    # Docker Hub mirror, not lscr.io -- see prowlarr's comment above.
+    image: linuxserver/lidarr:latest
     container_name: lidarr
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.lidarr
+      - wud.watch.digest=true
     networks: [mediahub_internal]
     environment:
       - PUID=1000
@@ -64,9 +82,13 @@ services:
       - /mnt/media:/data
 
   bazarr:
-    image: lscr.io/linuxserver/bazarr:latest
+    # Docker Hub mirror, not lscr.io -- see prowlarr's comment above.
+    image: linuxserver/bazarr:latest
     container_name: bazarr
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.bazarr
+      - wud.watch.digest=true
     networks: [mediahub_internal]
     environment:
       - PUID=1000
@@ -105,6 +127,9 @@ services:
     image: golift/unpackerr:latest
     container_name: unpackerr
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.unpackerr
+      - wud.watch.digest=true
     networks: [mediahub_internal]
     user: "1000:1000"
     volumes:
