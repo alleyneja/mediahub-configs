@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
     
   immich-postgres:
-    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0
+    image: ghcr.io/immich-app/postgres:14-vectorchord1.1.1-pgvector0.8.5
     container_name: immich-postgres
     labels:
       # Immich pins its own Postgres build (pgvector/vectorchord extensions). Constrain WUD to the 14-vectorchord line: an 18-vectorchord tag is BOTH a Postgres major jump and an extension-version jump, and Immich's schema expects the matching pair.
