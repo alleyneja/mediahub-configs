@@ -227,6 +227,7 @@ services:
       - /home/jay/mediahub-configs/stacks/nextcloud:/home/jay/mediahub-configs/stacks/nextcloud
       - /home/jay/mediahub-configs/stacks/vaultwarden:/home/jay/mediahub-configs/stacks/vaultwarden
       - /home/jay/mediahub-configs/stacks/authentik:/home/jay/mediahub-configs/stacks/authentik
+      - /home/jay/mediahub-configs/stacks/aurral:/home/jay/mediahub-configs/stacks/aurral
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal
