@@ -35,19 +35,19 @@ services:
       - mediahub_internal
 
   authentik-server:
-    image: ghcr.io/goauthentik/server:2026.5.6
+    image: ghcr.io/goauthentik/server:2026.8.1
     container_name: authentik-server
     command: server
     labels:
       # Opt into the manual dockercompose trigger defined in
-      # stacks/wud/docker-compose.yml (2026-09-06). Pinned to the exact
-      # next hop only -- authentik requires strictly sequential major
-      # upgrades. Current planned sequence (update this label before each
-      # hop): 2024.12.5 -> 2025.2.4 -> 2025.4.4 -> 2025.6.4 -> 2025.8.6 ->
-      # 2025.10.4 -> 2025.12.6 -> 2026.2.6 -> 2026.5.6 -> 2026.8.1.
-      # authentik-worker below shares this image tag and is NOT opted in --
-      # sync it by hand after each hop, same as nextcloud-cron.
-      - wud.tag.include=^2026\.8\.1$$
+      # stacks/wud/docker-compose.yml. The sequential-hop pin (2024.12.5 ->
+      # ... -> 2026.8.1, completed 2026-09-06) is done -- no more forced
+      # single-version jumps needed for now, so this is back to normal
+      # self-serve tracking like every other WUD-watched container: no
+      # wud.tag.include, AUTO stays false so nothing applies without a
+      # manual click in wud.lan. authentik-worker below shares this image
+      # tag and is NOT opted into the trigger -- sync it by hand after
+      # clicking Run on the server, same as nextcloud-cron.
       - wud.trigger.include=dockercompose.authentik
     depends_on:
       authentik-postgres:
@@ -81,7 +81,7 @@ services:
     restart: unless-stopped
 
   authentik-worker:
-    image: ghcr.io/goauthentik/server:2026.5.6
+    image: ghcr.io/goauthentik/server:2026.8.1
     container_name: authentik-worker
     command: worker
     depends_on:

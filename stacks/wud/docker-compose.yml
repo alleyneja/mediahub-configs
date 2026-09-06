@@ -159,10 +159,12 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_VAULTWARDEN_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_VAULTWARDEN_BACKUP: "true"
       # authentik (2026-09-06): server ONLY, same reason as nextcloud --
-      # authentik-server and authentik-worker share the identical image tag.
-      # authentik requires STRICTLY SEQUENTIAL major upgrades (no skipping);
-      # the wud.tag.include on authentik-server is pinned to exactly ONE
-      # next-hop version at a time and gets updated by hand before each hop.
+      # authentik-server and authentik-worker share the identical image tag;
+      # worker gets synced by hand after clicking Run. Sequential-hop pin
+      # (2024.12.5 -> 2026.8.1) completed 2026-09-06 -- back to normal
+      # self-serve tracking now (no wud.tag.include), AUTO stays false.
+      # If a future authentik release requires another forced single-version
+      # jump, re-add wud.tag.include on authentik-server to pin it.
       # Real pg_dump backup exists (~/authentik-backup.sh, daily 2:45am).
       WUD_TRIGGER_DOCKERCOMPOSE_AUTHENTIK_FILE: /home/jay/mediahub-configs/stacks/authentik/docker-compose.yml
       WUD_TRIGGER_DOCKERCOMPOSE_AUTHENTIK_AUTO: "false"
