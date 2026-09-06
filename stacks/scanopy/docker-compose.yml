@@ -3,6 +3,13 @@ services:
   daemon:
     image: ghcr.io/scanopy/scanopy/daemon:latest
     container_name: scanopy-daemon
+    labels:
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06). host networking and
+      # privileged: true are read fresh from this file on every recreate,
+      # same as any other compose service -- nothing about those settings
+      # is lost by WUD's stop/remove/create/start cycle.
+      - wud.trigger.include=dockercompose.scanopydaemon
     network_mode: host
     privileged: true
     restart: unless-stopped
@@ -41,11 +48,10 @@ services:
   server:
     image: ghcr.io/scanopy/scanopy/server:latest
     labels:
-      # Opt ONLY server into the manual dockercompose trigger defined in
-      # stacks/wud/docker-compose.yml (2026-09-05). daemon and postgres in
-      # this same file must NOT get this label -- postgres is deliberately
-      # NOT update-triggerable (major bumps need pg_upgrade), and daemon
-      # is host-networked/privileged and hasn't been evaluated for this.
+      # Opt server into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-05; daemon opted in 2026-09-06).
+      # postgres in this same file must NOT get this label -- major bumps
+      # need pg_upgrade, never a click-to-update.
       - wud.trigger.include=dockercompose.scanopyserver
     ports:
       - "60072:60072"
