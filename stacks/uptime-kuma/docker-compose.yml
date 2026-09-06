@@ -4,6 +4,11 @@ services:
     image: louislam/uptime-kuma:latest
     container_name: uptime-kuma
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.uptimekuma
+      # Runs on floating `latest`; without this WUD can't see updates at
+      # all (same gap found for jellyfin -- see 2026-09-05 pilot notes).
+      - wud.watch.digest=true
     dns:
       - ${SERVER_IP}
     environment:
@@ -59,6 +64,9 @@ services:
     image: netdata/netdata:latest
     container_name: netdata
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.netdata
+      - wud.watch.digest=true
     pid: host
     cap_add:
       - SYS_PTRACE
@@ -83,6 +91,9 @@ services:
     image: nicolargo/glances:latest
     container_name: glances
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.glances
+      - wud.watch.digest=true
     pid: host
     privileged: true
     volumes:
