@@ -34,7 +34,7 @@ services:
       - mediahub_internal
 
   nextcloud:
-    image: nextcloud:30-apache
+    image: nextcloud:31-apache
     container_name: nextcloud
     labels:
       # Two problems without this: WUD proposes 34-fpm-alpine, which (a) switches the variant from apache to fpm-alpine, a different serving model this stack is not configured for, and (b) jumps five majors at once. Nextcloud majors MUST be applied sequentially - 29 to 30 to 31 - so only the next valid hop is allowed here. BUMP THIS RANGE after each major upgrade, or WUD will go quiet about Nextcloud entirely.
@@ -80,7 +80,7 @@ services:
   # UploadCleanup had never run at all, leaving filecache drifted from disk and
   # chunked-upload sessions stranded. Image tag MUST match the nextcloud service.
   cron:
-    image: nextcloud:30-apache
+    image: nextcloud:31-apache
     container_name: nextcloud-cron
     labels:
       - wud.tag.include=^(30|31)-apache$$

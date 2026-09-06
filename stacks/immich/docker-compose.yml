@@ -6,8 +6,9 @@ services:
       # Opt into the manual dockercompose trigger defined in
       # stacks/wud/docker-compose.yml (2026-09-06). Coupled with
       # immich-postgres below -- update postgres first, confirm healthy,
-      # then this one. immich-redis and immich-machine-learning are NOT
-      # opted in.
+      # then this one. immich-machine-learning has its own separate trigger
+      # (2026-09-06); immich-redis is NOT opted in (pinned to the 7.x line
+      # instead, standard DB-line pin).
       - wud.trigger.include=dockercompose.immichserver
     depends_on:
       - immich-redis
@@ -33,6 +34,11 @@ services:
   immich-machine-learning:
     image: ghcr.io/immich-app/immich-machine-learning:release
     container_name: immich-machine-learning
+    labels:
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06). No coupling to
+      # immich-server's own trigger -- different image, independent update.
+      - wud.trigger.include=dockercompose.immichml
     networks:
       - mediahub_internal
     restart: unless-stopped
