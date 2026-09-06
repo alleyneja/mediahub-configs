@@ -56,6 +56,55 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_SEER_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_SEER_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_SEER_BACKUP: "true"
+      # Bucket 1 (2026-09-05): the rest of the two already-proven-safe
+      # shared files. Scoping is confirmed via homepage + seer; this is
+      # just repeating the same pattern on their remaining siblings.
+      WUD_TRIGGER_DOCKERCOMPOSE_NETDATA_FILE: /home/jay/mediahub-configs/stacks/uptime-kuma/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_NETDATA_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_NETDATA_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_NETDATA_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_GLANCES_FILE: /home/jay/mediahub-configs/stacks/uptime-kuma/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_GLANCES_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_GLANCES_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_GLANCES_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_UPTIMEKUMA_FILE: /home/jay/mediahub-configs/stacks/uptime-kuma/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_UPTIMEKUMA_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_UPTIMEKUMA_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_UPTIMEKUMA_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_RADARR_FILE: /home/jay/mediahub-configs/stacks/arr-stack/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_RADARR_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_RADARR_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_RADARR_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_SONARR_FILE: /home/jay/mediahub-configs/stacks/arr-stack/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_SONARR_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_SONARR_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_SONARR_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_PROWLARR_FILE: /home/jay/mediahub-configs/stacks/arr-stack/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_PROWLARR_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_PROWLARR_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_PROWLARR_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_BAZARR_FILE: /home/jay/mediahub-configs/stacks/arr-stack/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_BAZARR_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_BAZARR_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_BAZARR_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_LIDARR_FILE: /home/jay/mediahub-configs/stacks/arr-stack/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_LIDARR_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_LIDARR_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_LIDARR_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_UNPACKERR_FILE: /home/jay/mediahub-configs/stacks/arr-stack/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_UNPACKERR_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_UNPACKERR_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_UNPACKERR_BACKUP: "true"
+      # First bucket-2-adjacent pilot (2026-09-05): scanopy's `server`
+      # service only. Its postgres is already major-version pinned
+      # (wud.tag.include), and server itself holds no real state -- the
+      # data lives in the protected DB -- so this is mechanically closer
+      # to the bucket-1 pattern than to nextcloud/immich/authentik.
+      # scanopy-daemon and scanopy-postgres-1 must NOT be opted in here.
+      WUD_TRIGGER_DOCKERCOMPOSE_SCANOPYSERVER_FILE: /home/jay/mediahub-configs/stacks/scanopy/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_SCANOPYSERVER_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_SCANOPYSERVER_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_SCANOPYSERVER_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -84,6 +133,7 @@ services:
       # marginal increase in exposure, not a new category of risk -- but
       # worth knowing this trigger's blast radius includes those secrets.
       - /home/jay/mediahub-configs/stacks/arr-stack:/home/jay/mediahub-configs/stacks/arr-stack
+      - /home/jay/mediahub-configs/stacks/scanopy:/home/jay/mediahub-configs/stacks/scanopy
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal
