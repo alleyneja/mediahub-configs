@@ -32,6 +32,11 @@ services:
   mealie:
     image: ghcr.io/mealie-recipes/mealie:v3.23.1
     container_name: mealie
+    labels:
+      # Opt into the manual dockercompose trigger defined in
+      # stacks/wud/docker-compose.yml (2026-09-06). mealie-postgres in this
+      # same file is deliberately NOT included.
+      - wud.trigger.include=dockercompose.mealie
     depends_on:
       mealie-postgres:
         condition: service_healthy
