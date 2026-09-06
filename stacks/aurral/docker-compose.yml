@@ -1,6 +1,6 @@
 services:
   aurral:
-    image: ghcr.io/lklynet/aurral:1.76.50
+    image: ghcr.io/lklynet/aurral:2.8.0
     container_name: aurral
     labels:
       # Opt into the manual dockercompose trigger defined in
