@@ -37,13 +37,19 @@ services:
       # whenever the pin above gets opened up.
       - /srv/docker/aurral/data:/config
       - /mnt/media/music/_aurral_weeklyflow:/data/weeklyflow
-      # Added 2026-09-06 so the v2.x built-in yt-dlp downloader (optional
-      # additional source alongside Lidarr, useful for niche singles Lidarr
-      # can't find) has somewhere real to put files. Mirrors Lidarr's own
-      # mount exactly (stacks/arr-stack/docker-compose.yml) -- same device
-      # as the rest of the *arr stack's downloads, so nothing ends up
-      # stranded needing a copy instead of a hardlink.
-      - /mnt/media:/data
+      # Narrowed 2026-09-07 from a blanket /mnt/media:/data (which gave
+      # Aurral read-write reach over movies/tv/every downloads subfolder,
+      # far more than it needs). Two specific mounts instead:
+      # - /data/music read-only: the Lidarr library sync (libraryLidarrIndexer.js)
+      #   calls readFileStats() on Lidarr-reported file paths to confirm
+      #   availability -- needs to SEE the real music library, never writes to it.
+      # - /data/downloads/complete/music read-write: where the yt-dlp
+      #   downloader actually writes (matches the Settings > General
+      #   "Download Folder" value, same staging folder SABnzbd/qBittorrent
+      #   use for the rest of the *arr stack). Nothing else under /mnt/media
+      #   needs to be visible to this container.
+      - /mnt/media/music:/data/music:ro
+      - /mnt/media/downloads/complete/music:/data/downloads/complete/music
     networks:
       - mediahub_internal
 
