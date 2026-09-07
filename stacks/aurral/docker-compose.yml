@@ -17,6 +17,17 @@ services:
       - PUID=1000
       - PGID=1000
       - TZ=America/Chicago
+      # Default per-request Lidarr client timeout is 30s. The Library
+      # sync fetches per-artist track/trackfile data (530 artists x 2
+      # calls, concurrency 12) and aborts the ENTIRE sync on any single
+      # failure -- most individual failures at 30s were just concurrency
+      # contention (confirmed: 7/9 sampled succeeded in 5-8s when retried
+      # alone). Raised to give real headroom for load-related slowness.
+      # Does NOT fix Beethoven/Mozart specifically (48K/54K-track
+      # catalogs -- hung 120s+ even with zero contention, tested alone);
+      # those need a separate decision (unmonitoring doesn't exclude them
+      # from the sync -- only actually removing them from Lidarr would).
+      - LIDARR_TIMEOUT_MS=120000
     volumes:
       - /srv/docker/aurral/data:/app/backend/data
       # v2.x reads from /config instead of /app/backend/data (a real
