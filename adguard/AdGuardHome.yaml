@@ -278,6 +278,9 @@ filtering:
   parental_block_host: family-block.dns.adguard.com
   safebrowsing_block_host: standard-block.dns.adguard.com
   rewrites:
+    - domain: mcpacks.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
     - domain: obsidian-sync.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true

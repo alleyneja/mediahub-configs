@@ -255,6 +255,15 @@ romm.lan {
     reverse_proxy romm:8080
 }
 
+# Plain HTTP (no TLS) - Minecraft's resource-pack downloader doesn't trust
+# our internal CA, so this can't use "tls internal" like everything else here.
+http://mcpacks.lan {
+    handle_path /packs/* {
+        root * /config/mc-resourcepacks
+        file_server
+    }
+}
+
 # ─────────────────────────────────────────
 # HOME & KITCHEN
 # ─────────────────────────────────────────
