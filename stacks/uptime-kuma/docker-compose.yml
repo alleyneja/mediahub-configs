@@ -63,6 +63,10 @@ services:
   netdata:
     image: netdata/netdata:latest
     container_name: netdata
+    # Explicit hostname (2026-09-12) -- without it Docker assigns the
+    # container ID as hostname, so Discord alerts read as a meaningless
+    # hex string instead of "mediahub-production".
+    hostname: mediahub-production
     restart: unless-stopped
     labels:
       - wud.trigger.include=dockercompose.netdata
@@ -73,6 +77,13 @@ services:
       - SYS_ADMIN
     security_opt:
       - apparmor:unconfined
+    # Discord alerting (2026-09-12): enabled in
+    # /srv/docker/visibility/netdata/config/health_alarm_notify.conf, which
+    # lives on the host only -- it's outside this repo (not just gitignored)
+    # since it holds the webhook URL in plaintext. It reuses the same
+    # webhook Uptime Kuma posts to; see Kuma's Settings > Notifications >
+    # Discord for the live URL if this needs rotating. Default alert
+    # thresholds are untouched -- nothing needed trimming yet.
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
