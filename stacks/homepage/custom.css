@@ -1,0 +1,53 @@
+/* Aurora ambient background — drifting color blobs behind the frosted
+   (cardBlur) cards.
+
+   Root cause (confirmed via DevTools element-picker + reading Homepage's own
+   compiled CSS directly, 2026-09-12): Homepage's stylesheet has the rule
+   `#__next, body, html { background-color: rgb(var(--bg-color)); height:100%;
+   margin:0; padding:0 }`. #__next is a normal child element inside body that
+   always expands to fill the page, so its own opaque background paints on
+   top of anything set on body -- completely covering it, permanently. (The
+   brief "flash" of the correct look on load is just the moment before
+   #__next's height:100% has finished laying out.)
+
+   Two things not to re-attempt, already ruled out:
+   - settings.yaml's native `background:` key is dropped entirely by the
+     settings loader before it reaches the page (verified via __NEXT_DATA__),
+     both as a nested object and a flat string.
+   - A position:fixed pseudo-element approach (html::before/body::after) is
+     fragile against ancestors that establish a new containing block.
+
+   Fix: force #__next transparent so body's own background (set below) shows
+   through everywhere except the actual frosted (cardBlur) cards. */
+
+#__next {
+  background: transparent !important;
+}
+
+body {
+  background-color: #08090c;
+  background-image: url('/bg-assets/aurora.svg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* Cards: cardBlur (settings.yaml) only controls blur strength, not surface
+   opacity/border, so the frosted-glass look needs a direct override here.
+   .service-card is a stable class name (unlike the surrounding Tailwind
+   utility classes); bookmark links share the same visual treatment but
+   don't get their own class, so they're targeted via the parent li. */
+.service-card,
+li.bookmark > a {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+}
+
+.service-card:hover,
+li.bookmark > a:hover {
+  background: rgba(255, 255, 255, 0.16) !important;
+  border-color: rgba(255, 255, 255, 0.28);
+}

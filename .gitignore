@@ -9,3 +9,5 @@ stack.env
 # Python bytecode
 __pycache__/
 *.pyc
+
+.superpowers/
