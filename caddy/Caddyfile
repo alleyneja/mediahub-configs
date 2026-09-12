@@ -244,6 +244,14 @@ homepage.lan {
         root * /config/speedtest
         file_server browse
     }
+    # Static assets for Homepage's settings.yaml `background:` image (the
+    # aurora background). Served by Caddy, not the homepage container, since
+    # Homepage's own custom.css/js hooks don't reach the app's opaque root
+    # wrapper -- see stacks/homepage/assets/aurora.svg.
+    handle_path /bg-assets/* {
+        root * /config/homepage-bg
+        file_server
+    }
     reverse_proxy homepage:3000
 }
 # ─────────────────────────────────────────

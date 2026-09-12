@@ -2,6 +2,7 @@ title: MediaHub
 theme: dark
 color: slate
 headerStyle: clean
+cardBlur: xl
 allowedHosts: 192.168.0.21:3080,homepage.lan
 layout:
   Media:
