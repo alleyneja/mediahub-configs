@@ -68,8 +68,20 @@ LOGO_OVERRIDES = {
 # nbcwesh.us is the real guide id for this affiliate group, borrowed from the
 # WESH Daytona Beach duplicate feed which does carry it (confirmed real programme
 # data). Broke live playback for ~30min on 2026-09-02 before this was found.
+#
+# The four SEC+/ACC Extra feeds have the same problem but no real feed to borrow
+# an id from — the provider gives epg_channel_id: null for all of them and there
+# is no such thing as a published per-feed schedule (they're whip-around slots,
+# not a real channel). These synthetic ids exist purely so tvg-id isn't literally
+# the string "None"; they will never match any guide data, so the channels are
+# expected to show blank/no listings in Plex — that's the actual state of the
+# provider's data, not a bug to chase.
 EPG_ID_OVERRIDES = {
     "NBC 2 WESH ORLANDO": "nbcwesh.us",
+    "SEC+ / ACC extra 01": "secacc-extra-01.mediahub",
+    "SEC+ / ACC extra 02": "secacc-extra-02.mediahub",
+    "SEC+ / ACC extra 03": "secacc-extra-03.mediahub",
+    "SEC+ / ACC extra 04": "secacc-extra-04.mediahub",
 }
 
 # Groups included entirely — no name filtering applied
@@ -83,6 +95,10 @@ FULL_GROUPS = {
     "MX: Mexico News",
     "MX: Mexico Kids",
     "MX: Mexico Sports",
+    # SEC Network+ / ACC Network Extra whip-around feeds — 4 generic numbered
+    # slots, not named per-game. See EPG_ID_OVERRIDES above for why they have
+    # no guide data.
+    "USA SEC+ ACC EXTRA",
 }
 
 # Groups included only if channel name matches one of the listed keywords (case-insensitive)
