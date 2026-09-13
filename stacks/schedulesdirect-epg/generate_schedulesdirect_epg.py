@@ -44,6 +44,105 @@ STATION_MAP = {
     "abcwftv.us": "20491",       # WFTV-DT (ABC 9 Orlando)
     "cbs6wkmg.us": "21299",      # WKMG-DT (CBS 6 Orlando)
     "nbcwesh.us": "21647",       # WESH-DT (NBC 2 Orlando)
+
+    # Batch 2: USA Entertainment + USA Movies Channels groups. Matched by
+    # channel name against the DirecTV Orlando lineup's ~1015 stations; a few
+    # channels (EPIX Drive-In, Lifetime Movies, RetroPlex, The Film Detective,
+    # Showtime 2) had no equivalent in this lineup and were left unmapped —
+    # they stay on the provider's own guide, unchanged.
+    "aande.us": "10035",  # A&E
+    "amc.us": "59337",  # AMC HD
+    "animalplanet.us": "57394",  # Animal Planet HD
+    "bbcamerica.us": "64492",  # BBC America HD
+    "bether.us": "14897",  # BET Her
+    "bet.us": "63236",  # BET HD
+    "betwest.us": "14897",  # BET Her
+    "bravo.us": "58625",  # Bravo HD
+    "comedycentral.us": "62420",  # Comedy Central HD
+    "discoverychannel.us": "56905",  # Discovery Channel HD
+    "discoveryfamily.us": "67749",  # Discovery Family Channel HD
+    "eentertainment.us": "61812",  # E! Entertainment Television HD
+    "foodnetwork.us": "12574",  # Food Network
+    "freeform.us": "59615",  # Freeform HD
+    "fx.us": "58574",  # FX HD
+    "fxx.us": "66379",  # FXX HD
+    "gameshownetwork.us": "14909",  # Game Show Network
+    "hallmarkmoviesmysteries.us": "46710",  # Hallmark Mystery HD (real-world rebrand)
+    "hallmark.us": "66268",  # Hallmark Channel HD
+    "hgtv.us": "14902",  # Home & Garden Television
+    "historychannel.us": "57708",  # History HD
+    "independentfilmchannel.us": "59444",  # IFC HD
+    "investigationdiscovery.us": "65342",  # Investigation Discovery HD
+    "lifetimenetwork.us": "60150",  # Lifetime HD
+    "mtv.us": "10986",  # MTV - Music Television
+    "natgeo.us": "49438",  # National Geographic HD
+    "oxygen.us": "21484",  # Oxygen True Crime (real-world rebrand)
+    "paramountnetwork.us": "59186",  # Paramount Network HD
+    "syfy.us": "58623",  # Syfy HD
+    "tlc.us": "11158",  # TLC
+    "tnt.us": "42642",  # TNT HD
+    "trutv.us": "64490",  # truTV HD
+    "usanetwork.us": "11207",  # USA Network
+    "vh1.us": "60046",  # VH1 HD
+    "weatherchannel.us": "58812",  # The Weather Channel HD
+    "cinemax.us": "34933",  # Cinemax HD
+    "fxm.us": "14988",  # FXM
+    "hbo2.us": "10241",  # HBO Hits
+    "hbocomedypacific.us": "59839",  # HBO Comedy HD
+    "hbocomedy.us": "59839",  # HBO Comedy HD
+    "hbosignature.us": "10243",  # HBO Drama
+    "hbo.us": "10240",  # HBO
+    "hbowest.us": "10240",  # HBO
+    "moremax.us": "10121",  # Cinemax Hits
+    "showtimeextreme.us": "60947",  # Showtime Extreme HD
+    "showtimeshowcase.us": "61001",  # Showtime Showcase HD
+    "starzcinema.us": "67236",  # Starz Cinema HD
+    "starzencore.us": "36225",  # Starz Encore HD
+    "starzinblack.us": "67235",  # Starz in Black HD
+    "sundancetv.us": "71280",  # SundanceTV HD
+    "turnerclassicmovies.us": "12852",  # Turner Classic Movies
+    "mgm.us": "65687",  # MGM+ HD (real-world EPIX rebrand)
+    "mgmhits.us": "67929",  # MGM+ Hits HD
+    "mgmmarquee.us": "74073",  # MGM+ Marquee HD
+    "epixhits.us": "67929",  # MGM+ Hits HD (provider's duplicate "EPIX Hits" tvg-id)
+
+    # Batch 3: Family & Kids, News, remaining Sports, and the 3 non-Orlando
+    # local backups. Channels with no equivalent in this lineup (PBS Kids,
+    # WFMY Greensboro, Al Jazeera, BBC World News, OAN, Scripps News, C-SPAN 3,
+    # Fight Network, MavTV, Olympic Channel, PAC-12 Network, Stadium) were left
+    # unmapped — they stay on the provider's own guide, unchanged.
+    "boomerang.us": "21883",  # Boomerang
+    "disneyjunior.us": "74885",  # Disney Junior HD
+    "disneyxd.us": "60006",  # Disney XD HD
+    "nickelodeon.us": "59432",  # Nickelodeon HD
+    "nickjr.us": "82649",  # Nick Jr HD
+    "teennick.us": "59036",  # Teen Nick
+    "cartoonnetwork.us": "60048",  # Cartoon Network HD
+    "disneychannel.us": "59684",  # Disney Channel HD
+    "nicktoons.us": "30420",  # Nicktoons
+    "abcwabc.us": "20453",  # WABC-DT (ABC 7 New York)
+    "foxwnyw.us": "20360",  # WNYW-DT (FOX 5 New York)
+    "golfchannel.us": "14899",  # Golf Channel
+    "360northanchorage.us": "14899",  # Golf Channel (provider's mislabeled tvg-id, same real channel)
+    "bloombergtv.us": "71799",  # Bloomberg HD
+    "cnbc.us": "58780",  # CNBC HD
+    "cnninternational.us": "10146",  # CNN International
+    "cnn.us": "58646",  # CNN HD
+    "cspan.us": "10161",  # CSPAN
+    "cspan2.us": "10162",  # CSPAN2
+    "foxbusiness.us": "58718",  # Fox Business HD
+    "foxnews.us": "60179",  # Fox News Channel HD
+    "hln.us": "64549",  # HLN HD
+    "newsmax.us": "97163",  # Newsmax TV HD
+    "newsnation.us": "91096",  # NewsNation
+    "bigtennetwork.us": "58321",  # Big Ten Network HD
+    "cbssportsnetworkusa.us": "59250",  # CBS Sports Network HD
+    "foxdeportes.us": "72189",  # Fox Deportes HD
+    "foxsports1.us": "82547",  # FS1 HD
+    "foxsports2.us": "59305",  # FS2 HD
+    "nflredzone.us": "65025",  # NFL RedZone HD
+    "nhlnetwork.us": "58690",  # NHL Network HD
+    "tennischannel.us": "33395",  # Tennis Channel
 }
 
 
