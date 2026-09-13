@@ -128,8 +128,21 @@ def main():
         for p in programs:
             details = details_map.get(p["programID"], {})
             titles = details.get("titles", [])
-            title = titles[0].get("title120", "Unknown") if titles else "Unknown"
+            base_title = titles[0].get("title120", "Unknown") if titles else "Unknown"
             subtitle = details.get("episodeTitle150", "")
+
+            # Plex's Live TV grouping dedupes programmes across DIFFERENT channels
+            # when their <title> strings match exactly, on the assumption that's
+            # the same broadcast simulcast elsewhere. Generic sports titles like
+            # "College Football" collide across every channel airing a game at
+            # the same time, so Plex conflates unrelated games into one shared
+            # metadata record and the "losers" show as Unknown Airing. Folding
+            # the matchup into the title itself keeps it unique per game so Plex
+            # can't merge two different games together.
+            if subtitle:
+                title = f"{base_title}: {subtitle}"
+            else:
+                title = base_title
 
             desc = ""
             descs = details.get("descriptions", {})
