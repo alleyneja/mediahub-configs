@@ -1,9 +1,14 @@
 services:
   wud:
-    image: getwud/wud:8.3.1
+    image: getwud/wud:9.0.2
     container_name: wud
     environment:
       TZ: America/Chicago
+      # v9.0.0 made auth mandatory -- WUD refuses to start with no admin
+      # configured. Credentials come from the git-ignored .env in this
+      # directory, never hardcoded (this repo is public).
+      WUD_AUTH_ADMIN_USER: ${WUD_AUTH_ADMIN_USER}
+      WUD_AUTH_ADMIN_PASSWORD: ${WUD_AUTH_ADMIN_PASSWORD}
       # Weekly sweep, Mondays 09:00 -- same cadence Diun used.
       WUD_WATCHER_LOCAL_CRON: "0 9 * * 1"
       # Report on every running container, not just ones with a wud.watch label.
