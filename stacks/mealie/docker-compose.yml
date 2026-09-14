@@ -30,7 +30,7 @@ services:
     restart: unless-stopped
 
   mealie:
-    image: ghcr.io/mealie-recipes/mealie:v3.25.1
+    image: ghcr.io/mealie-recipes/mealie:v3.26.0
     container_name: mealie
     labels:
       # Opt into the manual dockercompose trigger defined in
