@@ -35,7 +35,7 @@ services:
       - mediahub_internal
 
   authentik-server:
-    image: ghcr.io/goauthentik/server:2026.8.1
+    image: ghcr.io/goauthentik/server:2026.8.2
     container_name: authentik-server
     command: server
     labels:
@@ -81,7 +81,7 @@ services:
     restart: unless-stopped
 
   authentik-worker:
-    image: ghcr.io/goauthentik/server:2026.8.1
+    image: ghcr.io/goauthentik/server:2026.8.2
     container_name: authentik-worker
     command: worker
     depends_on:

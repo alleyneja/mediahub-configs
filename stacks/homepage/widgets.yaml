@@ -9,8 +9,24 @@
       timeStyle: short
       hourCycle: h23
 
+- openmeteo:
+    label: Panama City, FL
+    latitude: 30.1477
+    longitude: -85.5843
+    units: imperial
+
 - search:
     provider: google
+    target: _blank
+
+- search:
+    provider: custom
+    url: https://seer.lan/search?query=
+    target: _blank
+
+- search:
+    provider: custom
+    url: https://aurral.lan/search?q=
     target: _blank
 
 - glances:
