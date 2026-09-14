@@ -8,8 +8,24 @@ import os
 import tempfile
 import urllib.request
 
-USERNAME = "alleyneja"
-PASSWORD = "***REMOVED-IPTV-PASSWORD***"
+
+def _load_env_file(path):
+    """Cron invokes this script directly, with no docker-compose env_file to lean on."""
+    if not os.path.exists(path):
+        return
+    with open(path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
+
+
+_load_env_file(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".env"))
+
+USERNAME = os.environ["IPTV_USERNAME"]
+PASSWORD = os.environ["IPTV_PASSWORD"]
 HOST = "http://link4tv.cc:80"
 OUTPUT = "/srv/docker/threadfin/conf/live_only.m3u"
 
