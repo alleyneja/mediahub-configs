@@ -154,6 +154,8 @@
         widget:
           type: whatsupdocker
           url: http://wud:3000
+          username: "{{HOMEPAGE_VAR_WUD_USERNAME}}"
+          password: "{{HOMEPAGE_VAR_WUD_PASSWORD}}"
     - Netdata:
         href: https://netdata.lan
         description: Resource monitoring
