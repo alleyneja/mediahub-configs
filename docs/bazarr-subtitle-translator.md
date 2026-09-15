@@ -60,6 +60,22 @@ model name took three attempts, each teaching something worth keeping:
 4. `gemini-3.6-flash` → confirmed working, first via a direct `curl` against the raw
    Gemini API, then end-to-end through Bazarr: a real, correctly-timed, accurate
    3,202-line Spanish translation of a Money Heist episode.
+5. **`gemini-3.6-flash`'s free tier is capped at 20 requests/day, period** — hit this
+   almost immediately from repeated testing. Confirmed via the API's own 429 response
+   body, which names the exact quota:
+   ```
+   "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+   "quotaValue": "20", "model": "gemini-3.6-flash"
+   ```
+   Bazarr batches ~300 subtitle lines per API call, so a typical episode (800+ entries)
+   costs ~3 requests — this model can only process ~6-7 episodes/day. Useless for any
+   real backlog. **Switched to `gemini-3.5-flash-lite`** (Google's own explicitly
+   recommended lite replacement, surfaced in the 404 messages above) instead — lite-tier
+   models consistently get much larger free daily quotas than full flash models, though
+   the exact number here was never confirmed (didn't want to burn requests testing it to
+   exhaustion). If bulk translation stalls, check for the same `RESOURCE_EXHAUSTED` /
+   `quotaId` error pattern before assuming anything else broke — it names the model and
+   the limit directly.
 
 **How to re-derive the current working model if this breaks again** (it will — Gemini's
 lineup moves fast): `curl "https://generativelanguage.googleapis.com/v1beta/models?key=<key>"`
@@ -78,15 +94,41 @@ credential):
 ```yaml
 translator:
   translator_type: gemini
-  gemini_model: gemini-3.6-flash
+  gemini_model: gemini-3.5-flash-lite
   gemini_keys:
     - <key>
 ```
 
-**This is a manual, per-file action**, not automatic library-wide backfill —
-`PATCH /api/subtitles` with `action=translate` translates one subtitle at a time,
-triggered from Bazarr's UI or API. Nothing currently loops this over the whole library
-automatically.
+## A second, separate bug: translations never actually mark the episode as done
 
-**Verify the same way every time, don't just trust the response code:** check the actual
-output file landed with real translated content, not just that the API returned 204.
+Even with a working model, the first several real translations produced a correct file
+on disk that Bazarr **still reported as missing** forever after. Traced to
+`api/subtitles/subtitles.py`'s `postprocess_subtitles()`: the call to `store_subtitles(id)`
+— the function that updates Bazarr's own "missing subtitles" database — is nested inside
+`if chmod:`, which only evaluates truthy when `general.chmod_enabled` is `True`. It
+defaults to `False`. So every translate action silently skipped its own bookkeeping step.
+
+Fixed by setting `general.chmod_enabled: true` (the `general.chmod: '0640'` value was
+already sitting in config, just unused). Confirmed this doesn't break anything else:
+Plex runs as the same host user (`jay`, matching Bazarr's `PUID`), so `0640` (owner
+read/write) doesn't block it from reading subtitles.
+
+**Verify translations two ways, not one:** check the output file has real content *and*
+that the item actually drops off `GET /api/episodes/wanted` (or `/api/movies/wanted`)
+afterward — a `204` response and even a populated file on disk both looked like success
+while this bug was still live.
+
+## Bulk backlog script
+
+`stacks/arr-stack/scripts/bazarr-translate-missing-es.py` in this repo re-derives its
+worklist from Bazarr's live wanted list on every run (Spanish missing, English already
+present) and calls the translate action for each — safe to stop and re-run any time,
+since completed items now correctly disappear from the list thanks to the chmod fix
+above. It stops itself after 5 consecutive failures/timeouts (quota exhaustion, API
+outage) rather than grinding uselessly through the rest of a long list. Logs to
+`/srv/docker/bazarr/config/translate-missing-es.log`.
+
+**This only helps the subset of the backlog with English already present and no
+Spanish anywhere.** Most real Spanish coverage should keep coming from the subtitle
+providers themselves (`bazarr-anime-subtitle-providers.md`) finding genuine subtitles —
+translation is a fallback for what's left after that, not the primary path.
