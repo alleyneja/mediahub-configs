@@ -108,10 +108,38 @@ missing subtitles and confirm real `animetosho` results come back — `status: G
 `/api/providers` only means the settings parsed without a config error, exactly like it
 did for Jimaku while Jimaku was doing nothing.
 
+## subdl's free tier download quota is tiny — and separate from its request quota
+
+Once animetosho started backfilling the anime backlog, subdl (which our profile also
+leans on for regular English/Spanish content) got throttled with a "retry in 21 hours"
+message almost immediately. Checked the actual history: only **17 downloads** (7
+episodes + 10 movies) happened before subdl returned `DownloadLimitExceeded`, all inside
+a ~25 minute window. subdl markets a generous free-tier *request* limit (thousands/day
+for search and metadata calls), but actual subtitle *downloads* are metered far more
+strictly and separately — confirmed empirically here, not from subdl's own docs, since
+subdl.com blocks automated fetching the same way anidb.net does.
+
+Bazarr's retry countdown for subdl is always framed as time-until-next-midnight-GMT
+(`midnight_gmt_limit_reset_timedelta()` in `app/get_providers.py`), not a fixed cooldown
+— that's why the wait time varies depending on when in the day the limit gets hit.
+
+**Fixed by upgrading to SubDL Pro ($5/mo, 2,000 downloads/day)** — the same API key
+carried over after upgrading, no Bazarr config change was needed. One thing that *did*
+need doing manually: Bazarr's provider-throttle state is written to a file
+(`config/throttled_providers.dat`) that **survives a container restart** — after
+confirming the account was upgraded, the stale cooldown had to be cleared explicitly via
+`POST /api/providers` with `action=reset`, rather than waiting it out or expecting a
+restart to fix it.
+
+Also included in Pro, not yet set up: a dedicated Bazarr plugin for AI-translating
+missing languages directly into the library. Worth a look later given the profile wants
+both English and Spanish.
+
 ## Current state (2026-09-15)
 
-`enabled_providers`: `opensubtitlescom`, `subdl`, `animetosho`. Jimaku present in config,
-disabled. The actual `anidb.api_client` value and the Jimaku API key live only in
-Bazarr's runtime `config.yaml` under `/srv/docker/bazarr/config/` — deliberately not
-reproduced here or committed anywhere in this repo, same reason the Vaultwarden token
-leak was a problem before: this repo is public.
+`enabled_providers`: `opensubtitlescom`, `subdl` (Pro tier), `animetosho`. Jimaku present
+in config, disabled. The actual `anidb.api_client` value, the subdl API key, and the
+Jimaku API key live only in Bazarr's runtime `config.yaml` under
+`/srv/docker/bazarr/config/` — deliberately not reproduced here or committed anywhere in
+this repo, same reason the Vaultwarden token leak was a problem before: this repo is
+public.
