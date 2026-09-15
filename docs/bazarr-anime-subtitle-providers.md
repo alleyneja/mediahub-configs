@@ -131,9 +131,12 @@ confirming the account was upgraded, the stale cooldown had to be cleared explic
 `POST /api/providers` with `action=reset`, rather than waiting it out or expecting a
 restart to fix it.
 
-Also included in Pro, not yet set up: a dedicated Bazarr plugin for AI-translating
-missing languages directly into the library. Worth a look later given the profile wants
-both English and Spanish.
+Pro's marketing also mentions a dedicated Bazarr plugin for AI-translating missing
+languages directly into the library. **Checked and it doesn't exist in this Bazarr
+version** — grepped the entire `subdl` provider source and the whole app for any
+AI-translation code and found none. That feature isn't wired into this Bazarr release
+regardless of account tier. Bazarr's own separate built-in translator turned out to be
+the real path for AI-filled Spanish — see `bazarr-subtitle-translator.md`.
 
 ## Current state (2026-09-15)
 
@@ -143,3 +146,18 @@ Jimaku API key live only in Bazarr's runtime `config.yaml` under
 `/srv/docker/bazarr/config/` — deliberately not reproduced here or committed anywhere in
 this repo, same reason the Vaultwarden token leak was a problem before: this repo is
 public.
+
+**Backlog snapshot as of 2026-09-15, before letting the improved providers run
+unattended:**
+
+| | Episodes | Movies |
+|---|---|---|
+| Missing Spanish, English already present (translation could help) | 1,568 | 58 |
+| Missing both languages (needs a provider to find *something* first) | 2,135 | 24 |
+
+Decision: let `subdl` (now Pro, 2,000 downloads/day) and `animetosho` run unattended for
+a few hours via Bazarr's normal scheduled search before deciding whether to build
+automation around the Gemini translator for the leftover English-only gap. Most of the
+library's real Spanish coverage comes from providers finding genuine subtitles, not
+translation — translation is a fallback for whatever's left after that, not the primary
+path.
