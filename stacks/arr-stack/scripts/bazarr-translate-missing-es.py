@@ -7,6 +7,13 @@ missing Spanish anymore and will drop off the list.
 Stops after CONSECUTIVE_FAILURE_LIMIT items in a row fail/timeout, on the assumption
 that's a real problem (quota exhaustion, API outage) rather than bad luck - rather than
 grinding uselessly through the rest of a long backlog.
+
+Items that fail/timeout are recorded in BLOCKLIST_PATH with an attempt count. An item is
+only excluded from future worklists once it has failed on SKIP_AFTER_ATTEMPTS separate
+runs, so a single transient failure (e.g. an outage mid-run) doesn't permanently exclude
+a translatable item, but a consistently broken item (e.g. one that reproducibly makes
+Gemini return malformed output) stops eating the consecutive-failure budget on every run
+and blocking everything queued behind it.
 """
 import json
 import os
@@ -16,14 +23,33 @@ import time
 from datetime import datetime, timezone
 
 BASE = "http://localhost:6767/api"
-APIKEY = os.environ.get("BAZARR_APIKEY")
+CONTAINER_MEDIA_PREFIX = "/data"
+HOST_MEDIA_PREFIX = "/mnt/media"
+BAZARR_CONFIG_PATH = "/srv/docker/bazarr/config/config.yaml"
+
+
+def _load_apikey():
+    env_key = os.environ.get("BAZARR_APIKEY")
+    if env_key:
+        return env_key
+    try:
+        import yaml
+        with open(BAZARR_CONFIG_PATH) as f:
+            return yaml.safe_load(f)["auth"]["apikey"]
+    except Exception:
+        return None
+
+
+APIKEY = _load_apikey()
 if not APIKEY:
-    sys.exit("BAZARR_APIKEY environment variable is required (read it from "
-             "/srv/docker/bazarr/config/config.yaml under auth.apikey)")
+    sys.exit("Could not determine Bazarr API key: set BAZARR_APIKEY or ensure "
+             f"{BAZARR_CONFIG_PATH} has auth.apikey set")
 LOG_PATH = "/srv/docker/bazarr/config/translate-missing-es.log"
+BLOCKLIST_PATH = "/srv/docker/bazarr/config/translate-missing-es-blocklist.json"
 POLL_INTERVAL = 8
 POLL_TIMEOUT = 240  # seconds per item
 CONSECUTIVE_FAILURE_LIMIT = 5
+SKIP_AFTER_ATTEMPTS = 2  # exclude an item from the worklist after this many failed runs
 
 
 def log(msg):
@@ -31,6 +57,23 @@ def log(msg):
     print(line, flush=True)
     with open(LOG_PATH, "a") as f:
         f.write(line + "\n")
+
+
+def load_attempts():
+    try:
+        with open(BLOCKLIST_PATH, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"episode": {}, "movie": {}}
+
+
+def record_failure(kind, item_id):
+    attempts = load_attempts()
+    key = str(item_id)
+    attempts[kind][key] = attempts[kind].get(key, 0) + 1
+    with open(BLOCKLIST_PATH, "w") as f:
+        json.dump(attempts, f)
+    return attempts[kind][key]
 
 
 def api_get(path, params=None):
@@ -51,12 +94,15 @@ def api_patch(data):
     return out.stdout.strip()
 
 
-def get_wanted(kind):
+def get_wanted(kind, attempts):
     path = f"/episodes/wanted" if kind == "episode" else "/movies/wanted"
     d = api_get(path, {"start": 0, "length": -1})
+    id_key = "sonarrEpisodeId" if kind == "episode" else "radarrId"
+    blocked = {k for k, v in attempts[kind].items() if v >= SKIP_AFTER_ATTEMPTS}
     return [x for x in d["data"]
             if any(m["code2"] == "es" for m in x["missing_subtitles"])
-            and not any(m["code2"] == "en" for m in x["missing_subtitles"])]
+            and not any(m["code2"] == "en" for m in x["missing_subtitles"])
+            and str(x[id_key]) not in blocked]
 
 
 def get_detail(kind, item_id):
@@ -81,7 +127,10 @@ def build_es_target_path(en_path, forced, hi):
         suffix += ".forced"
     if hi:
         suffix += ".hi"
-    return base + suffix + ".srt"
+    target = base + suffix + ".srt"
+    if target.startswith(CONTAINER_MEDIA_PREFIX):
+        target = HOST_MEDIA_PREFIX + target[len(CONTAINER_MEDIA_PREFIX):]
+    return target
 
 
 def process_one(kind, item):
@@ -120,7 +169,9 @@ def process_one(kind, item):
 
     code = api_patch(patch_data)
     if code != "204":
-        log(f"FAIL {kind} {item_id} ({title} {epno}): translate call returned HTTP {code}")
+        n = record_failure(kind, item_id)
+        log(f"FAIL {kind} {item_id} ({title} {epno}): translate call returned HTTP {code} "
+            f"(attempt {n})")
         return "fail"
 
     waited = 0
@@ -136,7 +187,9 @@ def process_one(kind, item):
         except FileNotFoundError:
             continue
 
-    log(f"TIMEOUT {kind} {item_id} ({title} {epno}): no output after {POLL_TIMEOUT}s")
+    n = record_failure(kind, item_id)
+    log(f"TIMEOUT {kind} {item_id} ({title} {epno}): no output after {POLL_TIMEOUT}s "
+        f"(attempt {n}{', excluding from future worklists' if n >= SKIP_AFTER_ATTEMPTS else ''})")
     return "timeout"
 
 
@@ -146,8 +199,11 @@ def main():
     counts = {"ok": 0, "fail": 0, "timeout": 0, "skip": 0}
 
     for kind in ("episode", "movie"):
-        worklist = get_wanted(kind)
-        log(f"{kind}: {len(worklist)} candidates (Spanish missing, English present)")
+        attempts = load_attempts()
+        worklist = get_wanted(kind, attempts)
+        excluded = sum(1 for v in attempts[kind].values() if v >= SKIP_AFTER_ATTEMPTS)
+        log(f"{kind}: {len(worklist)} candidates (Spanish missing, English present)"
+            + (f", {excluded} excluded as repeatedly-failing" if excluded else ""))
         for item in worklist:
             result = process_one(kind, item)
             counts[result] += 1

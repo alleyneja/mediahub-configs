@@ -132,3 +132,44 @@ outage) rather than grinding uselessly through the rest of a long list. Logs to
 Spanish anywhere.** Most real Spanish coverage should keep coming from the subtitle
 providers themselves (`bazarr-anime-subtitle-providers.md`) finding genuine subtitles —
 translation is a fallback for what's left after that, not the primary path.
+
+## A third bug: the backlog script's own success check was blind (2026-09-16)
+
+The script polls for the translated `.es.srt` file to confirm success, using the path
+Bazarr's API returns for the source `.en.srt`. That path is the **container-internal**
+path (`/data/tv/...`) — but the script runs on the **host**, where the real path is
+`/mnt/media/tv/...` (`docker inspect bazarr` confirms the `/mnt/media -> /data` mount).
+The script was checking a path that can't exist on the host, so every translation was
+silently misreported as a `TIMEOUT` even when Bazarr successfully wrote the file
+seconds later. Fixed by translating `/data` -> `/mnt/media` before checking.
+
+**This produced a convincing false trail.** A full evening of `TIMEOUT` log entries, all
+on the same show (Dragon Ball Kai S1 — first alphabetically/by-ID in the wanted list),
+looked exactly like a systemic quota/API problem: the built-in 5-consecutive-failure
+circuit breaker kept firing before the run ever reached anything else, day after day.
+A live reproduction of the exact same Gemini request outside Bazarr succeeded cleanly —
+which at the time looked like proof the failures were random flakiness, but was actually
+the first clue the *check*, not the translation, was broken. Confirmed by finding real
+`.es.srt` files already sitting on disk, correctly timestamped, for episodes the wrapper
+had logged as failed. **Lesson: when a script's own failure log is suspiciously
+consistent and content-independent, verify the file actually exists where you're
+checking before trusting the log.**
+
+Also added: failed/timed-out items are now tracked with an attempt count in
+`translate-missing-es-blocklist.json` (next to the log) and excluded from future
+worklists after 2 failed runs, so a real bad-luck streak can't block the whole queue the
+way the path bug's false failures did. Given the root cause above is fixed, this should
+rarely trigger — if an episode ends up excluded, delete its entry from that file to
+retry it.
+
+## Scheduled via cron (2026-09-16)
+
+Runs every 30 minutes (`crontab -l`), guarded by `flock` so overlapping runs can't stack:
+
+```
+*/30 * * * * flock -n /tmp/bazarr-translate-missing-es.lock python3 /home/jay/mediahub-configs/stacks/arr-stack/scripts/bazarr-translate-missing-es.py >> /home/jay/logs/bazarr-translate-missing-es-cron.log 2>&1
+```
+
+The script now also reads the Bazarr API key straight from `config.yaml`
+(`auth.apikey`) if `BAZARR_APIKEY` isn't set in the environment, so the cron entry
+doesn't need the key embedded in it.
