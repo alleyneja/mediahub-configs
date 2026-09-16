@@ -50,12 +50,13 @@ or rotate each one:
 
 A Discord Application + bot ("Homelab Ops") was created 2026-09-15 to
 create/manage channels and webhooks via the API. It holds `Manage Channels`
-and `Manage Webhooks` on the Homelab server only. **The bot token is stored
-in Vaultwarden, not here** — add/rotate it there if it's ever needed again;
-never paste it into this repo.
+and `Manage Webhooks` on the Homelab server only. Its token lives in
+`scripts/discord-bot.env` (`DISCORD_BOT_TOKEN=`, plus `GUILD_ID=` for
+convenience) — gitignored via the repo's blanket `*.env` rule, same as
+every other secret in this repo. Never paste it into a tracked file.
 
 To add a webhook to a new channel later (e.g. wiring up
-`#home-automation`), with the bot token loaded as `$DISCORD_BOT_TOKEN`:
+`#home-automation`), source that file and:
 
 ```
 curl -X POST "https://discord.com/api/v10/channels/<channel_id>/webhooks" \
