@@ -5,8 +5,8 @@ so it's safe to stop and re-run at any time - already-completed items simply won
 missing Spanish anymore and will drop off the list.
 
 Stops after CONSECUTIVE_FAILURE_LIMIT items in a row fail/timeout, on the assumption
-that's a real problem (quota exhaustion, API outage) rather than bad luck - rather than
-grinding uselessly through the rest of a long backlog.
+that's a real problem (an API outage, or a specific broken item) rather than bad luck -
+rather than grinding uselessly through the rest of a long backlog.
 
 Items that fail/timeout are recorded in BLOCKLIST_PATH with an attempt count. An item is
 only excluded from future worklists once it has failed on SKIP_AFTER_ATTEMPTS separate
@@ -14,18 +14,31 @@ runs, so a single transient failure (e.g. an outage mid-run) doesn't permanently
 a translatable item, but a consistently broken item (e.g. one that reproducibly makes
 Gemini return malformed output) stops eating the consecutive-failure budget on every run
 and blocking everything queued behind it.
+
+The Gemini free tier enforces a hard per-day request quota (confirmed 2026-09-16: 500
+requests/day for gemini-3.5-flash-lite, resets at midnight Pacific). When that quota is
+hit, every subsequent item in the worklist would also fail, for reasons that have nothing
+to do with those specific items - so instead of recording those as per-item failures (and
+wrongly blocklisting perfectly fine items, as happened before this was added), the script
+detects the quota error directly from Bazarr's own log and goes into a cooldown until the
+next reset. Any cron-triggered run during the cooldown is a fast no-op: no API calls, no
+blocklist changes, just a log line saying so.
 """
 import json
 import os
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 BASE = "http://localhost:6767/api"
 CONTAINER_MEDIA_PREFIX = "/data"
 HOST_MEDIA_PREFIX = "/mnt/media"
 BAZARR_CONFIG_PATH = "/srv/docker/bazarr/config/config.yaml"
+BAZARR_LOG_PATH = "/srv/docker/bazarr/log/bazarr.log"
+BAZARR_LOG_TZ = ZoneInfo("America/Chicago")  # bazarr.log timestamps have no offset; this is the container's local tz
+QUOTA_RESET_TZ = ZoneInfo("America/Los_Angeles")  # Gemini free-tier daily quota resets at midnight Pacific
 
 
 def _load_apikey():
@@ -46,6 +59,7 @@ if not APIKEY:
              f"{BAZARR_CONFIG_PATH} has auth.apikey set")
 LOG_PATH = "/srv/docker/bazarr/config/translate-missing-es.log"
 BLOCKLIST_PATH = "/srv/docker/bazarr/config/translate-missing-es-blocklist.json"
+COOLDOWN_PATH = "/srv/docker/bazarr/config/translate-missing-es-cooldown.json"
 POLL_INTERVAL = 8
 POLL_TIMEOUT = 240  # seconds per item
 CONSECUTIVE_FAILURE_LIMIT = 5
@@ -74,6 +88,51 @@ def record_failure(kind, item_id):
     with open(BLOCKLIST_PATH, "w") as f:
         json.dump(attempts, f)
     return attempts[kind][key]
+
+
+def read_cooldown_until():
+    try:
+        with open(COOLDOWN_PATH, "r") as f:
+            data = json.load(f)
+        return datetime.fromisoformat(data["until"])
+    except (FileNotFoundError, json.JSONDecodeError, KeyError, ValueError):
+        return None
+
+
+def write_cooldown_until_next_quota_reset():
+    now_pacific = datetime.now(QUOTA_RESET_TZ)
+    next_midnight_pacific = (now_pacific + timedelta(days=1)).replace(
+        hour=0, minute=0, second=0, microsecond=0)
+    until_utc = next_midnight_pacific.astimezone(timezone.utc)
+    with open(COOLDOWN_PATH, "w") as f:
+        json.dump({"until": until_utc.isoformat()}, f)
+    return until_utc
+
+
+def bazarr_log_has_rate_limit_error_since(since_utc):
+    """Tail bazarr.log for a Gemini quota/rate-limit error at/after since_utc (aware UTC)."""
+    try:
+        with open(BAZARR_LOG_PATH, "r", errors="replace") as f:
+            f.seek(0, os.SEEK_END)
+            size = f.tell()
+            f.seek(max(0, size - 200_000))
+            lines = f.readlines()
+    except FileNotFoundError:
+        return False
+    cutoff = since_utc - timedelta(seconds=5)
+    for line in reversed(lines):
+        if "|" not in line:
+            continue
+        ts_str = line.split("|", 1)[0].strip()
+        try:
+            local_dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=BAZARR_LOG_TZ)
+        except ValueError:
+            continue
+        if local_dt.astimezone(timezone.utc) < cutoff:
+            break  # log is chronological; everything older is irrelevant
+        if "rate limited" in line or "RESOURCE_EXHAUSTED" in line:
+            return True
+    return False
 
 
 def api_get(path, params=None):
@@ -167,6 +226,7 @@ def process_one(kind, item):
     if kind == "episode":
         patch_data["seriesid"] = series_id
 
+    request_time = datetime.now(timezone.utc)
     code = api_patch(patch_data)
     if code != "204":
         n = record_failure(kind, item_id)
@@ -185,7 +245,11 @@ def process_one(kind, item):
                 log(f"OK {kind} {item_id} ({title} {epno}): {target_path} ({len(content)} bytes, {waited}s)")
                 return "ok"
         except FileNotFoundError:
-            continue
+            pass
+        if bazarr_log_has_rate_limit_error_since(request_time):
+            log(f"RATE_LIMITED {kind} {item_id} ({title} {epno}): Gemini daily quota exhausted "
+                f"after {waited}s - not counting against this item")
+            return "rate_limited"
 
     n = record_failure(kind, item_id)
     log(f"TIMEOUT {kind} {item_id} ({title} {epno}): no output after {POLL_TIMEOUT}s "
@@ -194,9 +258,16 @@ def process_one(kind, item):
 
 
 def main():
+    cooldown_until = read_cooldown_until()
+    now = datetime.now(timezone.utc)
+    if cooldown_until and now < cooldown_until:
+        log(f"=== translate-missing-es skipped: in cooldown until {cooldown_until.isoformat()} "
+            f"(Gemini daily quota exhausted) ===")
+        return
+
     log("=== translate-missing-es run started ===")
     consecutive_failures = 0
-    counts = {"ok": 0, "fail": 0, "timeout": 0, "skip": 0}
+    counts = {"ok": 0, "fail": 0, "timeout": 0, "skip": 0, "rate_limited": 0}
 
     for kind in ("episode", "movie"):
         attempts = load_attempts()
@@ -207,16 +278,22 @@ def main():
         for item in worklist:
             result = process_one(kind, item)
             counts[result] += 1
+            if result == "rate_limited":
+                until = write_cooldown_until_next_quota_reset()
+                log(f"STOPPING: Gemini daily quota exhausted, cooling down until "
+                    f"{until.isoformat()} - not blocklisting the item in progress.")
+                log(f"=== run ended early: {counts} ===")
+                return
             if result in ("fail", "timeout"):
                 consecutive_failures += 1
             else:
                 consecutive_failures = 0
             if consecutive_failures >= CONSECUTIVE_FAILURE_LIMIT:
                 log(f"STOPPING: {consecutive_failures} consecutive failures/timeouts — "
-                    f"likely quota exhaustion or an API problem, not bad luck. "
+                    f"likely a specific broken item or an API problem, not bad luck. "
                     f"Re-run this script later to resume where it left off.")
                 log(f"=== run ended early: {counts} ===")
-                sys.exit(1)
+                return
 
     log(f"=== run completed: {counts} ===")
 
