@@ -99,6 +99,11 @@ services:
     volumes:
       - /srv/docker/bazarr:/config
       - /mnt/media:/data
+      # Local patch, see patches/gemini_translator.py for why: upstream retries a
+      # failed Gemini batch by resending it unchanged, which reliably fails the same
+      # way again on long-form/dense content instead of splitting it down. Re-check
+      # this against the stock file on every Bazarr version bump.
+      - ./patches/gemini_translator.py:/app/bazarr/bin/bazarr/subtitles/tools/translate/services/gemini_translator.py
 
   seer:
     image: ghcr.io/seerr-team/seerr:latest
