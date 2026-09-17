@@ -5,24 +5,36 @@ so it's safe to stop and re-run at any time - already-completed items simply won
 missing Spanish anymore and will drop off the list.
 
 Stops after CONSECUTIVE_FAILURE_LIMIT items in a row fail/timeout, on the assumption
-that's a real problem (an API outage, or a specific broken item) rather than bad luck -
-rather than grinding uselessly through the rest of a long backlog.
+that's a real problem (an API outage, or a run of specifically-broken items) rather than
+bad luck - rather than grinding uselessly through the rest of a long backlog.
+
+Failures are classified by checking Bazarr's own log (BAZARR_LOG_PATH) for what actually
+happened, instead of trusting the generic "no output file appeared" signal alone:
+
+- Gemini daily quota exhausted (confirmed 2026-09-16: 500 requests/day for
+  gemini-3.5-flash-lite, free tier, resets at midnight Pacific) affects every item
+  indiscriminately, so it is NOT recorded as a per-item failure - it stops the run
+  immediately and writes a cooldown until the next reset. Any cron-triggered run during
+  the cooldown is a fast no-op: no API calls, no blocklist changes.
+- A permission error reading the source subtitle (recurring bug, cause still unknown -
+  see gotcha_subtitle_zero_perm_files in project memory) says nothing about whether the
+  item is actually translatable, so it's also NOT recorded as a per-item failure - just
+  skipped for this run. It still counts toward the consecutive-failure circuit breaker,
+  since a cluster of permission errors (e.g. a whole show hit by the zero-perm bug at
+  once) is exactly the kind of "stop and look at this" situation that breaker exists for.
+- Gemini returning a mismatched number of translated lines (a real, reproducible property
+  of some episodes - long-form narration-heavy content like documentaries can push a
+  300-line batch past Gemini's output token budget) IS recorded as a per-item failure,
+  same as before, since it's specific to that item's content rather than a systemic
+  problem - it just gets a precise log line instead of a generic TIMEOUT now.
+- Anything else (a genuine hang, or a cause not covered above) still falls through to the
+  original generic TIMEOUT after the full poll window.
 
 Items that fail/timeout are recorded in BLOCKLIST_PATH with an attempt count. An item is
 only excluded from future worklists once it has failed on SKIP_AFTER_ATTEMPTS separate
-runs, so a single transient failure (e.g. an outage mid-run) doesn't permanently exclude
-a translatable item, but a consistently broken item (e.g. one that reproducibly makes
-Gemini return malformed output) stops eating the consecutive-failure budget on every run
-and blocking everything queued behind it.
-
-The Gemini free tier enforces a hard per-day request quota (confirmed 2026-09-16: 500
-requests/day for gemini-3.5-flash-lite, resets at midnight Pacific). When that quota is
-hit, every subsequent item in the worklist would also fail, for reasons that have nothing
-to do with those specific items - so instead of recording those as per-item failures (and
-wrongly blocklisting perfectly fine items, as happened before this was added), the script
-detects the quota error directly from Bazarr's own log and goes into a cooldown until the
-next reset. Any cron-triggered run during the cooldown is a fast no-op: no API calls, no
-blocklist changes, just a log line saying so.
+runs, so a single transient failure doesn't permanently exclude a translatable item, but a
+consistently broken item stops eating the consecutive-failure budget on every run and
+blocking everything queued behind it.
 """
 import json
 import os
@@ -39,6 +51,14 @@ BAZARR_CONFIG_PATH = "/srv/docker/bazarr/config/config.yaml"
 BAZARR_LOG_PATH = "/srv/docker/bazarr/log/bazarr.log"
 BAZARR_LOG_TZ = ZoneInfo("America/Chicago")  # bazarr.log timestamps have no offset; this is the container's local tz
 QUOTA_RESET_TZ = ZoneInfo("America/Los_Angeles")  # Gemini free-tier daily quota resets at midnight Pacific
+
+RATE_LIMIT_MARKERS = ("rate limited", "RESOURCE_EXHAUSTED")
+PERMISSION_ERROR_MARKERS = ("PermissionError", "Permission denied")
+MALFORMED_JSON_MARKERS = (
+    "Gemini returned", "Gemini has returned different indices",
+    "Expecting ','", "Expecting value", "Extra data",
+    "Invalid control character", "Invalid \\uXXXX escape",
+)
 
 
 def _load_apikey():
@@ -109,8 +129,17 @@ def write_cooldown_until_next_quota_reset():
     return until_utc
 
 
-def bazarr_log_has_rate_limit_error_since(since_utc):
-    """Tail bazarr.log for a Gemini quota/rate-limit error at/after since_utc (aware UTC)."""
+def classify_bazarr_log_error_since(since_utc, path_hint):
+    """Tail bazarr.log since since_utc (aware UTC) for a known error category.
+
+    Rate limiting is checked globally (it affects every request, not just ours).
+    Permission and malformed-JSON errors are only attributed to us if the log line
+    also mentions path_hint (the container-path subtitle file we're waiting on),
+    so an unrelated background job's error doesn't get misattributed to this item.
+
+    Returns (category, snippet) where category is one of "rate_limited",
+    "permission_error", "malformed_json", or (None, None) if nothing matched.
+    """
     try:
         with open(BAZARR_LOG_PATH, "r", errors="replace") as f:
             f.seek(0, os.SEEK_END)
@@ -118,7 +147,8 @@ def bazarr_log_has_rate_limit_error_since(since_utc):
             f.seek(max(0, size - 200_000))
             lines = f.readlines()
     except FileNotFoundError:
-        return False
+        return None, None
+
     cutoff = since_utc - timedelta(seconds=5)
     for line in reversed(lines):
         if "|" not in line:
@@ -130,9 +160,21 @@ def bazarr_log_has_rate_limit_error_since(since_utc):
             continue
         if local_dt.astimezone(timezone.utc) < cutoff:
             break  # log is chronological; everything older is irrelevant
-        if "rate limited" in line or "RESOURCE_EXHAUSTED" in line:
-            return True
-    return False
+
+        if any(m in line for m in RATE_LIMIT_MARKERS):
+            return "rate_limited", None
+
+        # Malformed-JSON error lines never mention which file they're about, unlike
+        # permission errors - but since this script only ever has one Gemini call in
+        # flight at a time, any such error in our time window has to be about our
+        # current request, so no path match is needed (or possible) here.
+        if any(m in line for m in MALFORMED_JSON_MARKERS):
+            return "malformed_json", line.strip()[:300]
+
+        if path_hint and path_hint in line and any(m in line for m in PERMISSION_ERROR_MARKERS):
+            return "permission_error", line.strip()[:300]
+
+    return None, None
 
 
 def api_get(path, params=None):
@@ -246,10 +288,25 @@ def process_one(kind, item):
                 return "ok"
         except FileNotFoundError:
             pass
-        if bazarr_log_has_rate_limit_error_since(request_time):
+
+        category, snippet = classify_bazarr_log_error_since(request_time, en_sub["path"])
+
+        if category == "rate_limited":
             log(f"RATE_LIMITED {kind} {item_id} ({title} {epno}): Gemini daily quota exhausted "
                 f"after {waited}s - not counting against this item")
             return "rate_limited"
+
+        if category == "permission_error":
+            log(f"PERMISSION_ERROR {kind} {item_id} ({title} {epno}) after {waited}s - "
+                f"not counting against this item, will retry once fixed: {snippet}")
+            return "permission_error"
+
+        if category == "malformed_json":
+            n = record_failure(kind, item_id)
+            log(f"MALFORMED_JSON {kind} {item_id} ({title} {epno}) after {waited}s "
+                f"(attempt {n}{', excluding from future worklists' if n >= SKIP_AFTER_ATTEMPTS else ''}): "
+                f"{snippet}")
+            return "malformed_json"
 
     n = record_failure(kind, item_id)
     log(f"TIMEOUT {kind} {item_id} ({title} {epno}): no output after {POLL_TIMEOUT}s "
@@ -267,7 +324,8 @@ def main():
 
     log("=== translate-missing-es run started ===")
     consecutive_failures = 0
-    counts = {"ok": 0, "fail": 0, "timeout": 0, "skip": 0, "rate_limited": 0}
+    counts = {"ok": 0, "fail": 0, "timeout": 0, "skip": 0,
+              "rate_limited": 0, "permission_error": 0, "malformed_json": 0}
 
     for kind in ("episode", "movie"):
         attempts = load_attempts()
@@ -284,13 +342,13 @@ def main():
                     f"{until.isoformat()} - not blocklisting the item in progress.")
                 log(f"=== run ended early: {counts} ===")
                 return
-            if result in ("fail", "timeout"):
+            if result in ("fail", "timeout", "malformed_json", "permission_error"):
                 consecutive_failures += 1
             else:
                 consecutive_failures = 0
             if consecutive_failures >= CONSECUTIVE_FAILURE_LIMIT:
                 log(f"STOPPING: {consecutive_failures} consecutive failures/timeouts — "
-                    f"likely a specific broken item or an API problem, not bad luck. "
+                    f"likely a run of specifically-broken items or an API problem, not bad luck. "
                     f"Re-run this script later to resume where it left off.")
                 log(f"=== run ended early: {counts} ===")
                 return
