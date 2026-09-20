@@ -9,8 +9,13 @@ services:
       # Runs on floating `latest`; without this WUD can't see updates at
       # all (same gap found for jellyfin -- see 2026-09-05 pilot notes).
       - wud.watch.digest=true
+    # Second resolver (2026-09-20): with AdGuard as the ONLY resolver, an AdGuard
+    # stall meant Kuma couldn't resolve discord.com, so the outage alert itself
+    # never sent (3h house-wide outage). Uptime beats privacy here -- see decision
+    # record. .lan names still come from extra_hosts below, so they're unaffected.
     dns:
       - ${SERVER_IP}
+      - 1.1.1.1
     environment:
       - NODE_TLS_REJECT_UNAUTHORIZED=0
     volumes:
