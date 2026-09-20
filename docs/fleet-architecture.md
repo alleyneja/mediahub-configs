@@ -51,7 +51,7 @@ Recorded so they are not re-litigated:
 | Machine | Hardware | Address | Role today | Role planned |
 |---|---|---|---|---|
 | `mediahub-production` | Intel i7-7700, 32 GB DDR4, Quadro P400, 2 TB NVMe (OS/Docker), 12 TB HDD (media) | 192.168.0.21 | Everything: media, apps, Plex, Live TV, game streaming | Storage and library host (it holds the 8.8 TB) and backup target; services move off it in phases (proposed, see Q7) |
-| `mediahub-r9` | Ryzen 9 9900X, 64 GB DDR5-6000, RTX 5070 Ti 16 GB, 2 × 2 TB NVMe | 192.168.0.149 (DHCP, not yet reserved) | Bring-up and burn-in | Primary host: successor to production, running the full service set once phases 2–4 are done |
+| `mediahub-r9` | Ryzen 9 9900X, 64 GB DDR5-6000, RTX 5070 Ti 16 GB, 2 × 2 TB NVMe | 192.168.0.149 (reserved in the router) | Bring-up and burn-in | Primary host: successor to production, running the full service set once phases 2–4 are done |
 | `mediahub-staging` | Alienware X51 R2, i7-4790, 16 GB, GTX 1650 | 192.168.0.20 | Rehearsal/practice machine | Candidate for the security system (F4) |
 | NAS | UGREEN NASync DH4300 Plus | 192.168.0.23 | Network storage, NFS | Unchanged |
 | `gaming-pc` (Tailscale name `gaming-desktop`) | Windows 11 workstation; never headless | 192.168.0.206 | Jay's daily machine and the usual origin of SSH sessions to the servers; holds the installed PC games | Unchanged. Part of the fleet as a client/workstation, not a server |
@@ -179,6 +179,14 @@ Background for anyone repeating this. General bring-up lessons are in
 4. **Remote access:** install the SSH server, then install the controlling machine's public key with
    `ssh-copy-id` from a **real terminal** (it needs a keyboard; it fails silently from a tool prompt
    without one). Passwordless sudo was granted for the setup and burn-in period only.
+   **Hardening (2026-09-20), matched to `mediahub-production`:** an sshd drop-in
+   (`/etc/ssh/sshd_config.d/hardening.conf`) with root login off, password authentication off,
+   `MaxAuthTries 3` and X11 forwarding off; a fail2ban `sshd` jail (5 failures in 10 minutes bans for
+   1 hour, nftables action); auditd running with stock rules; UFW default-deny with the LAN, the
+   Tailscale range and Docker bridges allowed; unattended-upgrades on stock settings. Host-specific
+   rules on production (Plex port, moved Tailscale port) were deliberately not copied. Verified with a
+   fresh key-only login, and a password attempt is refused. Passwordless sudo remains until migration
+   is finished.
 5. **Memory accounting:** 64 GB installed reads as ~60.5 GiB usable. This is normal: 2 GiB reserved
    for the CPU's integrated graphics, small firmware holes, and ~1 GiB of kernel page bookkeeping.
 6. **Burn-in** (see the gpu-burn note below): CPU/RAM `stress-ng --cpu 24 --vm 4 --vm-bytes 80%
@@ -201,7 +209,7 @@ Background for anyone repeating this. General bring-up lessons are in
 | Q1 | How much downtime can Nextcloud and Vaultwarden tolerate during a cutover? | **Answered 2026-09-20:** seconds to a few minutes. Now part of F1. |
 | Q2 | Which machine plays PC games, and how? | The 918 GB in `/mnt/media/games/pc` is an installer archive, not an installed library; installed games live on the gaming PC. Streaming Windows games from a Linux host is a separate question (compatibility layer) and is not assumed here. |
 | Q3 | ROM master copy: production (RomM reads it) with a one-way mirror to the new machine? | Recommended; needs a sync mechanism and a rule that saves flow the right way. |
-| Q4 | Router: reserve the new machine's address. | Also required for the NAS export allowlist. |
+| Q4 | Router: reserve the new machine's address. | **Answered 2026-09-20:** done, `192.168.0.149` reserved. Still needed for the NAS export allowlist. Note: the connection to the machine drops briefly whenever the router's static-address list is saved. |
 | Q5 | What tooling makes the "hub" layer? | Candidates: existing monitoring plus configuration-management or a container-management agent. Must satisfy F6. |
 | Q6 | Where do decisions that name weak spots live? | Not in this public repo. A separate private repository, for things worth keeping in several places but not public, is planned (tracked in the private backlog). |
 | Q7 | What should the older production machine do once services move off it? | Proposed: storage/library host and backup target, since it holds the 8.8 TB drive. Needs Jay's confirmation. |
@@ -216,3 +224,4 @@ Background for anyone repeating this. General bring-up lessons are in
 | 2026-09-20 | Initial draft: requirements F1–F8, fleet inventory, decision D1 (recommended), phasing, naming, arcade bring-up record. |
 | 2026-09-20 | Added the gaming PC to the inventory and F11 (client/workstation, not a server). Added D2 (neutral hardware-based hostnames); the new machine renamed `mediahub-arcade` to `mediahub-r9`. |
 | 2026-09-20 | Revised after Jay's review: D1 approved; added F9 (new machine is production's successor) and F10 (reuse all hardware); F1 tightened to seconds-to-minutes; PC games folder corrected to an installer archive; phasing extended to the full service move; open questions Q7, Q8 added. |
+| 2026-09-20 | Phase 1 groundwork: router IP reservation done (Q4), Tailscale joined, SSH/fail2ban/auditd hardened to match production. |
