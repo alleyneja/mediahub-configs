@@ -199,6 +199,13 @@ Background for anyone repeating this. General bring-up lessons are in
    "couldn't find compare kernel". Result on this machine: 30 minutes, 0 errors, GPU peak 73 °C, holding
    its 300 W power cap (the only throttle flag seen, which is normal at full load), no GPU faults in the
    kernel log.
+8. **NAS export for the new machine (2026-09-20):** the NAS's UGOS web UI has no page for per-host NFS
+   rules, so the address is allowed by appending a read-only entry to `/etc/exports` on the NAS and
+   running `exportfs -r` (reloads without restarting NFS, so existing mounts are unaffected):
+   `192.168.0.149(ro,sync,insecure,no_wdelay,no_root_squash,anonuid=65534,anongid=65534,sec=sys)`.
+   The NAS regenerates its NFS config from an internal database when the NFS service restarts, so this
+   entry may be lost after a NAS reboot or update; if the new machine suddenly fails to mount, re-add it.
+   Verified: the share mounts and lists, and writes are refused. Also install `nfs-common` on the client.
 
 ---
 
@@ -209,7 +216,7 @@ Background for anyone repeating this. General bring-up lessons are in
 | Q1 | How much downtime can Nextcloud and Vaultwarden tolerate during a cutover? | **Answered 2026-09-20:** seconds to a few minutes. Now part of F1. |
 | Q2 | Which machine plays PC games, and how? | The 918 GB in `/mnt/media/games/pc` is an installer archive, not an installed library; installed games live on the gaming PC. Streaming Windows games from a Linux host is a separate question (compatibility layer) and is not assumed here. |
 | Q3 | ROM master copy: production (RomM reads it) with a one-way mirror to the new machine? | Recommended; needs a sync mechanism and a rule that saves flow the right way. |
-| Q4 | Router: reserve the new machine's address. | **Answered 2026-09-20:** done, `192.168.0.149` reserved. Still needed for the NAS export allowlist. Note: the connection to the machine drops briefly whenever the router's static-address list is saved. |
+| Q4 | Router: reserve the new machine's address. | **Answered 2026-09-20:** done, `192.168.0.149` reserved, and added to the NAS export allowlist (read-only; see section 6, step 9). Note: the connection to the machine drops briefly whenever the router's static-address list is saved. |
 | Q5 | What tooling makes the "hub" layer? | Candidates: existing monitoring plus configuration-management or a container-management agent. Must satisfy F6. |
 | Q6 | Where do decisions that name weak spots live? | Not in this public repo. A separate private repository, for things worth keeping in several places but not public, is planned (tracked in the private backlog). |
 | Q7 | What should the older production machine do once services move off it? | Proposed: storage/library host and backup target, since it holds the 8.8 TB drive. Needs Jay's confirmation. |
@@ -225,3 +232,4 @@ Background for anyone repeating this. General bring-up lessons are in
 | 2026-09-20 | Added the gaming PC to the inventory and F11 (client/workstation, not a server). Added D2 (neutral hardware-based hostnames); the new machine renamed `mediahub-arcade` to `mediahub-r9`. |
 | 2026-09-20 | Revised after Jay's review: D1 approved; added F9 (new machine is production's successor) and F10 (reuse all hardware); F1 tightened to seconds-to-minutes; PC games folder corrected to an installer archive; phasing extended to the full service move; open questions Q7, Q8 added. |
 | 2026-09-20 | Phase 1 groundwork: router IP reservation done (Q4), Tailscale joined, SSH/fail2ban/auditd hardened to match production. |
+| 2026-09-20 | NAS export allowlist: r9 added read-only (Q4 closed). Documented that UGOS has no UI for per-host NFS rules. |
