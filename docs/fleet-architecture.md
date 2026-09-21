@@ -364,6 +364,33 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 ---
 
+## 5j. Decision D10: Immich machine learning moved to r9's GPU (option B, 2026-09-21, Jay chose it on my recommendation)
+
+**What:** the machine-learning container now also runs on r9 from `stacks/immich-ml-r9/` (image `ghcr.io/immich-app/immich-machine-learning:v3.1.0-cuda`, `runtime: nvidia`, model cache `/srv/docker/immich-ml/model-cache`, bound to r9's Tailscale address `100.121.244.45:3003` only). Jay set Immich's Machine Learning URL list (Administration, Settings) to r9 first and production's own `http://immich-machine-learning:3003` second as an automatic fallback. The Immich **server, Postgres, Redis and the photo library did not move** and remain on production.
+
+**Why option B (not a full move, option A):** D3 put Immich on r9 for its compute, and only the ML is compute. Keeping the irreplaceable photos and their database beside the disk that holds them, on the stable machine, avoids the riskiest step of Phase 4 (a live database move), a network hop on every page, and making photos depend on r9 being up. B does not prevent A later.
+
+**Gains (measured, 60 images, 6 at a time, same photo, same models):** face recognition **22.6 images/s on r9's GPU vs 6.2 on production's CPU (3.6x)**; search embeddings **32.5 vs 20.8 (1.6x)**. A single request is no faster (0.115 s vs 0.100 s; the network hop cancels the GPU), so the benefit is bulk indexing and production's four cores no longer saturating (its load average reached 4.7 during the CPU runs). Rough extrapolation for 24,050 items: faces about 18 min instead of about 65 min (excludes decoding overhead).
+
+**Verified (three signals):** Immich's server log recorded "Machine learning server became healthy" for the new address; r9's ML log recorded `Loading textual model 'ViT-B-32__openai'` ten seconds later (triggered only by Jay's "beach" search); r9's GPU process grew from 774 MiB to 4,262 MiB. Immich's own container reaches r9's ML in 3 ms; the fallback also answers.
+
+**Costs / sacrifices:**
+1. **Version coupling:** the server runs the moving `release` tag on production; r9's ML is pinned to **v3.1.0**. If the server updates, bump both together or ML requests fail. WUD cannot see r9, so nothing would warn.
+2. **New dependency with a fallback:** if r9 is down, Immich uses production's CPU ML container (kept running, about 230 MB), slower but functional.
+3. **GPU memory:** peaks about **4.3 GB** while busy (faces plus both search models); models unload after 5 idle minutes (`MACHINE_LEARNING_MODEL_TTL` default 300 s). Avoid running large Immich jobs while gaming.
+4. The ML API has **no authentication**; it is reachable only on the tailnet.
+5. Production still carries the ML container's memory (the fallback), so the memory relief is small; the win is CPU and speed.
+
+**Not verified:** a real bulk job on the GPU end to end (only synthetic requests plus one live search); behavior when r9 reboots mid-job; the 5070 Ti under a game plus a bulk job.
+
+**Small issue found:** the saved URL has a trailing space (`"http://100.121.244.45:3003 "`); it works but Jay was asked to remove it.
+
+**Rollback:** in Immich's ML settings remove r9's URL (or stop `immich-machine-learning` on r9); production's container takes over automatically.
+
+**Revisit:** if Immich is upgraded (bump both); if gaming and Immich jobs collide; or if the full move (A) becomes attractive.
+
+---
+
 ## 6. Bringing up `mediahub-r9` (installed as `mediahub-arcade`) — what happened 2026-09-20
 
 Background for anyone repeating this. General bring-up lessons are in
