@@ -38,6 +38,7 @@ upstream failed, so each layer had a single point of failure.
 | AdGuard `fallback_dns` | DoH: Cloudflare, Google | plain UDP: `9.9.9.10`, `1.1.1.1` (commit 4216f5a) |
 | Uptime Kuma `dns:` | AdGuard only | AdGuard, `1.1.1.1` (commit 71faba8) |
 | Tailscale global nameservers | `100.104.43.6` only | `100.104.43.6`, then Cloudflare `1.1.1.1`, `1.0.0.1` and two IPv6 addresses (admin console, not in repo) |
+| AdGuard `upstream_timeout` | 10s (stalled lookup answered after 30s = 3 tries) | 3s (stalled lookup answered after ~9s) |
 | Home Wi-Fi (router DHCP) | AdGuard, `1.1.1.1` | unchanged, already had a backup |
 
 Primary path is unchanged: AdGuard -> Quad9 over HTTPS, so ISP lookups stay hidden while
@@ -48,15 +49,26 @@ everything is healthy. Fallback traffic is cleartext by design (D-R2).
 - Tailscale lists both resolvers; `lan` split route still points at AdGuard.
 - After adding the second server, Gaming-PC's lookups still reach AdGuard and blocking
   still works (187 lookups / 34 blocked in 6 min).
-- Kuma resolves `discord.com` with both servers configured.
+- **Clean stop (AdGuard container stopped, 42s):** server, Kuma and direct lookups all kept
+  resolving with no gaps. Failure was instant (connection refused), so this is the easy case.
+- **Stall (AdGuard UP, TCP/443 to Quad9 DoH dropped, i.e. the Sep 20 failure mode):**
+  - Kuma and the server's own resolver kept working via their second resolver.
+  - A client using AdGuard alone got NO answer within 15s.
+  - AdGuard's plain-DNS fallback DOES work but only after 3 x `upstream_timeout`:
+    30s at 10s (query log: `upstream=1.1.1.1:53`, elapsed 30025ms), ~9s at 3s.
+  - Conclusion: AdGuard's fallback alone is too slow for clients. The real safety net is a
+    second resolver on each client (Kuma, server, tailnet, router DHCP).
 
 ## NOT verified
 
-- **Actual failover.** Nobody stopped AdGuard to confirm Kuma, tailnet devices, or
-  AdGuard's own fallback take over. Needs a deliberate short AdGuard outage.
-- Root cause of the DoH stalls.
+- Real client behaviour during a stall (how long Windows/iOS/Android wait before switching
+  to their secondary). Gaming-PC's experience during the test was not reported.
+- Whether `upstream_timeout` should go lower (1s would give ~3s stalls; trade-off is
+  occasional false timeouts on slow lookups falling back to cleartext).
+- Root cause of the original DoH stalls (SBG8300 or ISP path suspected).
 - Whether Tailscale ever sends queries to the secondary while AdGuard is healthy (would
   bypass ad-blocking). One 6-minute sample showed no bypass.
+- Tailscale-off-on-server failure mode (tailnet resolver unreachable) was not simulated.
 
 ## Open
 
