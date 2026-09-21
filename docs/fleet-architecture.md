@@ -197,6 +197,30 @@ must respect F6. It is tracked in the private backlog until designed.
 
 ---
 
+## 5c. Decision D4 (PROPOSED, not yet in effect): per-machine update policy (2026-09-21)
+
+**Status: proposed by Claude from a survey; Jay liked the idea, has not approved the detail.** Nothing below is implemented except what is marked "today".
+
+**Today:** production's root crontab runs `apt update && apt upgrade -y && reboot` on **Sunday and Wednesday at 03:00**, and `unattended-upgrades` is enabled. r9 has `unattended-upgrades` enabled with no automatic reboot and no held packages. Container images are never auto-updated (standing rule; WUD only reports). Production also restarts Wings daily at 03:00 to pick up its rolling `pterodactyl.lan` certificate.
+
+**Why one policy does not fit every machine:**
+- The blanket `apt upgrade -y` + reboot upgrades everything, including Docker and the NVIDIA stack. On r9 a surprise driver or kernel change can silently break Sunshine/NvFBC (two known failure modes; see the arcade notes).
+- **Reboots are now coupled across machines:** r9 mounts production's disk and Plex's Live TV depends on Threadfin on production, so every production reboot takes those offline for a couple of minutes. Production and r9 must never reboot in the same window, and r9 must come up after production.
+- Container updates are a separate topic from OS patching and stay deliberate and per-service.
+
+**Proposed policy:**
+
+| Machine | OS patching | Reboot | Notes |
+|---|---|---|---|
+| production | keep Sun+Wed 03:00 | automatic (as today) | add a hold on NVIDIA and Docker packages so those change on purpose |
+| r9 | unattended security updates only | **manual**, always after production | hold NVIDIA driver and kernel meta-packages |
+| NAS | UGOS manages itself | manual | quarterly check |
+| x51 | same as production once it is a live server | automatic | after it is set up |
+
+**Also proposed:** a Discord alert when any machine has needed a reboot (`/var/run/reboot-required`) for more than a few days. Revisit if r9 becomes an essentials host or if a patch breaks something.
+
+---
+
 ## 6. Bringing up `mediahub-r9` (installed as `mediahub-arcade`) — what happened 2026-09-20
 
 Background for anyone repeating this. General bring-up lessons are in
