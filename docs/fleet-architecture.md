@@ -317,6 +317,24 @@ Production Plex stopped 03:19:45; r9 Plex started 03:26:35 (about 7 minutes of d
 
 ---
 
+## 6d. Phase 4, batch 1: Minecraft moves to r9 (started 2026-09-21)
+
+Decision D3: game servers are compute-role services and belong on r9. Three servers run under one Pterodactyl panel on production (`test-paper` Java/Paper 25500, `bedrock-tailscale` 25501, `bedrock-public` 25502; about 900 MB total). Friends connect over the public internet through the router's port-forward, so the public address does not change; only the forward's target moves to r9.
+
+**Method:** the panel stays on production; r9 is added as a second Wings node and each server is moved with Pterodactyl's server transfer (stop, copy, start). No recreation needed.
+
+**Prep done (no player impact):**
+- Wings v1.12.1 (same as production) installed on r9 as `wings.service`; it created the `pterodactyl` user with UID 997 / GID 983, identical to production.
+- Node 2 `mediahub-r9` added to the panel (backup of the panel DB taken first: `~/panel-db-pre-r9-node-20260921-0446.sql` on production, mode 600). Memory cap 16 GB, disk 100 GB, allocations `0.0.0.0` ports 25500-25509 like node 1.
+- Wings API on r9 uses a Tailscale (Let's Encrypt) certificate for `mediahub-r9.tail3b4ccf.ts.net`, valid to 2026-12-20, renewed monthly by r9's root cron (`0 4 1 * *`; restarting Wings does not stop game servers).
+- r9 trusts Caddy's local CA root (`/usr/local/share/ca-certificates/caddy-local-root.crt`) and has `192.168.0.21 pterodactyl.lan` pinned in `/etc/hosts`; production has `192.168.0.22 mediahub-r9.tail3b4ccf.ts.net` pinned in `/etc/hosts` (its resolver does not use MagicDNS). Verified with the panel's own call: node 2 reports Wings v1.12.1, 24 CPUs.
+
+**Found on the way:** r9's systemd-resolved lists AdGuard first but was sticking to `1.1.1.1` ("Current DNS Server"), which cannot answer any of the 37 `.lan` names. Any r9 process that needs a `.lan` name can fail silently. This is the same failure a second AdGuard would cover (Q9). Not fixed; pinned hosts entries are the workaround for Wings.
+
+**Still to do (the move window):** warn friends; per server: stop, take a tar backup of `/srv/pterodactyl/<uuid>`, transfer to node 2 (allocation on the same port), start, verify a join; Jay moves the router forward for 25500-25502 (TCP and UDP) from `.21` to `.22`; leave the source files until a week has passed.
+
+---
+
 ## 7. Open questions
 
 | # | Question | Notes |
