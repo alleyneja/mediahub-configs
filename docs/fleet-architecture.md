@@ -246,7 +246,7 @@ Every change to a shared service or its configuration gets a record **at the tim
 3. **It hides, not fixes, noisy clients.** The PC's retry loops are now fully served instead of dropped. The real fix is at the source (why the telemetry lookup is retried 287k times against a blocked name).
 4. **Amplification abuse protection** matters only if AdGuard is reachable from the internet.
 
-**Not verified:** whether the router forwards port 53 from the internet (I only know AdGuard listens on all interfaces, and production's UFW allows the LAN and Tailscale ranges); AdGuard's CPU use before versus after; whether 20 was ever a deliberate choice (it is AdGuard's default).
+**Verified by Jay (2026-09-21):** the router's port-forward list has no rule for port 53, so AdGuard is not exposed to the internet through the router; combined with production's UFW (LAN and Tailscale ranges only) that removes cost 4 in practice. This was read from the router UI, not tested from outside. **Still not verified:** AdGuard's CPU use before versus after; whether 20 was ever a deliberate choice (it is AdGuard's default).
 
 **Options considered:** (A) leave 20 and rely on the r9 self-heal timer only: the drops keep hurting every other device; (B) **500 per /24 bucket: chosen**, live, reversible, no restart; (C) disable the limit (0): removes the safety valve entirely; (D) **per-device limit**: `ratelimit_subnet_len_ipv4: 32` with about 100 q/s each, so one noisy device cannot starve the others and the valve stays meaningful. D is the better design but is a config-file change that needs an AdGuard restart (a DNS blip on the never-down service), so it waits for a moment when AdGuard restarts anyway or a second AdGuard exists (Q9).
 
@@ -254,7 +254,7 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 **Revisit if:** AdGuard CPU or memory climbs; the query log growth becomes a problem (set a retention limit); the router is found to forward port 53; a second AdGuard is built (then adopt option D); or a device is seen flooding.
 
-**Related finding, not part of this decision:** the query log is about 1 GB and the gaming PC generates 3 to 4 times the volume of any other client. Cutting that noise at source would shrink both.
+**Related finding, deferred to the private backlog by Jay (2026-09-21, primary objectives first):** the query log is about 1 GB with no retention cap, and the gaming PC generates 3 to 4 times the volume of any other client. Also backlogged: the per-device limit (option D).
 
 ---
 
