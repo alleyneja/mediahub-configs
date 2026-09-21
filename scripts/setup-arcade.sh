@@ -82,6 +82,17 @@ step_rpcs3() {
   for _ in $(seq 1 60); do sleep 3; [ "$(find "$flash" -type f | wc -l)" -gt 1000 ] && break; done
   sleep 5; kill $rpid $xpid 2>/dev/null || true
   echo "dev_flash files: $(find "$flash" -type f | wc -l) (expect ~1075)"
+
+  # Controller: RPCS3 defaults Player 1 to KEYBOARD, so a fresh install ignores the pad. Set it
+  # once in RPCS3's Pads screen: Handler SDL, Device "Xbox One S Controller 1" (auto-maps all
+  # buttons), Save -> input_configs/global/Default.yml. Not scripted (needs the Sunshine pad, which
+  # only exists during a stream). Then the hold-Guide-to-quit helper, since RPCS3 has no pad quit:
+  local here; here="$(cd "$(dirname "$0")/.." && pwd)"
+  dpkg -s python3-evdev >/dev/null 2>&1 || sudo apt-get install -y python3-evdev
+  mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user"
+  install -m 755 "$here/scripts/arcade-guide-quit.py" "$HOME/.local/bin/arcade-guide-quit"
+  cp "$here/systemd/user/arcade-guide-quit.service" "$HOME/.config/systemd/user/"
+  systemctl --user daemon-reload && systemctl --user enable --now arcade-guide-quit.service
 }
 
 step_wiimote() {
