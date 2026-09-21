@@ -331,7 +331,9 @@ Decision D3: game servers are compute-role services and belong on r9. Three serv
 
 **Found on the way:** r9's systemd-resolved lists AdGuard first but was sticking to `1.1.1.1` ("Current DNS Server"), which cannot answer any of the 37 `.lan` names. Any r9 process that needs a `.lan` name can fail silently. This is the same failure a second AdGuard would cover (Q9). Not fixed; pinned hosts entries are the workaround for Wings.
 
-**Still to do (the move window):** warn friends; per server: stop, take a tar backup of `/srv/pterodactyl/<uuid>`, transfer to node 2 (allocation on the same port), start, verify a join; Jay moves the router forward for 25500-25502 (TCP and UDP) from `.21` to `.22`; leave the source files until a week has passed.
+**Moved 2026-09-21 04:53-04:57 (about 4 minutes total, nobody connected: no joins in the previous 6 hours):** `bedrock-tailscale` (rehearsal), `bedrock-public`, then `test-paper`. Each: graceful stop from the panel's Wings call, tar backup (`/home/jay/mc-backup-*.tar.gz` on production, mode 600: 82, 87 and 239 MB; keep at least a week), the panel's own transfer (helper: `scripts/pterodactyl-server-move.php`), start, ping. All three transfers `successful=1`, copy sizes identical to the source (321M, 323M, 260M). Verified with real protocol pings on r9: Bedrock `Dedicated Server` (25501) and `MediaHub Public` (25502), Java Paper 1.21.11 (25500, world loaded, no errors, 1.24 GB). Pterodactyl removed the source files on production, so the tar backups are the only other copy.
+
+**Still to do:** Jay moves the router's forward for 25500-25502 (TCP and UDP) from `192.168.0.21` to `192.168.0.22`; then verify through the public address. `bedrock-tailscale` players (tailnet only) must use r9's tailnet address (`mediahub-r9.tail3b4ccf.ts.net:25501`, tailnet IP `100.121.244.45`) instead of production's; nobody else is affected. The Faithful pack URL still points at `mcpacks.lan` on production's Caddy and is unchanged.
 
 ---
 
