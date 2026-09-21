@@ -413,7 +413,7 @@ Every change to a shared service or its configuration gets a record **at the tim
 4. The heartbeat secret lives in `scripts/immich-backup.env` (gitignored, mode 600); if lost, recreate the token in Kuma.
 5. Corruption that is copied nightly could reach the mirror before anyone notices; btrfs on the NAS detects but cannot repair it.
 
-**Not verified:** photo browsing speed from the NAS in daily use (thumbnails were not moved); the failure alert path end to end (planned as a deliberate, announced test); behavior when the NAS is unmounted at 02:30 (guarded in the script, not exercised).
+**Failure path tested (2026-09-21 18:04, announced and approved by Jay):** the script run with an empty source exited 1, logged `FAILED: source has only 0 files (floor 20000)`, and Kuma recorded status 0 (down, `failed:_mirror`, important=1); a normal run then exited 0 and Kuma recorded status 1 (up, important=1). Discord delivery of the two messages was **pending Jay's confirmation** (Kuma does not log its own notification sends). The two test runs each left an extra database dump (17 kept; the 14-day retention prunes them). **Not verified:** photo browsing speed from the NAS in daily use (thumbnails were not moved); behavior when `/mnt/nas` itself is unmounted at 02:30 (guarded by `mountpoint -q` in the script, not exercised).
 
 **Rollback (about a minute):** `docker stop immich-server; sudo mv /mnt/internal/photos/immich-originals-mirror /mnt/internal/photos/immich/upload; docker start immich-server` (this restores the previous state; the NAS then holds a redundant copy).
 
