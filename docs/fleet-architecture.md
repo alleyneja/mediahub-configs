@@ -258,6 +258,37 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 ---
 
+## 5f. Decision D6 (PROPOSED, not yet adopted): a Caddy "front door" on each machine (2026-09-21)
+
+**Status: proposed; the experiment below is done, the design is awaiting Jay's go.** Nothing on r9 or production was changed by the experiment (scratch Caddy on unused ports, memory-backed storage, fully deleted afterwards; checked: no container and no copy of our keys left on r9).
+
+**Why:** today one Caddy on production fronts every `.lan` name (all 37 AdGuard rewrites answer `100.104.43.6`, production's tailnet address). For services on r9 that means (1) a cross-machine hop for every byte, so Immich and Jellyfin traffic would cross the single gigabit link twice and use production's CPU; (2) a published, unauthenticated port on r9 for each service; (3) another hardcoded IP per service. A Caddy on r9, reached by name via AdGuard, removes all three and is the same recipe for every later compute-role stack. It is platform work for batch 2 (Stirling PDF is only the pilot).
+
+**Experiment results (what is now known, not guessed):**
+1. With the default layout, Caddy on r9 given the root *certificate* and the intermediate key pair, but **no root key, refuses to start** ("loading root key ... no such file").
+2. With Caddy's explicit `pki { ca local { root { cert } intermediate { cert key } } }` config it **starts, issues a certificate, and that certificate chains to the existing root** (`Verify return code: 0` using only production's `root.crt`; leaf issuer key ID equals production's intermediate; leaf lifetime 12 h like production). It generated no CA of its own. So devices would trust r9's Caddy with no change.
+3. **Catch:** production's intermediate is valid only **7 days** (2026-09-18 to 2026-09-25) and production's Caddy re-issues it automatically using the root key. A copy on r9 is never rotated by r9's Caddy and would expire, so "copy the intermediate" would be a weekly chore with the key crossing the network each time.
+
+**Proposed design:** give r9 its **own** intermediate: key generated **on r9** (never transmitted), signed once on production with the root key (the root key never leaves production), **long-lived (about 1 year)** and **name-constrained to `.lan`** so a forged certificate for any other name (a bank, say) would be rejected by clients that enforce constraints.
+
+**Gains:** no cross-host hop; no published ports; no IP coupling; root key stays only on production; a compromise of r9 exposes only r9's constrained intermediate.
+
+**Costs / sacrifices:**
+1. A second Caddy and a second Caddyfile to keep in step (split the repo's single file per machine); each new service also needs its AdGuard rewrite pointed at the right machine (`100.104.43.6` for production, `100.121.244.45` for r9).
+2. **Manual intermediate renewal** (about yearly) on r9; if forgotten, r9's `.lan` sites fail certificate checks.
+3. If r9's intermediate key were stolen, forged `.lan` certificates would be trusted until it expires; private CAs are not revocation-checked by clients. Name constraints and a moderate lifetime limit the damage but do not remove it. Impact is limited by F8 (closed trust group).
+4. r9's Caddy becomes the front door for r9's names; it is a compute-role dependency.
+
+**Not verified:** that your specific devices (iPhone, Android, Windows, the laptop, the TV) accept a `.lan`-name-constrained intermediate: this must be tested on at least one iPhone and the Windows PC before relying on it; the exact signing procedure (openssl extensions: CA:TRUE, pathlen 0, keyUsage, name constraint); whether Caddy on r9 behaves cleanly at intermediate expiry.
+
+**Fallback if the test fails or the cost is too high:** keep the single Caddy on production and give Stirling a Tailscale-bound port on r9 (compose `100.121.244.45:8085:8080`).
+
+**Rollback:** stop r9's Caddy and point the moved names' AdGuard rewrites back at production; nothing on production changes.
+
+**Revisit if:** a client rejects the constrained intermediate; r9's intermediate expiry causes an outage; or the fleet grows to the point where a small internal CA tool is warranted.
+
+---
+
 ## 6. Bringing up `mediahub-r9` (installed as `mediahub-arcade`) — what happened 2026-09-20
 
 Background for anyone repeating this. General bring-up lessons are in
