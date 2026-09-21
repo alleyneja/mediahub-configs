@@ -86,16 +86,12 @@ step_rpcs3() {
   # Controller: RPCS3 defaults Player 1 to KEYBOARD, so a fresh install ignores the pad. Set it
   # once in RPCS3's Pads screen: Handler SDL, Device "Xbox One S Controller 1" (auto-maps all
   # buttons), Save -> input_configs/global/Default.yml. Not scripted (needs the Sunshine pad, which
-  # only exists during a stream). Then the hold-Guide-to-quit helper, since RPCS3 has no pad quit:
+  # only exists during a stream). Quitting needs no helper: tap the Xbox button in game -> "Quit game".
   local here; here="$(cd "$(dirname "$0")/.." && pwd)"
-  dpkg -s python3-evdev >/dev/null 2>&1 || sudo apt-get install -y python3-evdev
-  mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user"
+  mkdir -p "$HOME/.local/bin"
   # RPCS3 ignores its fullscreen flag under GNOME/X11; the wrapper forces it (needs wmctrl + xdotool)
   command -v wmctrl >/dev/null || sudo apt-get install -y wmctrl
   install -m 755 "$here/scripts/rpcs3-fullscreen" "$HOME/.local/bin/rpcs3-fullscreen"
-  install -m 755 "$here/scripts/arcade-guide-quit.py" "$HOME/.local/bin/arcade-guide-quit"
-  cp "$here/systemd/user/arcade-guide-quit.service" "$HOME/.config/systemd/user/"
-  systemctl --user daemon-reload && systemctl --user enable --now arcade-guide-quit.service
 }
 
 step_wiimote() {
