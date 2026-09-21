@@ -136,7 +136,7 @@ Each phase has a gate: do not start the next until the gate passes.
 | 0 | New machine (`mediahub-r9`) bring-up and burn-in | CPU/RAM soak clean; GPU soak clean; temperatures sane |
 | 1 | Groundwork: reserve the new machine's IP in the router; add it to the NAS export allowlist; install Docker and Tailscale; firewall rules | Machine reachable and mounts what it needs read-only |
 | 2 | **CLOSED 2026-09-21.** Game streaming moves: r9 is master for ROMs, saves and states; bring up streaming on the new GPU | A real game plays end to end. **Passed:** confirmed on multiple consoles/emulators (God of War Collection 60 FPS; MW2 is an outlier at ~18 FPS, CPU-bound on RPCS3's emulated GPU thread, rated only "Ingame" upstream) |
-| 3 | Plex/transcoding moves: rehearse against a copy, then a planned short cutover in a quiet window | Rehearsal passes; viewers unaffected off-window |
+| 3 | Plex/transcoding moves: rehearse against a copy, then a planned short cutover in a quiet window | Rehearsal passes; viewers unaffected off-window. **Rehearsal PASSED 2026-09-21** (see 6b); cutover pending |
 | 4 | Remaining household services (Nextcloud, Vaultwarden, the *arr apps and the rest) move one stack at a time, each within F1's seconds-to-minutes | Each stack verified before the next |
 | 5 | Old production machine repurposed (storage/backup role, proposed) | Library safely served or moved (option C) first |
 | 6 | Security system on its own machine (F4) | Independent of phases 1–5; can happen at any time |
@@ -220,6 +220,31 @@ Background for anyone repeating this. General bring-up lessons are in
    entry may be lost after a NAS reboot or update; if the new machine suddenly fails to mount, re-add it.
    Verified: the share mounts and lists, and writes are refused. Also install `nfs-common` on the client.
 
+## 6b. Phase 3 rehearsal: Plex on `mediahub-r9` (2026-09-21)
+
+Rehearsal server `plex-rehearsal` ran on r9 from `stacks/plex-rehearsal/docker-compose.yml`, with a copy of production's Plex config (17 GB, live copy; cache/logs/codecs excluded) and a **stripped identity** (Plex token, machine IDs, certificate and port-mapping keys removed) so it could not register as, or redirect clients away from, the real server. It was claimed manually as a separate, temporary server named `Plex-r9-rehearsal`.
+
+**What r9 needed (all done; persistence noted):**
+- Production exports `/mnt/internal` read-only to `192.168.0.22` only, NFSv4 only (`nfs-kernel-server` installed; `/etc/nfs.conf.d/v4only.conf`; `/etc/exports`). UFW already allowed the LAN subnet.
+- r9 mounts production's disk (NFSv4.2) and the NAS (NFSv3; the NAS offers no v4) and unions them read-only with mergerfs 2.33.5 at `/mnt/media`, same layout as production. Movie/TV/music listings matched production exactly (0 differences). **These r9 mounts are not in `fstab` yet.**
+- r9 has NVIDIA container toolkit 1.20.1 (same as production) from NVIDIA's apt repo and the `nvidia` Docker runtime.
+- Read throughput measured from r9: production's disk 104 MB/s, NAS 50 MB/s.
+
+**Results:**
+- Libraries (Movies, TV, Music) loaded with correct `/data/media` paths.
+- Forced transcodes ran as full GPU pipelines (`nvdec` decode, `nvenc` encode). HDR10 to SDR tone mapping also ran on the GPU (`tonemap_cuda`).
+- Heaviest test: Ghostbusters (1984), 10-bit HEVC HDR10 at 32.7 Mbps, transcoded to 720p 2 Mbps: transcoder CPU 0.5-10% of a core, decoder about 17-36% in short bursts, encoder about 1-5%.
+- Two concurrent HDR10 transcodes: both full GPU, about 2-3% CPU each, GPU decoder about 1%. Headroom is large but the limit was not measured.
+- Control: with video copied (not transcoded) no transcoder appeared on the GPU.
+- The library has **no 4K movies** (778 of 792 are 1080p), so the practical heavy case is 10-bit HDR10 1080p HEVC (561 titles).
+
+**Notes for the cutover:**
+- Live TV and Threadfin stay on production for now; the r9 Plex points `threadfin` at `192.168.0.21`.
+- The NAS export for r9 is read-only (`.22`); decide at cutover whether the r9 Plex needs write access to the library.
+- A fresh, fully-stopped copy of the config is needed at cutover (the rehearsal copy was taken from a running server).
+- A stripped-identity server runs heavy background analysis (credits detection) that reads the library over NFS; the real cutover keeps the real identity.
+- The rehearsal container is stopped, not removed; its config stays in `/srv/docker/plex-rehearsal` on r9. Remove the `Plex-r9-rehearsal` server from the Plex account when done.
+
 ---
 
 ## 7. Open questions
@@ -248,3 +273,4 @@ Background for anyone repeating this. General bring-up lessons are in
 | 2026-09-20 | NAS export allowlist: r9 added read-only (Q4 closed). Documented that UGOS has no UI for per-host NFS rules. |
 | 2026-09-21 | Moved `mediahub-r9` from `192.168.0.149` to `192.168.0.22` (edited the existing router reservation for MAC `30:56:0f:b6:7e:18`). Verified: r9 answers at `.22` with the same SSH host key, correct gateway, DHCP lease from the router, Sunshine listening, Tailscale unaffected; NAS mount and AdGuard on production unaffected. Sunshine `csrf_allowed_origins` updated. NAS `.23` reservation added the same day; all four hosts (staging, production, r9, NAS) now appear in the router's static devices. NAS `/etc/exports` now allows `.22` (ro) and r9 test-mounted it. Stale `.149` removed. IP cleanup complete. |
 | 2026-09-21 | Phase 2 closed. r9 declared master for ROMs, saves and states (Q3). Nightly one-way saves backup r9 to production added (`scripts/backup-r9-saves.sh`, cron 04:30, tested: 5/5 sources ok). Switch library needs no copy: production already holds an identical one at `/mnt/media/games/roms/switch`. |
+| 2026-09-21 | Phase 3 rehearsal passed on r9: GPU transcodes (incl. HDR tone mapping, 2 concurrent streams) confirmed; pool, NFS export from production and NVIDIA runtime set up. See 6b. Rehearsal container stopped. |
