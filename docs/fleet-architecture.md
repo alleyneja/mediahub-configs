@@ -391,6 +391,36 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 ---
 
+## 5k. Decision D11: Immich originals now live on the NAS, with production's drive as an independent mirror (2026-09-21, Jay)
+
+**What:** the canonical home of Immich's original photos and videos (`upload/`) is now the **NAS**; production's hard drive keeps a full second copy at `/mnt/internal/photos/immich-originals-mirror` (renamed out of the library path so Immich never sees duplicates). `thumbs/` and `encoded-video/` were **left exactly where they are** (regenerable, so they need no protection; new derived files land where the pool's `mfs` policy puts them, mostly the NAS). Immich's own paths did not change: its library root is still `/mnt/media/photos/immich`, which the mergerfs pool now serves for `upload/` from the NAS branch.
+
+**Why:** the 79 GB of originals (23,529 files, about 81.7 GB on disk) had one copy on production's single non-redundant 12 TB drive, and only 522 newer files on the NAS; the nightly job backed up the database only, and its comment claiming photos were "backed up separately elsewhere" was unsupported (no job copied them). Jay proposed the NAS as the storage home (the D3 role split: NAS for storage, r9 for compute). Discovered on the way: the **NAS itself has no drive redundancy** (`md1 : raid1 sda2[0] [1/1]`, a single 21.8 TB disk), so the protection comes from two different devices, not from either device.
+
+**What was done and verified:**
+1. Copy production drive to NAS: 23,529 files, 81,737,432,234 bytes, additive (`--ignore-existing`), exit 0, 13:53; NAS file count 24,051 = 23,529 + 522 it already held.
+2. Full checksum comparison of every file (`rsync -rnc`), 27 minutes: **0 differences**; a control (one byte changed, same size and mtime) proved the method detects a change.
+3. Switch: `immich-server` stopped 11 seconds; `upload/` renamed to the mirror path; pool serves 24,051 files and the `.immich` marker from the NAS. End-to-end: **300 of 300** random originals (249 photos, 51 videos) read through Immich's container match the SHA-1 Immich stored at ingest.
+4. Nightly job: `~/immich-db-backup.sh` (untracked, silent on failure, database only) replaced by `scripts/immich-backup.sh` (tracked): the **same 02:30 cron slot, no new cron line**. It (a) dumps the database to a temp file and keeps it only if valid, (b) mirrors originals NAS to production's drive, **additive only** (`--ignore-existing`, no `--delete`), refusing to report success if `/mnt/nas` is unmounted or the source has fewer than 20,000 files, (c) pings Uptime Kuma push monitor **#43 "Immich nightly backup"** (25 h) only on success and sends an immediate `down` on failure; a missing heartbeat alerts too. First run: 2 min 26 s, dump 134.8 MB valid, mirror 24,051 = NAS 24,051, heartbeat recorded. The old script is kept as `~/immich-db-backup.sh.orig-20260921`; crontab backup `~/crontab.bak-20260921-1433`.
+5. The Kuma monitor was created with Kuma stopped for 20 seconds (per the gotcha notes); database backup `~/kuma-backup-20260921-1246/`.
+
+**Gains:** every original now exists on two different devices; new photos (which land on the NAS) reach production's drive nightly; the backup can no longer fail silently; the script is in the repo.
+
+**Costs / sacrifices:**
+1. **Both copies are single disks, in one house.** This survives one drive dying; it does not survive fire, theft, a power event that kills both, or a mistake that deletes on both. **No off-site copy exists.**
+2. **The mirror is additive, so it only ever grows:** photos deleted in Immich stay in the mirror (about 80 GB now) until someone prunes it by hand. Decide a pruning policy before it matters.
+3. Full-resolution photos now depend on the NAS being up (thumbnails still work from production's drive).
+4. The heartbeat secret lives in `scripts/immich-backup.env` (gitignored, mode 600); if lost, recreate the token in Kuma.
+5. Corruption that is copied nightly could reach the mirror before anyone notices; btrfs on the NAS detects but cannot repair it.
+
+**Not verified:** photo browsing speed from the NAS in daily use (thumbnails were not moved); the failure alert path end to end (planned as a deliberate, announced test); behavior when the NAS is unmounted at 02:30 (guarded in the script, not exercised).
+
+**Rollback (about a minute):** `docker stop immich-server; sudo mv /mnt/internal/photos/immich-originals-mirror /mnt/internal/photos/immich/upload; docker start immich-server` (this restores the previous state; the NAS then holds a redundant copy).
+
+**Revisit if:** an off-site or cloud copy is added; a second NAS drive makes the NAS a real mirror; the mirror needs pruning; or the NAS becomes a performance problem.
+
+---
+
 ## 6. Bringing up `mediahub-r9` (installed as `mediahub-arcade`) — what happened 2026-09-20
 
 Background for anyone repeating this. General bring-up lessons are in
