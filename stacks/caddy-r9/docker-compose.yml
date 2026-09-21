@@ -1,13 +1,19 @@
 # Caddy front door on mediahub-r9 (docs/fleet-architecture.md, D6). Deployed from /srv/docker/caddy-r9/ on r9.
 # Private key: /srv/docker/caddy-r9/pki/intermediate.key (generated ON r9, never copied anywhere; not in this repo).
+# Listens only on r9's Tailscale address, like production's names (all AdGuard rewrites answer a tailnet IP).
 services:
   caddy-r9:
     image: caddy:2
     container_name: caddy-r9
     restart: unless-stopped
     ports:
-      - "100.121.244.45:18443:18443"   # test phase: r9's tailnet address only
+      - "100.121.244.45:443:443"
     volumes:
       - /srv/docker/caddy-r9/Caddyfile:/etc/caddy/Caddyfile:ro
       - /srv/docker/caddy-r9/pki:/pki:ro
       - /srv/docker/caddy-r9/data:/data
+    networks:
+      - r9_internal
+networks:
+  r9_internal:
+    external: true

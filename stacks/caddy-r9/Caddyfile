@@ -1,9 +1,8 @@
-# Front door for mediahub-r9 (D6). TEST PHASE: non-standard port, tailnet address only.
-# Issues certificates from r9's OWN name-constrained intermediate (key generated on r9, signed once on production).
+# Front door for mediahub-r9 (docs/fleet-architecture.md, D6). Serves r9's own services by container name on r9_internal.
+# Certificates come from r9's OWN name-constrained intermediate (key generated on r9, signed once on production;
+# valid to 2027-09-21, RENEW by 2027-09-01, see ~/mediahub-cleanup.md and D6).
 {
 	admin off
-	http_port 18080
-	https_port 18443
 	auto_https disable_redirects
 	pki {
 		ca local {
@@ -18,15 +17,8 @@
 	}
 }
 
-r9test.lan {
+stirling.lan {
 	tls internal
 	log
-	respond "r9 front door test ok" 200
-}
-
-# Must NOT validate on any client that enforces name constraints (intermediate is limited to .lan and private IP ranges).
-constraint-test.example.com {
-	tls internal
-	log
-	respond "If you can read this behind a trusted lock, name constraints are NOT enforced on this client" 200
+	reverse_proxy stirling-pdf:8080
 }
