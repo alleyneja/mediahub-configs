@@ -260,7 +260,7 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 ## 5f. Decision D6 (PROPOSED, not yet adopted): a Caddy "front door" on each machine (2026-09-21)
 
-**Status: proposed; the experiment below is done, the design is awaiting Jay's go.** Nothing on r9 or production was changed by the experiment (scratch Caddy on unused ports, memory-backed storage, fully deleted afterwards; checked: no container and no copy of our keys left on r9).
+**Status (2026-09-21): approved by Jay; being built in stages. Stage 1-3 done (below); device tests pending; nothing live depends on it yet.** Nothing on r9 or production was changed by the experiment (scratch Caddy on unused ports, memory-backed storage, fully deleted afterwards; checked: no container and no copy of our keys left on r9).
 
 **Why:** today one Caddy on production fronts every `.lan` name (all 37 AdGuard rewrites answer `100.104.43.6`, production's tailnet address). For services on r9 that means (1) a cross-machine hop for every byte, so Immich and Jellyfin traffic would cross the single gigabit link twice and use production's CPU; (2) a published, unauthenticated port on r9 for each service; (3) another hardcoded IP per service. A Caddy on r9, reached by name via AdGuard, removes all three and is the same recipe for every later compute-role stack. It is platform work for batch 2 (Stirling PDF is only the pilot).
 
@@ -280,6 +280,13 @@ Every change to a shared service or its configuration gets a record **at the tim
 4. r9's Caddy becomes the front door for r9's names; it is a compute-role dependency.
 
 **Not verified:** that your specific devices (iPhone, Android, Windows, the laptop, the TV) accept a `.lan`-name-constrained intermediate: this must be tested on at least one iPhone and the Windows PC before relying on it; the exact signing procedure (openssl extensions: CA:TRUE, pathlen 0, keyUsage, name constraint); whether Caddy on r9 behaves cleanly at intermediate expiry.
+
+**Build log (2026-09-21):**
+1. Key generated **on r9**: `/srv/docker/caddy-r9/pki/intermediate.key` (EC P-256, mode 600, root-owned; never copied elsewhere, not in the repo). Only the certificate request travelled to production.
+2. Signed on production with the root key (used in place, no copy left behind): subject `Caddy Local Authority - r9 ECC Intermediate`, CA:TRUE pathlen 0, key usage certSign+cRLSign, **critical name constraints: DNS `lan`, IP `192.168.0.0/16` and `100.64.0.0/10`**, valid **2026-09-21 to 2027-09-21 (renew by 2027-09-01)**. `openssl verify` against production's root: OK.
+3. Test Caddy running on r9 from `stacks/caddy-r9/` (`/srv/docker/caddy-r9/`), listening only on r9's tailnet address `100.121.244.45:18443`, serving `r9test.lan` and the deliberately out-of-scope `constraint-test.example.com`. Verified from production with OpenSSL and curl: `r9test.lan` validates through leaf, r9 intermediate, existing root (return code 0, body served); `constraint-test.example.com` is rejected (`permitted subtree violation`, curl exit 60, no content).
+4. **Pending:** Jay adds an AdGuard rewrite `r9test.lan` to `100.121.244.45` (live, UI) and tests `https://r9test.lan:18443/` on an iPhone and the Windows PC; then remove the rewrite. Name-constraint enforcement is proven for OpenSSL/curl only; enforcement on iOS, Windows and Android is expected but not verified.
+5. After device tests pass: move the front door to 443 (bound to the tailnet address), pilot with Stirling PDF, and split the repo's Caddyfile per machine.
 
 **Fallback if the test fails or the cost is too high:** keep the single Caddy on production and give Stirling a Tailscale-bound port on r9 (compose `100.121.244.45:8085:8080`).
 

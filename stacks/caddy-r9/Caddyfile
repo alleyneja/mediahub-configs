@@ -1,0 +1,30 @@
+# Front door for mediahub-r9 (D6). TEST PHASE: non-standard port, tailnet address only.
+# Issues certificates from r9's OWN name-constrained intermediate (key generated on r9, signed once on production).
+{
+	admin off
+	http_port 18080
+	https_port 18443
+	auto_https disable_redirects
+	pki {
+		ca local {
+			root {
+				cert /pki/root.crt
+			}
+			intermediate {
+				cert /pki/intermediate.crt
+				key /pki/intermediate.key
+			}
+		}
+	}
+}
+
+r9test.lan {
+	tls internal
+	respond "r9 front door test ok" 200
+}
+
+# Must NOT validate on any client that enforces name constraints (intermediate is limited to .lan and private IP ranges).
+constraint-test.example.com {
+	tls internal
+	respond "If you can read this behind a trusted lock, name constraints are NOT enforced on this client" 200
+}
