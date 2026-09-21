@@ -7,7 +7,8 @@
 # three. Re-apply them by hand after any sync:
 #   1. users:              -> []                       (admin bcrypt password hash)
 #   2. clients.persistent: -> []                       (device names / MACs / IPs)
-#   3. filtering.rewrites  -> answer: SERVER_IP_PLACEHOLDER  (tailnet IP, all 36)
+#   3. filtering.rewrites  -> answer: SERVER_IP_PLACEHOLDER  (production's tailnet IP) or
+#                             R9_IP_PLACEHOLDER (r9's tailnet IP; services served by r9's Caddy, see D6)
 #
 # Everything else should match live. Note AdGuard rewrites and re-sorts this
 # file itself, so a raw `diff` against live shows ~450 lines of pure ordering
@@ -384,7 +385,7 @@ filtering:
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: stirling.lan
-      answer: SERVER_IP_PLACEHOLDER
+      answer: R9_IP_PLACEHOLDER
       enabled: true
     - domain: wud.lan
       answer: SERVER_IP_PLACEHOLDER

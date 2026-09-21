@@ -260,7 +260,7 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 ## 5f. Decision D6 (PROPOSED, not yet adopted): a Caddy "front door" on each machine (2026-09-21)
 
-**Status (2026-09-21): approved by Jay; being built in stages. Stage 1-3 done (below); device tests pending; nothing live depends on it yet.** Nothing on r9 or production was changed by the experiment (scratch Caddy on unused ports, memory-backed storage, fully deleted afterwards; checked: no container and no copy of our keys left on r9).
+**Status (2026-09-21): ADOPTED and in use. All stages done; first live service is Stirling PDF (D7).** Nothing on r9 or production was changed by the experiment (scratch Caddy on unused ports, memory-backed storage, fully deleted afterwards; checked: no container and no copy of our keys left on r9).
 
 **Why:** today one Caddy on production fronts every `.lan` name (all 37 AdGuard rewrites answer `100.104.43.6`, production's tailnet address). For services on r9 that means (1) a cross-machine hop for every byte, so Immich and Jellyfin traffic would cross the single gigabit link twice and use production's CPU; (2) a published, unauthenticated port on r9 for each service; (3) another hardcoded IP per service. A Caddy on r9, reached by name via AdGuard, removes all three and is the same recipe for every later compute-role stack. It is platform work for batch 2 (Stirling PDF is only the pilot).
 
@@ -293,6 +293,31 @@ Every change to a shared service or its configuration gets a record **at the tim
 **Rollback:** stop r9's Caddy and point the moved names' AdGuard rewrites back at production; nothing on production changes.
 
 **Revisit if:** a client rejects the constrained intermediate; r9's intermediate expiry causes an outage; or the fleet grows to the point where a small internal CA tool is warranted.
+
+---
+
+## 5g. Decision D7: Stirling PDF moved from production to r9, behind r9's own Caddy (2026-09-21, Jay approved and tested)
+
+**What:** `stirling.lan` is now served by `caddy-r9` (r9's front door, D6) which reverse-proxies to the `stirling-pdf` container on r9's private Docker network `r9_internal`. The AdGuard rewrite for `stirling.lan` was edited by Jay from `100.104.43.6` (production) to `100.121.244.45` (r9). Production's Stirling container was **stopped, not deleted**. Stacks: `stacks/stirling-pdf-r9/`, `stacks/caddy-r9/`.
+
+**Why:** the heaviest non-essential service on production (about 0.85 GB including swapped memory) and a D3 compute-role service; also the low-stakes pilot for the per-machine front door that Jellyfin and Immich will reuse.
+
+**What it gained (measured):** production's swap in use fell from 3,450 MB to 3,012 MB (about 440 MB) and available RAM rose about 260 MB when it was stopped. On r9 it uses about 0.93 GB of 60 GB. r9's Stirling has **no published port**, and r9's Caddy listens **only on r9's Tailscale address** (`192.168.0.22:443` is closed, verified). State moved was tiny (312 KB settings, 39 MB OCR data) with numeric ownership preserved; same pinned image `2.14.3-fat`.
+
+**Verified (three sources):** Jay on the iPhone and the Windows PC (Brave) both loaded it with no warning; r9's Caddy access log recorded 66 requests from the gaming PC and 17 from the iPhone (TLS 1.3); production's copy received 0 requests in the following 10 minutes; `stirling.lan` resolves to r9 and returns 200 with a verified certificate from r9 itself. The 403 (`/api/v1/info/wau`) and 404 (`/api/v1/policies`) responses in the log are **identical on production's copy** (direct control): normal for this configuration, not caused by the move.
+
+**What it costs / sacrifices:**
+1. **Update visibility gap:** WUD (the update checker) only watches production's Docker, so r9's containers (Stirling, Caddy, Plex, Wings) are not monitored for new versions. Backlogged.
+2. **One more front door to maintain:** r9's intermediate certificate must be renewed by **2027-09-01** (backlog).
+3. r9's Caddy is a dependency for every r9 `.lan` name; if it or Tailscale is down on r9, those names fail.
+4. If r9 reboots before Tailscale is up, the Caddy container's bind to the tailnet address can fail and retry until it is; not yet observed.
+5. `.lan` names remain tailnet-only: a device without Tailscale cannot use them (already true for all 37 names).
+
+**Not verified:** Stirling behavior for real work (only status, page load and API status were exercised; no PDF was processed); behavior of r9's Caddy after a full r9 reboot.
+
+**Rollback:** in AdGuard edit the `stirling.lan` rewrite back to `100.104.43.6`, then `docker start stirling-pdf` on production (its container, config and data are intact). Keep for at least a week.
+
+**Revisit / clean up after a week of stable use:** remove production's `stirling.lan` block from its Caddyfile and delete the stopped container and its data; add r9's containers to update monitoring.
 
 ---
 
