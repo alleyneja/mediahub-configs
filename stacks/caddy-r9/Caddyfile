@@ -27,5 +27,6 @@ r9test.lan {
 # Must NOT validate on any client that enforces name constraints (intermediate is limited to .lan and private IP ranges).
 constraint-test.example.com {
 	tls internal
+	log
 	respond "If you can read this behind a trusted lock, name constraints are NOT enforced on this client" 200
 }
