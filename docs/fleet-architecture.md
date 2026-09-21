@@ -321,6 +321,24 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 ---
 
+## 5h. Decision D8: Stirling PDF `METRICS_ENABLED` false to true (2026-09-21, Jay asked; applied to the r9 copy)
+
+**What:** in `stacks/stirling-pdf-r9/docker-compose.yml`, `METRICS_ENABLED: "true"` (was `"false"`); container recreated (about 1 minute of unavailability; only Jay uses it). Backup of the previous compose on r9: `docker-compose.yml.bak-pre-metrics`. Production's stopped copy keeps `false`.
+
+**Why:** Jay wanted the page to stop generating 403/404 errors. Investigation showed `/api/v1/info/wau` returns 403 "This endpoint is disabled" because metrics are off, and `/api/v1/policies` returns 404 because that endpoint belongs to a **licensed tier** (`requiresPaid=true, hasPaid=false`); it stays 404 even with `DISABLE_ADDITIONAL_FEATURES=false`, so only `METRICS_ENABLED` was worth changing. Tested in two throwaway containers first (nothing live touched).
+
+**Gains:** `wau` now 200; and, more usefully, **real usage numbers for Stirling** (weekly active users, unique browsers, request counts per tool), which informs the keep-or-retire question.
+
+**Costs:** ten read-only statistics endpoints (`/api/v1/info/wau`, `uptime`, `requests*`, `load*`) become readable by anyone who can reach `stirling.lan` (the tailnet); the response is counts only, no file content; Stirling keeps a small record of unique browsers. `/api/v1/policies` still returns 404 and will unless a Stirling license is bought (not pursued).
+
+**Not verified:** whether the extra tracking adds noticeable disk use over months.
+
+**Rollback:** set `METRICS_ENABLED: "false"` and `docker compose up -d` in `/srv/docker/stirling-pdf` on r9 (or restore the `.bak-pre-metrics` file).
+
+**Revisit:** check the usage numbers after a couple of weeks; if Stirling is unused, retire it.
+
+---
+
 ## 6. Bringing up `mediahub-r9` (installed as `mediahub-arcade`) — what happened 2026-09-20
 
 Background for anyone repeating this. General bring-up lessons are in
