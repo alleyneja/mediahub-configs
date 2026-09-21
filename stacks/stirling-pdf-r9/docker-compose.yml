@@ -23,7 +23,7 @@ services:
       SYSTEM_DEFAULTLOCALE: en-US
       # Private instance: no search indexing, no telemetry prompts.
       SYSTEM_GOOGLEVISIBILITY: "false"
-      METRICS_ENABLED: "false"
+      METRICS_ENABLED: "true"
       SHOW_SURVEY: "false"
       SYSTEM_MAXFILESIZE: "500"
       UI_APPNAME: Stirling PDF
