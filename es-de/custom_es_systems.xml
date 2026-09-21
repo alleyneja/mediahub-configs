@@ -39,14 +39,14 @@
     </system>
     <!-- ps3 (2026-09-20): ES-DE's default first command is "RPCS3 Shortcut", which runs `bash <folder>`
          and fails on .ps3dir folders, so RPCS3 never starts. Directory profile is first (= default) and
-         the fullscreen flag is added because no-gui mode otherwise opens a small window. -->
+         launched through rpcs3-fullscreen because RPCS3 ignores its own fullscreen flag under GNOME on X11. -->
     <system>
         <name>ps3</name>
         <fullname>Sony PlayStation 3</fullname>
         <path>%ROMPATH%/ps3</path>
         <extension>.desktop .iso .ISO .ps3 .PS3 .ps3dir .PS3DIR</extension>
-        <command label="RPCS3 Directory (Standalone)">%EMULATOR_RPCS3% --no-gui --fullscreen %ROM%</command>
-        <command label="RPCS3 ISO (Standalone)">%EMULATOR_RPCS3% --no-gui --fullscreen %ROM%</command>
+        <command label="RPCS3 Directory (Standalone)">/home/jay/.local/bin/rpcs3-fullscreen %ROM%</command>
+        <command label="RPCS3 ISO (Standalone)">/home/jay/.local/bin/rpcs3-fullscreen %ROM%</command>
         <command label="RPCS3 Game Serial (Standalone)">%EMULATOR_RPCS3% --no-gui --fullscreen %RPCS3_GAMEID%:%INJECT%=%BASENAME%.ps3</command>
         <command label="RPCS3 Shortcut (Standalone)">%ENABLESHORTCUTS% %EMULATOR_OS-SHELL% %ROM%</command>
         <platform>ps3</platform>
