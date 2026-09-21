@@ -1,0 +1,7 @@
+# r9 has TWO Bluetooth adapters: the ASUS USB dongle (0b05:1bf6) and the Realtek radio built
+# into the board's Wi-Fi card (0bda:b850). Dolphin picks one at launch and has picked the
+# built-in one, which never sees a Wii Remote (2026-09-20: dongle saw the remote 6/6 scans at
+# 5 ft, built-in saw it 0 times). Keep only the dongle visible so Dolphin can't choose wrong.
+# Remove this rule to get the built-in radio back (e.g. for headphones). If the dongle is ever
+# unplugged, r9 has no Bluetooth at all until the rule is removed.
+SUBSYSTEM=="usb", ATTR{idVendor}=="0bda", ATTR{idProduct}=="b850", ATTR{authorized}="0"
