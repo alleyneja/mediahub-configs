@@ -1,0 +1,18 @@
+# Immich machine learning on mediahub-r9 (docs/fleet-architecture.md, D10): faces, smart search and other ML run on r9's GPU.
+# The Immich server, its database and the photo library stay on production; the server is pointed at this container in
+# Immich's admin settings (Machine Learning). Version MUST match the server's (server is v3.1.0): bump both together.
+# Reachable only on r9's Tailscale address (the API has no authentication).
+services:
+  immich-machine-learning:
+    image: ghcr.io/immich-app/immich-machine-learning:v3.1.0-cuda
+    container_name: immich-machine-learning
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - TZ=America/Chicago
+    volumes:
+      - /srv/docker/immich-ml/model-cache:/cache
+    ports:
+      - "100.121.244.45:3003:3003"
+    restart: unless-stopped
