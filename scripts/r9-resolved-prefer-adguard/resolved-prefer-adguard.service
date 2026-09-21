@@ -1,0 +1,5 @@
+[Unit]
+Description=Return systemd-resolved to AdGuard after it has drifted to the fallback DNS
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/resolved-prefer-adguard.sh
