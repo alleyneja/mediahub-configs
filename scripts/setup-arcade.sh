@@ -7,6 +7,7 @@
 #
 #   ./setup-arcade.sh flatpaks        # emulators, pinned to the builds i7 ran
 #   ./setup-arcade.sh sunshine        # Sunshine, from the .deb archived with the emulators
+#   ./setup-arcade.sh wiimote         # udev rules, input group, dongle-only Bluetooth (r9)
 #
 # Every step is idempotent. Later steps are appended below as they are proven on r9.
 set -euo pipefail
@@ -58,8 +59,23 @@ step_sunshine() {
   sunshine --version 2>&1 | head -1
 }
 
+step_wiimote() {
+  # Real Wii Remotes under Dolphin. Proven on r9 2026-09-20 (Wii Sports, Mario Party 9).
+  local here; here="$(cd "$(dirname "$0")/.." && pwd)"
+  sudo install -m 644 "$here/system/72-wiimote.rules" /etc/udev/rules.d/72-wiimote.rules
+  # r9 only: it has a second, built-in Bluetooth radio that Dolphin wrongly picks and that
+  # cannot see the remote. Skip on machines with a single adapter.
+  if lsusb | grep -q '0bda:b850' && lsusb | grep -q '0b05:1bf6'; then
+    sudo install -m 644 "$here/system/73-r9-bluetooth-dongle-only.rules" /etc/udev/rules.d/73-r9-bluetooth-dongle-only.rules
+  fi
+  sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=usb
+  sudo usermod -aG input "$USER"   # takes effect at next login; i7's jay is in it too
+  echo "Sync remotes with 1+2 (never the red button). Do NOT toggle adapters while Dolphin runs -- it hangs on exit."
+}
+
 case "${1:-}" in
+  wiimote) step_wiimote ;;
   flatpaks) step_flatpaks ;;
   sunshine) step_sunshine ;;
-  *) echo "usage: $0 flatpaks|sunshine"; exit 2 ;;
+  *) echo "usage: $0 flatpaks|sunshine|wiimote"; exit 2 ;;
 esac
