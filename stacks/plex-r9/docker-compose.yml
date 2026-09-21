@@ -1,0 +1,27 @@
+# Plex on mediahub-r9: the Phase 3 cutover target (docs/fleet-architecture.md).
+# Same shape as stacks/plex/docker-compose.yml (production). Differences:
+#   - Live TV: Threadfin stays on production for now, so the name points there.
+#   - GPU: the RTX 5070 Ti (production has the Quadro P400).
+# NEVER run this and stacks/plex at the same time: they share ONE server identity
+# and would fight over plex.tv. Production's Plex must be stopped first.
+services:
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    cpus: "4"
+    # Host networking, same reason as production: Plex must advertise the real LAN IP.
+    network_mode: host
+    extra_hosts:
+      - threadfin=192.168.0.21
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - VERSION=docker
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+    volumes:
+      - /srv/docker/plex:/config
+      - /mnt/media:/data/media
+    runtime: nvidia
+    restart: unless-stopped
