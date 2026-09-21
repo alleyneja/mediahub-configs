@@ -20,6 +20,7 @@
 
 r9test.lan {
 	tls internal
+	log
 	respond "r9 front door test ok" 200
 }
 
