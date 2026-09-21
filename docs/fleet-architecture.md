@@ -226,7 +226,7 @@ Rehearsal server `plex-rehearsal` ran on r9 from `stacks/plex-rehearsal/docker-c
 
 **What r9 needed (all done; persistence noted):**
 - Production exports `/mnt/internal` read-only to `192.168.0.22` only, NFSv4 only (`nfs-kernel-server` installed; `/etc/nfs.conf.d/v4only.conf`; `/etc/exports`). UFW already allowed the LAN subnet.
-- r9 mounts production's disk (NFSv4.2) and the NAS (NFSv3; the NAS offers no v4) and unions them read-only with mergerfs 2.33.5 at `/mnt/media`, same layout as production. Movie/TV/music listings matched production exactly (0 differences). **These r9 mounts are not in `fstab` yet.**
+- r9 mounts production's disk (NFSv4.2) and the NAS (NFSv3; the NAS offers no v4) and unions them read-only with mergerfs 2.33.5 at `/mnt/media`, same layout as production. Movie/TV/music listings matched production exactly (0 differences). **Made persistent 2026-09-21** in r9's `/etc/fstab` (backup `/etc/fstab.bak.pre-plex-phase3`), client options read-write like production's; verified with `mount -a`, not yet with a reboot. Writes are still refused because both server-side exports for `.22` remain `ro` until cutover.
 - r9 has NVIDIA container toolkit 1.20.1 (same as production) from NVIDIA's apt repo and the `nvidia` Docker runtime.
 - Read throughput measured from r9: production's disk 104 MB/s, NAS 50 MB/s.
 
@@ -240,7 +240,10 @@ Rehearsal server `plex-rehearsal` ran on r9 from `stacks/plex-rehearsal/docker-c
 
 **Notes for the cutover:**
 - Live TV and Threadfin stay on production for now; the r9 Plex points `threadfin` at `192.168.0.21`.
-- The NAS export for r9 is read-only (`.22`); decide at cutover whether the r9 Plex needs write access to the library.
+- **Permissions parity (Jay, 2026-09-21):** production's Plex has read-write access to the library (`/mnt/media` mounted rw, NAS export for `.21` is rw). r9's Plex gets the same, no more, no less: at cutover flip the `.22` exports (NAS `/etc/exports` and production `/etc/exports`) from `ro` to `rw` and `exportfs -ra`. Until then r9 is read-only by the exports alone.
+- r9 firewall: `32400/tcp` allowed (mirrors production's rule). The router's port-forward for 32400 must be moved from `.21` to `.22` at cutover (Jay does this in the router UI).
+- Real r9 compose: `stacks/plex-r9/docker-compose.yml`. Never run it alongside production's Plex (one shared identity).
+- NAS SSH (port 22) was found closed at 03:05 although it worked earlier that night (NFS still fine); it must be reopened to flip the NAS export.
 - A fresh, fully-stopped copy of the config is needed at cutover (the rehearsal copy was taken from a running server).
 - A stripped-identity server runs heavy background analysis (credits detection) that reads the library over NFS; the real cutover keeps the real identity.
 - The rehearsal container is stopped, not removed; its config stays in `/srv/docker/plex-rehearsal` on r9. Remove the `Plex-r9-rehearsal` server from the Plex account when done.
