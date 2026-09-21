@@ -1,0 +1,25 @@
+# REHEARSAL ONLY (Phase 3, fleet-architecture.md). Runs on mediahub-r9, never on
+# production. Separate config dir with a STRIPPED identity so it can never
+# register as, or overwrite the address of, the real "production" Plex server.
+# Same shape as stacks/plex/docker-compose.yml so the rehearsal proves the real thing.
+services:
+  plex-rehearsal:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex-rehearsal
+    network_mode: host
+    # Live TV stays on production during Phase 3.
+    extra_hosts:
+      - threadfin=192.168.0.21
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Chicago
+      - VERSION=docker
+      - PLEX_CLAIM=${PLEX_CLAIM:-}
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,video,utility
+    volumes:
+      - /srv/docker/plex-rehearsal:/config
+      - /mnt/media:/data/media:ro
+    runtime: nvidia
+    restart: "no"
