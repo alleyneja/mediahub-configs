@@ -90,6 +90,9 @@ step_rpcs3() {
   local here; here="$(cd "$(dirname "$0")/.." && pwd)"
   dpkg -s python3-evdev >/dev/null 2>&1 || sudo apt-get install -y python3-evdev
   mkdir -p "$HOME/.local/bin" "$HOME/.config/systemd/user"
+  # RPCS3 ignores its fullscreen flag under GNOME/X11; the wrapper forces it (needs wmctrl + xdotool)
+  command -v wmctrl >/dev/null || sudo apt-get install -y wmctrl
+  install -m 755 "$here/scripts/rpcs3-fullscreen" "$HOME/.local/bin/rpcs3-fullscreen"
   install -m 755 "$here/scripts/arcade-guide-quit.py" "$HOME/.local/bin/arcade-guide-quit"
   cp "$here/systemd/user/arcade-guide-quit.service" "$HOME/.config/systemd/user/"
   systemctl --user daemon-reload && systemctl --user enable --now arcade-guide-quit.service

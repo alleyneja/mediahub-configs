@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Launch RPCS3 and force its window fullscreen.
+# RPCS3's own --fullscreen flag and its "Start games in fullscreen" setting are both ignored under
+# GNOME/mutter on X11 (2026-09-20: window opened decorated + maximized, banner still showing), so wait
+# for the game window and ask the window manager directly. Needs: wmctrl, xdotool.
+[ $# -ge 1 ] || { echo "usage: $0 <game dir or eboot>"; exit 2; }
+flatpak run net.rpcs3.RPCS3 --no-gui --fullscreen "$1" &
+pid=$!
+(
+  for _ in $(seq 1 120); do
+    sleep 1
+    w=$(xdotool search --name '^FPS:' 2>/dev/null | tail -1)
+    if [ -n "$w" ]; then wmctrl -i -r "$(printf '0x%08x' "$w")" -b add,fullscreen; exit 0; fi
+  done
+) &
+wait "$pid"
