@@ -64,7 +64,7 @@ Recorded so they are not re-litigated:
 | `192.168.0.20` | `mediahub-staging` (future `mediahub-x51`) | Being retired |
 | `192.168.0.21` | `mediahub-production` (future `mediahub-i7`) | AdGuard DNS for the whole network. Do not change without changing the router's DNS setting first |
 | `192.168.0.22` | `mediahub-r9` | Moved here from `.149` on 2026-09-21 |
-| `192.168.0.23` | UGREEN NAS | Mounted BY ADDRESS in production's `fstab`; needs a reservation (2026-09-21: it had none) |
+| `192.168.0.23` | UGREEN NAS | Mounted BY ADDRESS in production's `fstab`. Reservation added 2026-09-21 (had none before) |
 
 The next new machine takes the next free number (`.24`). Gaming PC and phones stay on ordinary DHCP.
 
@@ -246,4 +246,4 @@ Background for anyone repeating this. General bring-up lessons are in
 | 2026-09-20 | Revised after Jay's review: D1 approved; added F9 (new machine is production's successor) and F10 (reuse all hardware); F1 tightened to seconds-to-minutes; PC games folder corrected to an installer archive; phasing extended to the full service move; open questions Q7, Q8 added. |
 | 2026-09-20 | Phase 1 groundwork: router IP reservation done (Q4), Tailscale joined, SSH/fail2ban/auditd hardened to match production. |
 | 2026-09-20 | NAS export allowlist: r9 added read-only (Q4 closed). Documented that UGOS has no UI for per-host NFS rules. |
-| 2026-09-21 | Moved `mediahub-r9` from `192.168.0.149` to `192.168.0.22` (edited the existing router reservation for MAC `30:56:0f:b6:7e:18`). Verified: r9 answers at `.22` with the same SSH host key, correct gateway, DHCP lease from the router, Sunshine listening, Tailscale unaffected; NAS mount and AdGuard on production unaffected. Sunshine `csrf_allowed_origins` updated. Still open: NAS `/etc/exports` entry still says `.149`; NAS `.23` needs its own router reservation (it was on a dynamic lease and production mounts it by IP). |
+| 2026-09-21 | Moved `mediahub-r9` from `192.168.0.149` to `192.168.0.22` (edited the existing router reservation for MAC `30:56:0f:b6:7e:18`). Verified: r9 answers at `.22` with the same SSH host key, correct gateway, DHCP lease from the router, Sunshine listening, Tailscale unaffected; NAS mount and AdGuard on production unaffected. Sunshine `csrf_allowed_origins` updated. NAS `.23` reservation added the same day; all four hosts (staging, production, r9, NAS) now appear in the router's static devices. Still open: NAS `/etc/exports` entry still says `.149`. |
