@@ -258,10 +258,14 @@ Production Plex stopped 03:19:45; r9 Plex started 03:26:35 (about 7 minutes of d
 
 **Rollback (valid while production's config is kept):** stop r9 Plex (`docker stop plex`), `docker start plex` on production, restore the Caddy line and the router forward. Watch history made on r9 after cutover would not carry back. Production's container restart policy is `unless-stopped`, so its explicit stop survives reboots; do not start it while r9's is running (one shared identity).
 
+**Live TV broke at first, then fixed (03:41-03:50):** tuning failed with "Could not tune channel" (Plex log: `Recorder: Error 16`, ffmpeg `sample rate not set`). Cause: the `Codecs/` folder was excluded from the config copy, and Plex only auto-downloads codecs for on-demand playback, not for Live TV, so r9 had no AAC/AC3/DCA/MP2/MPEG2/VC1 decoders and could not read the streams' audio parameters. Fix: download Plex's own libraries for the running build (`https://downloads.plex.tv/codecs/<build-hash>/linux-x86_64-standard/<lib>.so`) into `Codecs/<build-hash>-linux-x86_64/`. **Rule for any future config copy: include `Codecs/` or pre-seed it.** Test tip: when running Plex's transcoder by hand via `docker exec`, set `FFMPEG_EXTERNAL_LIBS` as Plex does, or it loads no external decoders and every test fails misleadingly.
+- Some Live TV lag was reported afterwards (tune time 1.8-6 s). Not root-caused: the maintenance window (default 2-5 AM) was running analysis jobs and Live TV was transcoding on CPU. Re-test after 5 AM before tuning. r9 Plex still has production's `cpus: "4"` cap; raising it to 8 did not change the picture and was reverted.
+
+**Done since cutover:** healthcheck moved to r9 (`/srv/scripts/plex-epg-healthcheck.sh`, root crontab `@reboot`); production's cron entry is commented out (re-enable only on rollback). Rehearsal container and `/srv/docker/plex-rehearsal` removed from r9.
+
 **Follow-ups:**
-- `/srv/scripts/plex-epg-healthcheck.sh` runs from production's root crontab `@reboot`. It now targets a Plex that is not there and production's stale config copy. Move it to r9 (and remove it from production) so it protects the live server.
 - r9's `fstab` mounts are verified with `mount -a` but not by a reboot.
-- Remove the `Plex-r9-rehearsal` server from the Plex account; delete `/srv/docker/plex-rehearsal` (17 GB on r9) and the stopped `plex-rehearsal` container when no longer needed.
+- Remove the `Plex-r9-rehearsal` server from the Plex account (Jay, in Settings > Authorized Devices).
 - Keep production's `/srv/docker/plex` untouched for at least a week as the rollback copy.
 - Live TV and Threadfin still run on production; production is now a dependency of r9 (its disk is exported to r9, and Threadfin runs there).
 
