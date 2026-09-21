@@ -136,7 +136,7 @@ Each phase has a gate: do not start the next until the gate passes.
 | 0 | New machine (`mediahub-r9`) bring-up and burn-in | CPU/RAM soak clean; GPU soak clean; temperatures sane |
 | 1 | Groundwork: reserve the new machine's IP in the router; add it to the NAS export allowlist; install Docker and Tailscale; firewall rules | Machine reachable and mounts what it needs read-only |
 | 2 | **CLOSED 2026-09-21.** Game streaming moves: r9 is master for ROMs, saves and states; bring up streaming on the new GPU | A real game plays end to end. **Passed:** confirmed on multiple consoles/emulators (God of War Collection 60 FPS; MW2 is an outlier at ~18 FPS, CPU-bound on RPCS3's emulated GPU thread, rated only "Ingame" upstream) |
-| 3 | Plex/transcoding moves: rehearse against a copy, then a planned short cutover in a quiet window | Rehearsal passes; viewers unaffected off-window. **Rehearsal PASSED 2026-09-21** (see 6b); cutover pending |
+| 3 | Plex/transcoding moves: rehearse against a copy, then a planned short cutover in a quiet window | Rehearsal passes; viewers unaffected off-window. **Rehearsal PASSED 2026-09-21** (see 6b). **CUTOVER DONE 2026-09-21** (see 6c) |
 | 4 | Remaining household services (Nextcloud, Vaultwarden, the *arr apps and the rest) move one stack at a time, each within F1's seconds-to-minutes | Each stack verified before the next |
 | 5 | Old production machine repurposed (storage/backup role, proposed) | Library safely served or moved (option C) first |
 | 6 | Security system on its own machine (F4) | Independent of phases 1–5; can happen at any time |
@@ -248,6 +248,23 @@ Rehearsal server `plex-rehearsal` ran on r9 from `stacks/plex-rehearsal/docker-c
 - A stripped-identity server runs heavy background analysis (credits detection) that reads the library over NFS; the real cutover keeps the real identity.
 - The rehearsal container is stopped, not removed; its config stays in `/srv/docker/plex-rehearsal` on r9. Remove the `Plex-r9-rehearsal` server from the Plex account when done.
 
+## 6c. Phase 3 cutover: Plex moved to `mediahub-r9` (2026-09-21)
+
+Production Plex stopped 03:19:45; r9 Plex started 03:26:35 (about 7 minutes of downtime; about 11 minutes until the Caddy switch). Only Jay's own paused Plexamp session was active beforehand and no recordings were scheduled.
+
+**What was done, in order:** exports for `.22` flipped to `rw` on both production and the NAS (permissions parity with what production's Plex had); production Plex stopped (`docker stop`, container and `/srv/docker/plex` left intact as the rollback); consistent 17 GB config copy to r9 `/srv/docker/plex`; r9 Preferences edited (P400 `HardwareDevicePath` removed, `customConnections` changed from production's Tailscale IP `100.104.43.6` to r9's `100.121.244.45`); Plex started from `stacks/plex-r9/docker-compose.yml`; Caddy `plex.lan` upstream changed to `192.168.0.22:32400` (edited in place to keep the bind-mount inode; repo mirror `caddy/Caddyfile` updated; live backup `/srv/docker/caddy/Caddyfile.bak.pre-plex-r9`); router port-forward for 32400 moved `.21` to `.22` by Jay.
+
+**Verified:** same machine ID (`e1c6bab8...`), claimed, three libraries, DVR pointing at `threadfin:34400` (reachable from r9); `plex.lan` via Caddy reaches r9; tailnet address answers; Plex Settings shows "Fully accessible outside your network" (Jay); a forced transcode on the real server ran as a full GPU pipeline (nvdec/nvenc).
+
+**Rollback (valid while production's config is kept):** stop r9 Plex (`docker stop plex`), `docker start plex` on production, restore the Caddy line and the router forward. Watch history made on r9 after cutover would not carry back. Production's container restart policy is `unless-stopped`, so its explicit stop survives reboots; do not start it while r9's is running (one shared identity).
+
+**Follow-ups:**
+- `/srv/scripts/plex-epg-healthcheck.sh` runs from production's root crontab `@reboot`. It now targets a Plex that is not there and production's stale config copy. Move it to r9 (and remove it from production) so it protects the live server.
+- r9's `fstab` mounts are verified with `mount -a` but not by a reboot.
+- Remove the `Plex-r9-rehearsal` server from the Plex account; delete `/srv/docker/plex-rehearsal` (17 GB on r9) and the stopped `plex-rehearsal` container when no longer needed.
+- Keep production's `/srv/docker/plex` untouched for at least a week as the rollback copy.
+- Live TV and Threadfin still run on production; production is now a dependency of r9 (its disk is exported to r9, and Threadfin runs there).
+
 ---
 
 ## 7. Open questions
@@ -277,3 +294,4 @@ Rehearsal server `plex-rehearsal` ran on r9 from `stacks/plex-rehearsal/docker-c
 | 2026-09-21 | Moved `mediahub-r9` from `192.168.0.149` to `192.168.0.22` (edited the existing router reservation for MAC `30:56:0f:b6:7e:18`). Verified: r9 answers at `.22` with the same SSH host key, correct gateway, DHCP lease from the router, Sunshine listening, Tailscale unaffected; NAS mount and AdGuard on production unaffected. Sunshine `csrf_allowed_origins` updated. NAS `.23` reservation added the same day; all four hosts (staging, production, r9, NAS) now appear in the router's static devices. NAS `/etc/exports` now allows `.22` (ro) and r9 test-mounted it. Stale `.149` removed. IP cleanup complete. |
 | 2026-09-21 | Phase 2 closed. r9 declared master for ROMs, saves and states (Q3). Nightly one-way saves backup r9 to production added (`scripts/backup-r9-saves.sh`, cron 04:30, tested: 5/5 sources ok). Switch library needs no copy: production already holds an identical one at `/mnt/media/games/roms/switch`. |
 | 2026-09-21 | Phase 3 rehearsal passed on r9: GPU transcodes (incl. HDR tone mapping, 2 concurrent streams) confirmed; pool, NFS export from production and NVIDIA runtime set up. See 6b. Rehearsal container stopped. |
+| 2026-09-21 | Phase 3 cutover done: Plex now runs on r9 (same server identity), Caddy and router port-forward repointed, remote access and GPU transcode verified. See 6c. |
