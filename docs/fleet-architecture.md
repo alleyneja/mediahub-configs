@@ -137,7 +137,7 @@ Each phase has a gate: do not start the next until the gate passes.
 | 1 | Groundwork: reserve the new machine's IP in the router; add it to the NAS export allowlist; install Docker and Tailscale; firewall rules | Machine reachable and mounts what it needs read-only |
 | 2 | **CLOSED 2026-09-21.** Game streaming moves: r9 is master for ROMs, saves and states; bring up streaming on the new GPU | A real game plays end to end. **Passed:** confirmed on multiple consoles/emulators (God of War Collection 60 FPS; MW2 is an outlier at ~18 FPS, CPU-bound on RPCS3's emulated GPU thread, rated only "Ingame" upstream) |
 | 3 | Plex/transcoding moves: rehearse against a copy, then a planned short cutover in a quiet window | Rehearsal passes; viewers unaffected off-window. **Rehearsal PASSED 2026-09-21** (see 6b). **CUTOVER DONE 2026-09-21, COMPLETE** (see 6c) |
-| 4 | Remaining household services (Nextcloud, Vaultwarden, the *arr apps and the rest) move one stack at a time, each within F1's seconds-to-minutes | Each stack verified before the next |
+| 4 | **Amended by D3:** only the compute-role services move to r9 (Immich, Jellyfin, Minecraft, Stirling PDF and similar); the essentials and the *arr pipeline stay on production. One stack at a time, each within F1's seconds-to-minutes | Each stack verified before the next |
 | 5 | Old production machine repurposed (storage/backup role, proposed) | Library safely served or moved (option C) first |
 | 6 | Security system on its own machine (F4) | Independent of phases 1–5; can happen at any time |
 | 7 | Naming pass (see §5) | Tracked and committed as one change |
@@ -170,6 +170,30 @@ must respect F6. It is tracked in the private backlog until designed.
   the outgoing machine gets a new one.
 - Tailscale registers each machine as a separate device; renames must update those entries too.
 - Renames happen as **one tracked pass** after migration, committed together.
+
+---
+
+## 5b. Decision D3: what each machine is for (2026-09-21, Jay)
+
+**Decided:** each machine does what it is uniquely good at, and services sit where their failure hurts least. Amends F9: r9 is the *compute* host, not a host for the full service set.
+
+| Machine | Role | Why | Notes |
+|---|---|---|---|
+| `mediahub-r9` | **Compute and experiments:** Plex and transcoding (done), game streaming/emulation, Immich (+ML), Jellyfin, Minecraft/Pterodactyl, future local LLM, other heavy or non-critical apps | Only machine with real CPU/RAM/GPU headroom; the most likely to reboot or crash (games, drivers) | Expected to be on most of the time |
+| `mediahub-production` (i7) | **Core and storage:** the "always-on essentials" (AdGuard DNS, Caddy, Vaultwarden, Authentik, Nextcloud), the library disk, the *arr and download pipeline (must share a device with the library), Threadfin | Stable, always on, no gaming, holds the 8.8 TB | Its memory pressure (see below) is relieved by moving heavy apps to r9 |
+| NAS | Bulk storage and backup target; also the store for security footage | 22 TB, always on | Unchanged otherwise |
+| `mediahub-staging` (x51) | **Security system** (Home Assistant, cameras); footage stored on the NAS | Separate failure domain from games (F4) | A second AdGuard here was considered, not decided (see Q9) |
+| gaming PC | Client only | F11 | Unchanged |
+
+**Requirements captured for Phase 4 (2026-09-21):**
+- Data loss: last night's backup is acceptable for moves (a fresh backup is still taken immediately before each move, since it is cheap).
+- Never down, even briefly: **AdGuard DNS** only (Jay's most-used service). Everything else tolerates F1's minutes; nobody depends on these services completely yet.
+- Pace: not fixed; follows the role split (a short list, not the full service set).
+- Q7 answered: production stays as the core and storage host, not a machine to be emptied.
+
+**Measured, production memory (2026-09-21):** swap 3.7 of 4.0 GB used, but only 10 of 31 GB of RAM in use with 20 GB available: the kernel has parked idle services in swap to keep file cache (swappiness 60). Not a shortage, but idle essentials (Authentik 376 MB, Stirling PDF 478 MB) are swapped out and slow on first use. Largest resident users: Minecraft server 1.1 GB, Immich, Jellyfin, `rreading-glasses-db`, AdGuard.
+
+**Revisit if:** r9 proves stable enough to host essentials; or production's disk/CPU becomes the bottleneck; or the security machine is not the x51.
 
 ---
 
@@ -280,6 +304,7 @@ Production Plex stopped 03:19:45; r9 Plex started 03:26:35 (about 7 minutes of d
 | Q5 | What tooling makes the "hub" layer? | Candidates: existing monitoring plus configuration-management or a container-management agent. Must satisfy F6. |
 | Q6 | Where do decisions that name weak spots live? | Not in this public repo. A separate private repository, for things worth keeping in several places but not public, is planned (tracked in the private backlog). |
 | Q7 | What should the older production machine do once services move off it? | Proposed: storage/library host and backup target, since it holds the 8.8 TB drive. Needs Jay's confirmation. |
+| Q9 | Second AdGuard on the x51 as DNS failover? | Open. AdGuard holds 37 `.lan` rewrites that public DNS cannot answer; production reboots automatically Wed and Sun at 03:00, so `.lan` names and ad-blocking drop for a few minutes each time. Moderate value, low urgency; needs the two configs kept in sync. |
 | Q8 | Rename `mediahub-arcade` to a neutral name now? | **Answered 2026-09-20:** yes, done. Now `mediahub-r9`; see D2 in section 5. |
 
 ---
