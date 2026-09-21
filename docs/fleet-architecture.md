@@ -51,10 +51,22 @@ Recorded so they are not re-litigated:
 | Machine | Hardware | Address | Role today | Role planned |
 |---|---|---|---|---|
 | `mediahub-production` | Intel i7-7700, 32 GB DDR4, Quadro P400, 2 TB NVMe (OS/Docker), 12 TB HDD (media) | 192.168.0.21 | Everything: media, apps, Plex, Live TV, game streaming | Storage and library host (it holds the 8.8 TB) and backup target; services move off it in phases (proposed, see Q7) |
-| `mediahub-r9` | Ryzen 9 9900X, 64 GB DDR5-6000, RTX 5070 Ti 16 GB, 2 × 2 TB NVMe | 192.168.0.149 (reserved in the router) | Bring-up and burn-in | Primary host: successor to production, running the full service set once phases 2–4 are done |
+| `mediahub-r9` | Ryzen 9 9900X, 64 GB DDR5-6000, RTX 5070 Ti 16 GB, 2 × 2 TB NVMe | 192.168.0.22 (reserved in the router; was `.149` until 2026-09-21) | Bring-up and burn-in | Primary host: successor to production, running the full service set once phases 2–4 are done |
 | `mediahub-staging` | Alienware X51 R2, i7-4790, 16 GB, GTX 1650 | 192.168.0.20 | Rehearsal/practice machine | Candidate for the security system (F4) |
 | NAS | UGREEN NASync DH4300 Plus | 192.168.0.23 | Network storage, NFS | Unchanged |
 | `gaming-pc` (Tailscale name `gaming-desktop`) | Windows 11 workstation; never headless | 192.168.0.206 | Jay's daily machine and the usual origin of SSH sessions to the servers; holds the installed PC games | Unchanged. Part of the fleet as a client/workstation, not a server |
+
+### LAN addresses (fixed pattern, router reservations)
+
+| Address | Host | Notes |
+|---|---|---|
+| `192.168.0.1` | Router (Arris SBG8300) | Hands out DHCP; DNS list it gives clients: AdGuard `.21`, then `1.1.1.1` |
+| `192.168.0.20` | `mediahub-staging` (future `mediahub-x51`) | Being retired |
+| `192.168.0.21` | `mediahub-production` (future `mediahub-i7`) | AdGuard DNS for the whole network. Do not change without changing the router's DNS setting first |
+| `192.168.0.22` | `mediahub-r9` | Moved here from `.149` on 2026-09-21 |
+| `192.168.0.23` | UGREEN NAS | Mounted BY ADDRESS in production's `fstab`; needs a reservation (2026-09-21: it had none) |
+
+The next new machine takes the next free number (`.24`). Gaming PC and phones stay on ordinary DHCP.
 
 ### Storage facts (measured 2026-09-20)
 
@@ -203,6 +215,7 @@ Background for anyone repeating this. General bring-up lessons are in
    rules, so the address is allowed by appending a read-only entry to `/etc/exports` on the NAS and
    running `exportfs -r` (reloads without restarting NFS, so existing mounts are unaffected):
    `192.168.0.149(ro,sync,insecure,no_wdelay,no_root_squash,anonuid=65534,anongid=65534,sec=sys)`.
+   **Stale since 2026-09-21:** r9 is now `192.168.0.22`. The NAS still lists `.149`. Replace it with `.22` when r9 first mounts the NAS, and remove the `.149` line.
    The NAS regenerates its NFS config from an internal database when the NFS service restarts, so this
    entry may be lost after a NAS reboot or update; if the new machine suddenly fails to mount, re-add it.
    Verified: the share mounts and lists, and writes are refused. Also install `nfs-common` on the client.
@@ -233,4 +246,4 @@ Background for anyone repeating this. General bring-up lessons are in
 | 2026-09-20 | Revised after Jay's review: D1 approved; added F9 (new machine is production's successor) and F10 (reuse all hardware); F1 tightened to seconds-to-minutes; PC games folder corrected to an installer archive; phasing extended to the full service move; open questions Q7, Q8 added. |
 | 2026-09-20 | Phase 1 groundwork: router IP reservation done (Q4), Tailscale joined, SSH/fail2ban/auditd hardened to match production. |
 | 2026-09-20 | NAS export allowlist: r9 added read-only (Q4 closed). Documented that UGOS has no UI for per-host NFS rules. |
-| 2026-09-21 | **PLANNED, router edit pending:** move `mediahub-r9` from `192.168.0.149` to `192.168.0.22` to follow the `.20` (staging) / `.21` (production) pattern. Touch points: router reservation (MAC `30:56:0f:b6:7e:18`, edit the existing entry, do not add a second one); r9 Sunshine `csrf_allowed_origins` (lists the old address); NAS `/etc/exports` read-only entry (still `.149`, deferred until r9 mounts the NAS, but remove it afterwards so a stray device that receives `.149` does not inherit NAS access). Saving the router's static list drops LAN connections briefly. Reach r9 over Tailscale (`100.121.244.45`) during the change. r9 keeps its old lease until it renews, so force a renew. Rollback: put the reservation back to `.149`. |
+| 2026-09-21 | Moved `mediahub-r9` from `192.168.0.149` to `192.168.0.22` (edited the existing router reservation for MAC `30:56:0f:b6:7e:18`). Verified: r9 answers at `.22` with the same SSH host key, correct gateway, DHCP lease from the router, Sunshine listening, Tailscale unaffected; NAS mount and AdGuard on production unaffected. Sunshine `csrf_allowed_origins` updated. Still open: NAS `/etc/exports` entry still says `.149`; NAS `.23` needs its own router reservation (it was on a dynamic lease and production mounts it by IP). |
