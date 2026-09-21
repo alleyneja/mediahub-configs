@@ -221,6 +221,43 @@ must respect F6. It is tracked in the private backlog until designed.
 
 ---
 
+## 5d. How we record decisions and changes (adopted 2026-09-21, after Jay's correction)
+
+Every change to a shared service or its configuration gets a record **at the time of the change**, in this document, with: **what** changed (old value to new value); **why** (the evidence, with numbers); **what it gains**; **what it costs or sacrifices**; **what we did not verify**; **how to roll it back**; and **when to revisit**. If the cost side is empty, that is a signal we have not looked hard enough. Recommendations from Claude must state the trade-off *before* asking Jay to make the change, not after. D3, D4 and D5 follow this format.
+
+---
+
+## 5e. Decision D5: AdGuard rate limit raised from 20 to 500 queries per second (2026-09-21, Jay applied it live in the AdGuard UI)
+
+**What:** `ratelimit` in AdGuard Home, 20 to 500. `ratelimit_subnet_len_ipv4` is unchanged at 24. Live change, no restart. Mirrored by hand into `adguard/AdGuardHome.yaml` (the sanitized repo copy; never copy the live file).
+
+**Why (evidence):**
+- Before: a controlled burst of 100 distinct queries from r9 got **20 answers and 80 silent drops**. After: **100 of 100 answered**.
+- The limit counts per client **/24 subnet**, so every device on `192.168.0.0/24` shares one bucket of 20 queries per second. Tailnet clients (`100.x`) mostly land in separate buckets.
+- r9's resolver logged 7 "degraded feature set" events for `192.168.0.21` in a day (including at boot), after which it drifted to `1.1.1.1` and lost every `.lan` name.
+- Real demand is above the old cap: in AdGuard's own query log (2.73 million queries, 2026-08-29 to 2026-09-21, about 110-130k a day) **7,723 seconds were at or above 20 q/s** and the busiest second was 261 q/s. The log understates this because dropped queries are never logged.
+- The heaviest client is Jay's gaming PC (781k queries): Teams telemetry (`teams.events.data.microsoft.com`, 287k) and a Windows proxy lookup (`wpad.hsd1.fl.comcast.net`, 95k). These are client retry loops against blocked or unresolvable names, not attacks.
+
+**What it gains:** no silent drops for anyone on the LAN (all of them shared the 20 q/s bucket); removes the trigger that made r9's resolver flap; boot-time bursts from any machine no longer starve the others.
+
+**What it costs / sacrifices:**
+1. **The safety valve.** The limit stopped a runaway or compromised device from flooding AdGuard. At 500 per /24 bucket that protection is much weaker (25 times the old ceiling).
+2. **More load on production's AdGuard** (i7-7700, memory already tight; see D3) and faster log growth. The query log file is already about **1 GB**; nothing here caps it.
+3. **It hides, not fixes, noisy clients.** The PC's retry loops are now fully served instead of dropped. The real fix is at the source (why the telemetry lookup is retried 287k times against a blocked name).
+4. **Amplification abuse protection** matters only if AdGuard is reachable from the internet.
+
+**Not verified:** whether the router forwards port 53 from the internet (I only know AdGuard listens on all interfaces, and production's UFW allows the LAN and Tailscale ranges); AdGuard's CPU use before versus after; whether 20 was ever a deliberate choice (it is AdGuard's default).
+
+**Options considered:** (A) leave 20 and rely on the r9 self-heal timer only: the drops keep hurting every other device; (B) **500 per /24 bucket: chosen**, live, reversible, no restart; (C) disable the limit (0): removes the safety valve entirely; (D) **per-device limit**: `ratelimit_subnet_len_ipv4: 32` with about 100 q/s each, so one noisy device cannot starve the others and the valve stays meaningful. D is the better design but is a config-file change that needs an AdGuard restart (a DNS blip on the never-down service), so it waits for a moment when AdGuard restarts anyway or a second AdGuard exists (Q9).
+
+**Rollback:** AdGuard UI, Settings, DNS settings, Rate limit, back to 20 (and the repo mirror line 33). Expect the drops and r9's drift to return.
+
+**Revisit if:** AdGuard CPU or memory climbs; the query log growth becomes a problem (set a retention limit); the router is found to forward port 53; a second AdGuard is built (then adopt option D); or a device is seen flooding.
+
+**Related finding, not part of this decision:** the query log is about 1 GB and the gaming PC generates 3 to 4 times the volume of any other client. Cutting that noise at source would shrink both.
+
+---
+
 ## 6. Bringing up `mediahub-r9` (installed as `mediahub-arcade`) — what happened 2026-09-20
 
 Background for anyone repeating this. General bring-up lessons are in
@@ -351,7 +388,7 @@ Decision D3: game servers are compute-role services and belong on r9. Three serv
 | Q6 | Where do decisions that name weak spots live? | Not in this public repo. A separate private repository, for things worth keeping in several places but not public, is planned (tracked in the private backlog). |
 | Q7 | What should the older production machine do once services move off it? | Proposed: storage/library host and backup target, since it holds the 8.8 TB drive. Needs Jay's confirmation. |
 | Q9 | Second AdGuard on the x51 as DNS failover? | Open. AdGuard holds 37 `.lan` rewrites that public DNS cannot answer; production reboots automatically Wed and Sun at 03:00, so `.lan` names and ad-blocking drop for a few minutes each time. Moderate value, low urgency; needs the two configs kept in sync. **Update 2026-09-21:** r9's resolver is sticky (never returns to the first-listed server after a failure), so any AdGuard outage (production's Wed/Sun 03:00 reboot) leaves r9 on `1.1.1.1` with no `.lan` names. A stopgap timer on r9 (`scripts/r9-resolved-prefer-adguard/`, every 2 min) returns it to AdGuard once AdGuard answers. With a second AdGuard, drifting to the second one would be harmless, which is the structural fix. |
-| Q10 | AdGuard rate limit is 20 queries per second per /24 (whole LAN in one bucket) | **Found 2026-09-21:** a 100-query burst from r9 got 20 answers and 80 silent drops (EDNS0 is fine). Any household burst above 20 q/s is dropped for everyone; r9's resolver logged 7 'degraded feature set' events for `192.168.0.21` in a day. Fix is a live change in the AdGuard UI (Settings > DNS settings > Rate limit), no restart. Status: pending Jay. Hand-mirror to the sanitized repo copy afterwards (never copy the live file). |
+| Q10 | AdGuard rate limit is 20 queries per second per /24 (whole LAN in one bucket) | **Found 2026-09-21:** a 100-query burst from r9 got 20 answers and 80 silent drops (EDNS0 is fine). Any household burst above 20 q/s is dropped for everyone; r9's resolver logged 7 'degraded feature set' events for `192.168.0.21` in a day. Fix is a live change in the AdGuard UI (Settings > DNS settings > Rate limit), no restart. Status: **done, see D5** (20 to 500, applied by Jay, verified 100/100, mirrored by hand). |
 | Q8 | Rename `mediahub-arcade` to a neutral name now? | **Answered 2026-09-20:** yes, done. Now `mediahub-r9`; see D2 in section 5. |
 
 ---
