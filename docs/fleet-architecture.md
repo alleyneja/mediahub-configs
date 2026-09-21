@@ -339,6 +339,31 @@ Every change to a shared service or its configuration gets a record **at the tim
 
 ---
 
+## 5i. Decision D9: Jellyfin and RomM retired (stopped, data kept), 2026-09-21 (Jay)
+
+**What:** containers `jellyfin`, `romm`, `romm-db` stopped on production (`docker stop`; restart policy `unless-stopped`, so an explicit stop survives reboots). Nothing deleted: config, data, volumes, Caddy blocks, AdGuard rewrites and Authentik applications all remain. Homepage tiles commented out (repo and live `services.yaml`, marked `RETIRED ... D9`). Uptime Kuma monitors 24 (Jellyfin) and 36 (RomM) **paused by Jay** (paused, not deleted, so history stays); verified in Kuma's database before stopping anything.
+
+**Why (evidence):**
+- *Jellyfin:* last session ended 2026-09-06; only 46 watch-history rows across 66,012 items; accounts: `alleyneja` and `jay` are both Jay, `admin` last active 2026-08-23, `mafer_107` has never logged in. Plex is the main server. Jay kept it as a fallback and to adopt later once it has native SSO and UI fixes.
+- *RomM:* idle since 2026-08-23; 25 catalogued ROMs, 0 saves, 2 states; nobody but Jay and one viewer login. It also mounted the arcade ROM library and the Switch library **read-write**; with it stopped nothing but ES-DE and the emulators touches those.
+
+**Gains (measured):** running containers 52 to 49; available RAM +370 MB; swap in use 2,992 MB to 2,606 MB (about 390 MB less); production is relieved of a service that transcodes on the CPU. 13 GB of Jellyfin data plus RomM's volumes are not being written to.
+
+**Costs / sacrifices:**
+1. **No fallback media player** if Plex breaks. Plex is now a single point for streaming; Jellyfin was the only alternative.
+2. Leftovers that now point at nothing: `jellyfin.lan` and `romm.lan` answer 502 from Caddy, and their AdGuard rewrites, Authentik applications (`jellyfin`, `romm`) and Caddy blocks remain (kept on purpose so un-retiring is trivial).
+3. `setup.sh` still deploys both stacks on a fresh build (F7): it should skip retired stacks (backlogged).
+
+**State of Jellyfin's SSO, checked 2026-09-21 (a quick fetch; numbers approximate):** there is **no native SSO**. The feature request is [jellyfin discussion #16470](https://github.com/orgs/jellyfin/discussions/16470) (opened 2026-03-25, about 86 upvotes, no maintainer commitment; a related PR #14729 has stalled because maintainers say identity needs a large refactor first). The plugin Jellyfin used here (`9p4/jellyfin-plugin-sso`, SSO-Auth) was **archived in May 2026**; maintained forks exist (for example [Flowfin/jellyfin-plugin-sso](https://github.com/Flowfin/jellyfin-plugin-sso) for Jellyfin 10.11 and 12.0). All plugin approaches only cover the **web UI**, not the native apps. Conclusion: the revisit trigger may be a long way off; no new ticket is needed, adding an upvote or comment on #16470 is the useful action (Jay's to take).
+
+**Not verified:** that the installed SSO plugin version still works on Jellyfin 12.0 (irrelevant while retired); the exact RomM data volumes' sizes.
+
+**Rollback (about 2 minutes):** `docker start romm-db romm jellyfin` on production; uncomment the two Homepage blocks (repo and live); un-pause Kuma monitors 24 and 36 in the Kuma UI. If Jellyfin is un-retired for real use, pin the image by digest (`jellyfin/jellyfin@sha256:baba630419915985442f315f08b0cf46d9f4c8a0cc4bd38e94a6d35751dd5ef5`, v12.0.0) instead of `latest` before starting, and consider a revived SSO plugin fork.
+
+**Revisit if:** Plex breaks or you want a fallback; native SSO merges (watch discussion #16470); or in 30 days to delete the stopped containers and data (backlogged).
+
+---
+
 ## 6. Bringing up `mediahub-r9` (installed as `mediahub-arcade`) — what happened 2026-09-20
 
 Background for anyone repeating this. General bring-up lessons are in
