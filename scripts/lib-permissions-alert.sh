@@ -24,5 +24,5 @@ import json, sys
 print(json.dumps({"content": sys.argv[1][:1900]}))
 ' "$message")
 
-    curl -sf -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL" >/dev/null
+    curl -sf --max-time 10 -X POST -H "Content-Type: application/json" -d "$payload" "$DISCORD_WEBHOOK_URL" >/dev/null
 }
