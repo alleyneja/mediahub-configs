@@ -115,3 +115,30 @@ Usenet with no delay, so automatic grabs pick NZBs when available.
   Plex libraries and tests readability as Plex's user from r9.
 - Decide what to do about Solo Leveling Season 1.
 - Consider a Plex-versus-Sonarr file-size drift check.
+
+## Addendum (same day, evening): it recurred, and what was done
+
+About six hours after the first fix, One Piece S23E24 was found at mode 000, with
+its change time still at the original Sep 20 burst. A pool-wide check found 1,549
+more unreadable Plex-library files (1,430 music, 91 movies, 28 TV) that had been
+readable at the earlier check. So the client-visible mode of untouched burst files
+**flips between 777 and 000 with no change to ctime**, and only files that had a
+real chmod written to them stayed fixed. Plex had already moved 140 items to the
+trash; with `autoEmptyTrash` off they were recoverable and were restored once the
+files were readable again.
+
+Actions:
+1. `chmod 644` on the 1,549 unreadable files.
+2. Proactive `chmod 644` on the remaining 4,711 Plex-library files that were still
+   at 777 with a ctime in the burst window (Sep 20 14:00-16:30 CDT). Folders were
+   left alone. Result: 0 mode-000 files, 0 files unreadable by Plex's user, and 0
+   items left in Plex's trash.
+
+Not touched: about 5,900 non-Plex files also showing 000 (podcasts 5,110, games
+749, audiobooks 52) since they are outside the Plex libraries. Audiobookshelf may
+be affected.
+
+**Decision on monitoring:** if the flipping recurs after this proactive fix, build
+a check that runs on r9 every few minutes, tests readability as Plex's user, and
+alerts to Discord before a scan can trash anything. Until then the two commands in
+section 1 are the manual check.
