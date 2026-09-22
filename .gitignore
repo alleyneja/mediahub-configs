@@ -2,6 +2,7 @@
 stack.env
 .env
 *.env
+*.password
 
 # OS noise
 .DS_Store
