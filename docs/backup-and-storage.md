@@ -58,6 +58,17 @@ on the same drive as what they protect.
 4. **Real fix identified, not yet applied:** [rclone's own documentation](https://rclone.org/drive/#making-your-own-client-id) covers creating a personal Google Cloud OAuth client ID, which gets its own dedicated quota. Free, roughly 5-10 minutes, no new Google login (it is a project/credentials setup on the same account). Deferred to another session (Jay: "let's just do Vaultwarden tonight").
 5. **What is actually protected off-site tonight:** just the Vaultwarden vault dump (`/srv/docker/vaultwarden/backups`, 3.7 MiB), backed up with tag `vaultwarden-only`, restored from the real Google Drive repository afterward, and diffed byte-for-byte against the source -- matched exactly. `restic check` then found 11 orphaned data packs (550 MB) left by the two failed full-backup attempts (uploaded data whose snapshot record never got written); `restic prune` removed them. Drive now holds only the one real snapshot.
 
+**Split into per-source attempts (Jay's idea, since the bundled full run kept failing as one giant batch):** ran each of the 8 sources as its own `restic backup` call against the real repository, smallest first, to see how far this got without waiting for the client ID fix.
+
+**Result: 6 of 8 sources are off-site tonight, verified present in `restic snapshots`:**
+`vaultwarden-only`, `caddy-keys`, `ssh-keys`, `nextcloud-db`, `authentik-db` (75 MB, needed one retry), `r9-saves` (194 MB, failed once with the same `rateLimitExceeded` error, succeeded on a straight retry).
+
+**2 of 8 did not make it, and are still blocked on the same root cause:**
+- `/mnt/media/nextcloud` (actual files, ~741 MB): ran for about 40 minutes, genuinely uploading (confirmed via `/proc/<pid>/io`, not stalled) but never finished; stopped deliberately given the hour rather than left running indefinitely. No partial snapshot was left behind (restic only writes the snapshot record at the very end); the orphaned data it had uploaded was cleaned up with `restic prune` afterward.
+- `/srv/docker/immich/backups` (~1.9 GB): not attempted tonight at all, given the Nextcloud-files run had already shown the wall firmly at a smaller size.
+
+**Conclusion:** the per-source split clearly helped -- everything under about 200 MB got through, sometimes needing one retry, which is why 6 of 8 succeeded tonight where the single bundled 2.5 GB run failed outright twice. The two remaining sources are simply too large to reliably clear the shared quota's remaining headroom tonight. This still points at the same fix.
+
 **Remaining before the full nightly job is live:**
 - Jay creates a personal Google Cloud OAuth client ID and gives it to the `gdrive` rclone remote (`rclone config update gdrive client_id ... client_secret ...`).
 - Re-run the (already fixed and tested) full script; verify the same way (restore + diff, or at least `restic check`).
