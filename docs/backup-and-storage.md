@@ -1,0 +1,73 @@
+# Backup and storage
+
+**Status:** DRAFT 2026-09-21, in progress. Requirements-first conversation (see the fleet doc's
+decision-recording standard, §5d) prompted by finding that the nightly database backups all sit
+on the same drive as what they protect.
+
+## 1. Requirements
+
+| # | Requirement | Origin |
+|---|---|---|
+| B1 | Sort everything into three tiers: **irreplaceable** (photos, the Vaultwarden vault, Nextcloud's files, game saves, secrets/certificate keys), **replaceable but painful** (the 11 TB media library, ROMs, Plex's watch history), **disposable** (caches, thumbnails, container images). Design follows from this. | Jay, 2026-09-21 |
+| B2 | A Vaultwarden vault loss would be a real problem for Jay. Treat it as the highest-priority item to protect properly. | Jay, 2026-09-21 |
+| B3 | One mechanism for versioning, encryption and deduplication, with one alerting pattern (the Kuma push-heartbeat pattern already built for Immich), rather than five different ad hoc scripts. | Jay, 2026-09-21 |
+| B4 | Free or cheap solutions first. Some threats (a second NAS drive, an off-site drive at a relative's home) cost real money and can wait. | Jay, 2026-09-21 |
+| B5 | Any off-site/cloud copy should be **small**: the critical items only, never the 80 GB photo library or the 11 TB media library. | Jay, 2026-09-21 |
+| B6 | Off-site destination: Jay's own Google account (Google Drive, 15 GB free), not a new paid service. | Jay, 2026-09-21 |
+| B7 | Scope for now is Jay's own data. Mafe's data (her share of Vaultwarden, Nextcloud) is a later, explicit decision, not assumed. | Jay, 2026-09-21 |
+| B8 | The encryption key for the off-site backup must not live only inside something this backup protects (specifically: not only in Vaultwarden). Jay's Apple ID / iCloud Keychain is an acceptable independent place to hold it, alongside a physical paper copy. | Jay, 2026-09-21 |
+
+### Facts gathered before designing anything
+
+- The five existing nightly jobs (Immich, Nextcloud, Vaultwarden, Authentik, Calibre) all write their dumps to `/srv/docker/*/backups` **on production's own NVMe** -- the same drive that holds the live data. They protect against a bad upgrade or an accidental delete, not against that drive failing.
+- Nextcloud's existing backup explicitly does **not** include the data directory (actual files) -- only the database and `config.php`. Actual files: 741 MB across both pool branches.
+- Sizes measured 2026-09-21: Vaultwarden vault 2.1 MB; Nextcloud files 741 MB; Authentik data 144 MB; r9 saves mirror 194 MB; Caddy/SSH keys under 1 KB; Immich's own DB dump history ~1.9 GB (14 kept). A full restic snapshot of all of it together (live files, not just the samples) came to **2.5 GB**.
+- The repo (`mediahub-configs`) already pushes to GitHub and was current when checked -- config and scripts are already off-site, for free, today.
+
+---
+
+## 2. Decision D1: off-site mechanism is restic, over rclone, to Google Drive
+
+**What:** `scripts/offsite-backup.sh` (repo) takes a nightly [restic](https://restic.net/) snapshot of the sources below, through [rclone](https://rclone.org/)'s Google Drive backend, to a personal Google account. Runs at **03:00**, after the other nightly dump jobs (02:30-02:50) finish, so it reads finished dumps rather than a live database. The repository password lives in `scripts/offsite-backup.env` (gitignored, mode 600) for the script's own use, and separately in Jay's Apple Keychain and on paper -- not only in this file, and not in Vaultwarden.
+
+**Sources (chosen to avoid reading a live database file directly):**
+- `/srv/docker/vaultwarden/backups` -- Vaultwarden's own consistent SQLite backup
+- `/srv/docker/nextcloud/backups` -- Nextcloud's DB dump
+- `/mnt/media/nextcloud` -- Nextcloud's actual files (a live tree; low risk, not a database)
+- `/srv/docker/authentik/backups` -- Authentik's DB dump
+- `/srv/docker/immich/backups` -- Immich's DB dump history
+- `/mnt/media/arcade/backups/r9-saves` -- the nightly r9-to-production saves mirror (D2/Phase 2)
+- `/srv/docker/caddy/data/caddy/pki/authorities/local` -- the Caddy certificate authority's root and intermediate keys
+- `/home/jay/.ssh` -- SSH keys
+
+**Why restic:** it gives versioning, encryption and deduplication in one tool (satisfies B3), is free and widely used, and its own `check --read-data` and `restore` commands make verification straightforward rather than another thing to build.
+
+**Why these sources, not the raw database directories:** each database already has its own script producing a consistent snapshot (`pg_dump`, `sqlite3 .backup`); reading its live data files directly risks a torn read mid-write. Reading the dumps it already produces avoids that at no extra cost.
+
+**Retention:** 30 daily snapshots plus 12 monthly, pruned automatically by `restic forget --prune` -- restic manages this itself rather than a separate cleanup script.
+
+**Tested 2026-09-21, before anything was pointed at Google:**
+1. A scratch local repository: init, backup of one real target (Vaultwarden's vault), `check --read-data` (0 errors), restore, and a `diff -rq` against the source -- exact match.
+2. A first full run of the **actual, unmodified script** (pointed at a scratch repository) caught a real bug: `sudo` does not inherit exported environment variables, so `sudo -n restic ...` after `export RESTIC_PASSWORD` would have failed every night. Fixed by passing the variables explicitly (`sudo -n env RESTIC_PASSWORD=... RESTIC_REPOSITORY=... restic ...`).
+3. After the fix: full run against a scratch repository, all 8 sources, exit 0, `check --read-data` 0 errors across 146 packs, and a `diff -rq` of every one of the 8 source paths against the restored copy -- all matched exactly. Total: 1,246 files, 2.5 GB, stored as 2.4 GB, in 31 seconds.
+
+**Not yet done (needs Jay, interactive):** `rclone config` to create the `gdrive` remote (a one-time Google OAuth login); then the real `RESTIC_REPOSITORY` (`rclone:gdrive:mediahub-offsite-backup`) is initialized for real, the Kuma push monitor is created (deliberately not created yet -- creating it today would start a 25-hour countdown for a job with nowhere to write to, and false-alarm before setup finishes), the script is installed into the crontab, and a live end-to-end run is verified the same way the scratch one was.
+
+**Costs / sacrifices:**
+1. Off-site restore depends on the repository password. Losing all three copies (this file, Apple Keychain, paper) means the Google Drive copy is unrecoverable, by design (that is what encryption means).
+2. Backing up SSH private keys off-site, even encrypted, is a real increase in what a compromise of the password would expose. Judged acceptable given the password's three-way custody.
+3. Google Drive is a personal account, not a dedicated backup service; if Jay's Google account were ever compromised or lost, so is this copy (mitigated only by the encryption).
+4. Scope is Jay's data only for now (B7); Mafe's is not protected by this yet.
+
+**Revisit if:** the free tier is outgrown; Mafe's data is added (B7); the Google account itself needs its own recovery plan; or a dedicated off-site provider becomes worth the cost.
+
+---
+
+## 3. Open questions
+
+| # | Question | Notes |
+|---|---|---|
+| B-Q1 | Mafe's data: same mechanism, later? | Deferred per B7. |
+| B-Q2 | Second NAS drive for real redundancy? | Costs money; see `fleet-architecture.md` §NAS finding under D11. Deferred per B4. |
+| B-Q3 | The media library and Plex's history (replaceable but painful) -- any backup at all? | Not addressed yet; B1's second tier. |
+| B-Q4 | Restore drill: has anyone actually restored a full Vaultwarden vault from one of these snapshots, not just diffed files? | The test above proved file-level restore; a real Vaultwarden-app-level restore drill is different and not yet done. |
