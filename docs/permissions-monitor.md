@@ -18,6 +18,9 @@ investigation continues.
 | Forensic log | `/home/jay/logs/permissions-forensics.log` | same path, separate file |
 | Queued-but-unfixed paths | `/home/jay/logs/permissions-pending-fixes.txt` | same path, separate file |
 | Discord alerting | `scripts/lib-permissions-alert.sh` + `scripts/permissions-alerts.env` (gitignored, webhook URL) | same files, separately populated |
+| Digest accumulator (routine, below-threshold findings) | `/home/jay/logs/permissions-digest-pending.txt` | same path, separate file |
+| Daily digest sender cron | `0 8 * * * /home/jay/mediahub-configs/scripts/permissions-digest-send.sh` | `0 8 * * * /home/jay/scripts/permissions-digest-send.sh` |
+| Fleet identity audit cron (repo-wide, production only) | `0 6 1 * * /home/jay/mediahub-configs/scripts/check-fleet-identity.sh` | n/a — audits the repo's `stacks/`, doesn't need a per-host run |
 
 **Deployment asymmetry to remember:** r9 does *not* have a full `mediahub-configs` git
 checkout — `/home/jay/mediahub-configs/` exists there but only holds an unrelated
@@ -46,9 +49,19 @@ is chmod'd until a human runs the fix script deliberately.
 2. Approve and apply. `permissions-apply-fix.sh` is the *only* script in this family
    that runs `chmod`, and it chmods to `644`.
    ```
-   /home/jay/mediahub-configs/scripts/permissions-apply-fix.sh                 # fixes EVERYTHING currently queued
+   /home/jay/mediahub-configs/scripts/permissions-apply-fix.sh --all             # fixes EVERYTHING currently queued (must be explicit)
    /home/jay/mediahub-configs/scripts/permissions-apply-fix.sh /path/to/one/file  # fixes only the path(s) given, leaves the rest queued
    ```
+   **As of the 2026-09-22 final review, a bare invocation with no arguments and no
+   `--all` now refuses and exits nonzero** — this used to silently attempt to fix
+   everything queued. It also now checks `chmod`'s exit status per file: on
+   production, ~84% of the queue is `root:root`-owned and this process runs
+   unprivileged with no sudo, so `chmod 644` on those fails with `EPERM`. A failed
+   file is left in the pending queue and reported separately as "failed" in both the
+   forensics log and the Discord summary — it is **never** silently marked fixed.
+   Successfully-fixed files are also cleared from `permissions-monitor-seen.txt` (not
+   just the pending queue), so if one of them genuinely flips again later, the
+   monitor will re-alert on it instead of treating it as permanently "already seen."
 
 **Do not run it bare against the real backlog.** As of 2026-09-22 there are
 9,277 real anomalies queued on production and ~8,832 on r9 (see below) that Jay has
@@ -130,10 +143,28 @@ This is now three data points (r9 touch, production redirect, r9 redirect-over-S
 all on the same mergerfs branch, all ignoring the process umask — consistent with the
 mount itself (rather than any specific writer) forcing new files to 777 on creation.
 Per the evidence standard, three same-direction data points on one branch is
-corroboration, not proof — mergerfs picks branches by free space at write time, so this
-hasn't been tested against the other branch (the local ext4 disk) to see if it behaves
-the same way. **This is a concrete, testable lead for a future session, and it only
-covers the 777-anomaly class** — it does not explain how any file ends up at mode 000.
+corroboration, not proof. **Correction (2026-09-22, final review):** this doc previously
+said the 777-on-creation lead "hasn't been tested against the other branch (the local
+ext4 disk)" — that overstated the gap. The forensics log already contains 540
+mode-777 anomalies tagged `mergerfs branch: /mnt/internal` (the local branch) versus
+~3,600+ on `/mnt/nas`, so the corpus already has hundreds of 777s on the local branch
+too. What's actually still untested is *controlled creation-time* writes on the local
+branch specifically — the 540 are pre-existing files found by the scanner, not a
+deliberate repro like the three data points above, so they don't settle whether the
+local branch forces 777 on creation the same way `/mnt/nas` does. **This is a concrete,
+testable lead for a future session** (run `permissions-repro-test.sh`-style writes
+targeted at the local branch specifically), **and it only covers the 777-anomaly
+class** — it does not explain how any file ends up at mode 000.
+
+**Open lead (2026-09-22, final review): host-specific mount-config difference?** Jay
+has raised, and this has not yet been investigated, whether the 777-on-creation
+behavior is specific to *how each host's mergerfs pool is built* rather than a
+universal property of a given branch. Production and r9 build their pools differently
+(see "D12 hypothesis update" below — r9 adds an extra NFS hop production doesn't have).
+A future session should compare the two hosts' exact mount options/branch config
+(`mount | grep /mnt/media`, mergerfs `-o` flags, fstab/systemd unit, NFS version per
+branch) side by side before assuming either host's repro result generalizes to the
+other.
 
 ### D12 hypothesis update: r9's extra NFS hop
 
@@ -155,6 +186,87 @@ that even to the file's owner without root, which this monitor family never uses
 is a **permanent, structural limitation of the current design**, not a bug to fix: the
 000-class anomalies (the larger half of the backlog: podcasts and photos especially)
 will always show `mergerfs branch: unknown` in the forensic log.
+
+## Alert volume control: burst threshold + daily digest (2026-09-22 final review)
+
+Real usage showed ~40 Discord alerts/day, mostly routine 777-on-creation writes — at
+that rate the channel was headed for a mute, which would defeat the whole point of an
+alert-first design. Jay's decision was explicitly **not** to suppress the 777 class
+(he wants to keep visibility into it — it may connect to the still-open
+production-vs-r9 mount-config hypothesis above), just to stop paging on every single
+occurrence of routine noise.
+
+`permissions-monitor.sh` now has a `BURST_THRESHOLD` (default `50`) at the top of the
+file. Detection, forensic logging, and queueing are **unchanged** regardless of
+threshold — every anomaly still gets a full forensic block and lands in the pending
+queue. Only the *immediate Discord alert* decision changes:
+
+- **`new_files` count >= `BURST_THRESHOLD`:** alert immediately, exactly as before —
+  this is the incident-signature case (e.g. the Sep 20 burst, which was in the
+  hundreds-to-thousands).
+- **Below `BURST_THRESHOLD`:** no immediate alert. Instead, one line
+  (`timestamp host=<host> count=<n>`) is appended to
+  `/home/jay/logs/permissions-digest-pending.txt`.
+
+`scripts/permissions-digest-send.sh` reads that accumulator once a day (cron'd
+`0 8 * * *` on both hosts — see the table above), sends **one** Discord message
+summarizing total findings, run count, and the date range covered, then clears the
+accumulator. If the accumulator is empty, it sends nothing (no "0 findings" spam). If
+the Discord send itself fails, it leaves the accumulator alone (logs a warning to the
+forensics log) rather than losing that day's rollup.
+
+## Fleet identity audit (`check-fleet-identity.sh`)
+
+Audits every `stacks/*/docker-compose.yml` for PUID/PGID/`user:` declarations against
+the fleet-wide expected identity `1000:1000` (`jay`). This script was written during
+D12 scoping (before any monitor code existed) and was previously **undocumented and
+not wired into cron** despite being committed — the plan's Task 2 brief said "Task 6
+wires this into a monthly cron check," which never happened until the 2026-09-22 final
+review.
+
+**What it actually proves, and what it doesn't:** it can only evaluate stacks that
+*declare* an identity. As of 2026-09-22, 17 of 31 stacks declare no PUID/PGID/`user:`
+at all — including Immich, which has been directly observed writing `root:root` files
+into the pool (see the real backlog composition above: photos is the single largest
+mode-000 category). The script's output distinguishes "N stacks declare a *conflicting*
+identity" (a real problem, nonzero exit) from "M stacks declare *no* identity at all"
+(informational only — they run as whatever the image's default is, which may be root,
+but the script has no way to prove that one way or the other from the compose file
+alone). Treat "no identity declared" as a still-open item, not a clean bill of health.
+
+Also fixed 2026-09-22: the `user:` regex previously only matched the quoted numeric
+form (`user: "1000:1000"`) — an unquoted or named value like `user: 0:0` or
+`user: root` silently passed as compliant. It now matches any `user:` line with a
+value and compares the normalized result.
+
+Cron (production only — this audits the repo, not a per-host runtime state, so one run
+covers the whole fleet):
+```
+0 6 1 * * /home/jay/mediahub-configs/scripts/check-fleet-identity.sh >> /home/jay/logs/check-fleet-identity.log 2>&1
+```
+
+## Log rotation
+
+`permissions-forensics.log` had no rotation and was already 5.5MB+/93K+ lines on
+production as of the 2026-09-22 final review, growing roughly 300KB/day per host.
+Added `/etc/logrotate.d/permissions-monitor` (system logrotate config, not tracked in
+this repo — same as every other `/etc/logrotate.d/*` entry on this host) on **both**
+production and r9:
+```
+/home/jay/logs/permissions-*.log {
+    weekly
+    rotate 6
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 644 jay jay
+}
+```
+The glob deliberately only matches `.log` files (currently just
+`permissions-forensics.log`) — it does **not** touch `permissions-monitor-seen.txt`,
+`permissions-pending-fixes.txt`, or `permissions-digest-pending.txt`, which are state
+files, not logs, and must never be rotated/truncated out from under a running queue.
 
 ## NAS Log Manager pointer (from Task 3)
 
