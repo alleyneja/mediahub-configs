@@ -51,7 +51,7 @@ is chmod'd until a human runs the fix script deliberately.
    ```
 
 **Do not run it bare against the real backlog.** As of 2026-09-22 there are
-~9,278 real anomalies queued on production and ~8,832 on r9 (see below) that Jay has
+9,277 real anomalies queued on production and ~8,832 on r9 (see below) that Jay has
 deliberately chosen not to bulk-fix yet — he wants to review the composition further
 first. Any time you want to demonstrate or test the fix path (e.g. against a synthetic
 file from `permissions-repro-test.sh`), pass its exact path as an explicit argument,
@@ -59,18 +59,25 @@ never run the script with no arguments, exactly as Tasks 5 and 7 did.
 
 ### Real backlog composition (production, snapshotted 2026-09-22)
 
-~9,278 real anomalies, by category:
+9,277 real anomalies, by category (column totals below sum exactly to 9,277):
 
 | Category | Total | @ mode 000 | @ mode 777 |
 |---|---|---|---|
 | podcasts | 5,204 | 1,420 | 3,784 |
 | photos | 2,581 | 2,058 | 523 |
 | games | 831 | 790 | 41 |
-| downloads | 563 | 557 | 5 |
+| downloads | 563 | 557 | 5 (+ 1, see note) |
 | audiobooks | 52 | 52 | 0 |
 | tv | 27 | 1 | 26 |
 | ebooks | 18 | 0 | 18 |
 | music | 1 | 0 | 1 |
+
+**Downloads note:** the monitor queued 563 downloads anomalies at detection time, but
+by the time of the manual `stat` check moments later, one of them had already been
+deleted or moved (its `stat` came back with an empty mode) — leaving 557 @ 000 and 5 @
+777 confirmed-bad right now, plus that 1 already-resolved/gone file. The 563 total
+reflects what was queued at the snapshot moment, not a fourth anomaly class; the table's
+`@ mode` columns only cover the 562 still confirmably bad.
 
 The `photos` count is the real, live Immich library (`/mnt/media/photos/immich` and
 `/mnt/media/photos/immich-originals-mirror`) — not a stray or dead corner of the pool.
