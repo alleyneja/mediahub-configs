@@ -8,15 +8,24 @@
 # Drive backend. Runs at 03:00, after the other nightly dump jobs (02:30-02:50) have produced fresh
 # database dumps, so this reads finished dumps rather than a live database file.
 #
-# The repository password is the single point of failure for restoring this backup: it also lives
-# in Jay's Apple Keychain and on paper (NOT only in this file, and NOT in Vaultwarden -- the vault
-# is one of the things this backs up).
+# The repository password (scripts/offsite-backup.password, gitignored, mode 600) is the single
+# point of failure for restoring this backup: it also lives in Jay's Apple Keychain and on paper
+# (NOT only in this file, and NOT in Vaultwarden -- the vault is one of the things this backs up).
+# It is passed via --password-file, never as an environment variable set through `env VAR=value` on
+# a sudo command line -- that form is visible to any local user via `ps` for as long as the process
+# runs. (A first version of this script did exactly that; the exposed password was rotated out of
+# the repository before this one was used for real. See docs/backup-and-storage.md D1.)
 set -uo pipefail
 HERE="$(dirname "$(readlink -f "$0")")"
 # shellcheck disable=SC1091
 source "$HERE/offsite-backup.env"
-# sudo does not inherit exported vars by default; pass them explicitly to the child process.
-run_restic() { sudo -n env RESTIC_PASSWORD="$RESTIC_PASSWORD" RESTIC_REPOSITORY="$RESTIC_REPOSITORY" restic "$@"; }
+# sudo does not inherit exported vars by default; RESTIC_REPOSITORY and RCLONE_CONFIG are not
+# secret (a location and a path), so they are passed the same way. The password is not: it goes in
+# via --password-file, which restic reads directly and which never appears in `ps` or argv.
+# rclone (spawned by restic as a subprocess) looks for its config under whichever user is running
+# it; as root (via sudo) that is /root/.config/rclone, which does not exist. Point it at the one
+# real copy instead of duplicating the Google credential into root's own config.
+run_restic() { sudo -n env RESTIC_REPOSITORY="$RESTIC_REPOSITORY" RCLONE_CONFIG=/home/jay/.config/rclone/rclone.conf restic --password-file "$HERE/offsite-backup.password" "$@"; }
 
 LOG=/home/jay/logs/offsite-backup.log
 KEEP_DAILY=30
