@@ -64,6 +64,12 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - TZ=America/Chicago
+      - SUBGEN_QA_PASSES=3
+      - SUBGEN_QA_OVERLAP_THRESHOLD=0.5
+      # launcher.py re-downloads subgen.py from GitHub main if this is
+      # truthy, which would silently overwrite our fork's multi-pass logic.
+      # Explicit False, not just relying on the var being absent.
+      - UPDATE=False
     volumes:
       - /srv/docker/subgen/models:/subgen/models
     ports:
