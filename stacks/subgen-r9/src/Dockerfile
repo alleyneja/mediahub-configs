@@ -6,14 +6,19 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg python3 python3-pip curl gosu tzdata
 
-# Torch — large and rarely changes; own layer so requirements.txt changes don't bust it
+# Torch — pinned to what the fork was vendored from and verified against
+# (2.11.0+cu128). No -U: an unpinned upgrade here would silently drift the
+# fork away from the stable-ts/faster-whisper behavior this design was
+# built and tested against.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python3 -m pip install -U torch torchaudio --index-url https://download.pytorch.org/whl/cu128
+    python3 -m pip install torch==2.11.0+cu128 torchaudio==2.11.0+cu128 --index-url https://download.pytorch.org/whl/cu128
 
-# App dependencies — only rebuilds when requirements.txt changes
+# App dependencies — pinned in requirements.txt (exact versions extracted
+# from the container this was forked from). Only rebuilds when
+# requirements.txt changes; no -U for the same drift reason as torch above.
 COPY requirements.txt /
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python3 -m pip install -U -r /requirements.txt \
+    python3 -m pip install -r /requirements.txt \
     && apt-get purge -y --auto-remove python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
