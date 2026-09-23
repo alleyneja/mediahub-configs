@@ -1,0 +1,71 @@
+# SubGen on mediahub-r9's GPU, used by Bazarr (production) as a last-resort subtitle
+# provider: transcribes audio directly for episodes/movies no database provider has ever
+# indexed. Bazarr stays on production; only this GPU-bound step runs on r9 (same split as
+# Immich ML, docs/fleet-architecture.md D10).
+# Reachable only on r9's Tailscale address (the API has no authentication).
+#
+# REPLACED whisper-r9 (onerahmet/openai-whisper-asr-webservice) on 2026-09-22. That
+# container's /asr HTTP API only exposed vad_filter as a blunt on/off boolean -- no
+# access to faster-whisper's actual vad_parameters, condition_on_previous_text, or any
+# other hallucination/segmentation controls. Enabling vad_filter=true made things worse.
+# not better: this container's SRT export collapsed each VAD-detected speech chunk into
+# ONE subtitle segment regardless of length -- on a test episode (One Piece S23E24) that
+# turned 9 spans (one 4 minutes long) into a single caption line each, silently dropping
+# most of the dialogue. See project_fleet_permissions_cleanup / whisper quality
+# investigation (2026-09-22) for the full comparison data across small/large-v3/VAD.
+#
+# SubGen (McCloudS/subgen) wraps faster-whisper with stable-ts, which does its own
+# segment regrouping (CUSTOM_REGROUP, defaulted below) instead of relying on raw VAD
+# chunk boundaries -- this is the actual target for the segmentation-collapse problem
+# above. SUBGEN_KWARGS passes real kwargs (vad_filter, condition_on_previous_text, etc)
+# straight into stable-ts's transcribe() call, which the old container had no equivalent
+# for at all. Verified against actual container source (not docs, which are stale for
+# this project -- e.g. PROCADDEDMEDIA/PLEXTOKEN/WEBHOOKPORT from the Bazarr wiki don't
+# exist in this image version) before deploying: /asr endpoint accepts task, language,
+# video_file, encode, output the same way Bazarr's whisperai provider sends them. Two
+# known gaps in this version: initial_prompt is accepted by /asr but never applied, and
+# per-request word_timestamps is ignored (word-level output is only controlled by the
+# global WORD_LEVEL_HIGHLIGHT env var, unset here).
+#
+# TRANSCRIBE_FOLDERS is deliberately left unset -- with it empty, SubGen's own startup
+# scan/monitor thread never starts, so it only ever transcribes what Bazarr asks it to
+# via /asr, same passive last-resort role as before.
+#
+# CLEAR_VRAM_ON_COMPLETE=true (default, set explicitly for visibility) unloads the model
+# from VRAM once the queue is empty -- unlike whisper-r9's MODEL=small tradeoff (which
+# existed only because that image had no idle-unload), this means large-v3 can stay
+# loaded without permanently reserving ~8GB against Sunshine game streaming.
+#
+# Pinned to 2026.07.3 (what :latest resolved to at deploy time), not :latest -- matches
+# the pin-don't-float convention used elsewhere (WUD tag rules, Immich D10, whisper-r9's
+# own now-removed v1.10.0-gpu pin).
+#
+# Forked 2026-09-23 to add multi-pass transcription + alignment/voting QA
+# (see docs/superpowers/specs/2026-09-23-subgen-multipass-voting-design.md).
+# Source vendored from the exact running mccloud/subgen:2026.07.3 image,
+# not upstream main, so this build is behavior-identical to production
+# until the QA logic is layered on in a later change.
+services:
+  subgen:
+    build:
+      context: ./src
+      dockerfile: Dockerfile
+    container_name: subgen
+    runtime: nvidia
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - WHISPER_MODEL=large-v3
+      - TRANSCRIBE_DEVICE=cuda
+      - COMPUTE_TYPE=float16
+      - CONCURRENT_TRANSCRIPTIONS=1
+      - CLEAR_VRAM_ON_COMPLETE=true
+      - "SUBGEN_KWARGS={'condition_on_previous_text': False, 'hallucination_silence_threshold': 2.0}"
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - TZ=America/Chicago
+    volumes:
+      - /srv/docker/subgen/models:/subgen/models
+    ports:
+      - "100.121.244.45:9000:9000"
+    restart: unless-stopped
