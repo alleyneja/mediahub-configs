@@ -147,21 +147,7 @@ lrc_for_audio_files = convert_to_bool(os.getenv('LRC_FOR_AUDIO_FILES', True))
 custom_regroup = os.getenv('CUSTOM_REGROUP', 'cm_sl=84_sl=42++++++1')
 qa_passes = int(os.getenv('SUBGEN_QA_PASSES', '3'))
 qa_overlap_threshold = float(os.getenv('SUBGEN_QA_OVERLAP_THRESHOLD', '0.5'))
-
-
-def _temperature_ladder(passes: int) -> list:
-    """Per-pass decoding temperature, spread across Whisper's native
-    fallback range [0.0, 1.0]. 3 passes (the default) gives [0.0, 0.3, 0.6].
-    Deliberately varying temperature per pass (rather than repeating
-    identical calls) is what makes the passes different hypotheses to vote
-    on -- faster-whisper's decoding is otherwise largely deterministic.
-    """
-    if passes <= 1:
-        return [0.0]
-    step = min(0.3, 1.0 / (passes - 1))
-    return [round(min(i * step, 1.0), 2) for i in range(passes)]
-
-
+qa_max_gap = float(os.getenv('SUBGEN_QA_MAX_GAP', '0.5'))
 detect_language_length = int(os.getenv('DETECT_LANGUAGE_LENGTH', 30))
 detect_language_offset = int(os.getenv('DETECT_LANGUAGE_OFFSET', 0))
 model_cleanup_delay = int(os.getenv('MODEL_CLEANUP_DELAY', 30))
@@ -1108,7 +1094,7 @@ def asr_task_worker(task_data: dict) -> None:
         # clustering + majority vote instead of trusting a single pass.
         # See docs/superpowers/specs/2026-09-23-subgen-multipass-voting-design.md
         pass_results = []
-        for i, temperature in enumerate(_temperature_ladder(qa_passes)):
+        for i, temperature in enumerate(qa_voting.temperature_ladder(qa_passes)):
             try:
                 pass_args = dict(args)
                 pass_args['temperature'] = temperature
@@ -1127,13 +1113,25 @@ def asr_task_worker(task_data: dict) -> None:
                 for pass_result in pass_results
             ]
             reconciled_words = qa_voting.reconcile_passes(passes_as_words, overlap_threshold=qa_overlap_threshold)
+            # Regrouping the reconciled words as ONE segment (a single list
+            # spanning the whole request) throws away every Whisper
+            # utterance boundary -- CUSTOM_REGROUP's length-based splitting
+            # then has nothing but character count to go on, and cuts a
+            # multi-minute blob into evenly-sized chunks regardless of
+            # where the real pauses are. group_into_segments restores
+            # gap-based boundaries first, so regroup gets real utterances
+            # to work with, the same shape of input the single-pass path
+            # always produced.
+            reconciled_segments = qa_voting.group_into_segments(reconciled_words, max_gap=qa_max_gap)
             # force_order=True: adjacent winning words from different slots
             # can carry natural ~0.02-0.1s timestamp overlap (normal
             # word-level timing noise from independent passes) that
             # WhisperResult's strict sorted-check otherwise rejects. This is
             # stable-ts's own built-in repair (clamps start forward to the
-            # previous word's end), not a workaround.
-            result = stable_whisper.WhisperResult([reconciled_words], force_order=True)
+            # previous word's end); qa_voting.reconcile_passes also
+            # resolves overlaps itself (drop/clamp) as its own guarantee,
+            # so this is a second line of defense, not the only one.
+            result = stable_whisper.WhisperResult(reconciled_segments, force_order=True)
             if custom_regroup and custom_regroup.lower() != 'default':
                 result.regroup(custom_regroup)
         elif len(pass_results) == 1:

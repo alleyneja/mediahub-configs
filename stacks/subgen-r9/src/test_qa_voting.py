@@ -1,6 +1,13 @@
 import unittest
 
-from qa_voting import _cluster_words_into_slots, _normalize, _vote_slot, reconcile_passes
+from qa_voting import (
+    _cluster_words_into_slots,
+    _normalize,
+    _vote_slot,
+    group_into_segments,
+    reconcile_passes,
+    temperature_ladder,
+)
 
 
 def w(start, end, word, probability=0.9, pass_id=0):
@@ -33,6 +40,17 @@ class TestClustering(unittest.TestCase):
         words = [w(0.0, 1.0, "hello", pass_id=0), w(0.9, 1.9, "world", pass_id=1)]
         slots = _cluster_words_into_slots(words, overlap_threshold=0.5)
         self.assertEqual(len(slots), 2)
+
+    def test_one_pass_word_fully_inside_two_split_words_from_another_pass_all_join_one_slot(self):
+        # Pass A says "hello" as one word [0.0, 1.0]; pass B splits the same
+        # sound into "hel" [0.0, 0.3] and "lo" [0.3, 1.0]. Against IoU, "hel"
+        # only covers 30% of "hello"'s span and would wrongly start its own
+        # slot (losing the word to quorum). Overlap relative to the SHORTER
+        # interval covers this: overlap(hel, hello)=0.3, min(len)=0.3 -> 1.0.
+        words = [w(0.0, 1.0, "hello", pass_id=0), w(0.0, 0.3, "hel", pass_id=1), w(0.3, 1.0, "lo", pass_id=1)]
+        slots = _cluster_words_into_slots(words, overlap_threshold=0.5)
+        self.assertEqual(len(slots), 1)
+        self.assertEqual(len(slots[0]), 3)
 
 
 class TestVoteSlot(unittest.TestCase):
@@ -72,6 +90,74 @@ class TestVoteSlot(unittest.TestCase):
         self.assertEqual(winner["start"], 3.2)
         self.assertEqual(winner["end"], 3.9)
         self.assertEqual(winner["probability"], 0.81)
+
+
+class TestResolveOverlaps(unittest.TestCase):
+    def test_drops_duplicate_word_when_adjacent_winners_overlap(self):
+        from qa_voting import _resolve_overlaps
+        winners = [w(0.0, 0.6, "foo", pass_id=0), w(0.5, 1.0, "foo", pass_id=1)]
+        result = _resolve_overlaps(winners)
+        self.assertEqual([r["word"] for r in result], ["foo"])
+
+    def test_clamps_start_forward_when_adjacent_winners_differ_and_overlap(self):
+        from qa_voting import _resolve_overlaps
+        winners = [w(0.0, 0.6, "foo", pass_id=0), w(0.5, 1.0, "bar", pass_id=1)]
+        result = _resolve_overlaps(winners)
+        self.assertEqual([r["word"] for r in result], ["foo", "bar"])
+        self.assertEqual(result[1]["start"], 0.6)
+        self.assertLessEqual(result[0]["end"], result[1]["start"])
+
+    def test_leaves_non_overlapping_winners_unchanged(self):
+        from qa_voting import _resolve_overlaps
+        winners = [w(0.0, 0.5, "foo"), w(0.5, 1.0, "bar")]
+        result = _resolve_overlaps(winners)
+        self.assertEqual(result, winners)
+
+
+class TestGroupIntoSegments(unittest.TestCase):
+    def test_single_gap_over_threshold_splits_into_two_segments(self):
+        words = [w(0.0, 0.5, "foo"), w(0.6, 1.0, "bar"), w(5.0, 5.5, "baz")]
+        segments = group_into_segments(words, max_gap=0.5)
+        self.assertEqual(len(segments), 2)
+        self.assertEqual([wd["word"] for wd in segments[0]], ["foo", "bar"])
+        self.assertEqual([wd["word"] for wd in segments[1]], ["baz"])
+
+    def test_gap_under_threshold_stays_one_segment(self):
+        words = [w(0.0, 0.5, "foo"), w(0.7, 1.0, "bar")]
+        segments = group_into_segments(words, max_gap=0.5)
+        self.assertEqual(len(segments), 1)
+        self.assertEqual(len(segments[0]), 2)
+
+    def test_empty_input_returns_empty_list(self):
+        self.assertEqual(group_into_segments([], max_gap=0.5), [])
+
+    def test_no_words_lost_across_segment_boundaries(self):
+        words = [w(0.0, 0.5, "a"), w(3.0, 3.5, "b"), w(3.6, 4.0, "c"), w(10.0, 10.5, "d")]
+        segments = group_into_segments(words, max_gap=0.5)
+        flattened = [wd["word"] for seg in segments for wd in seg]
+        self.assertEqual(flattened, ["a", "b", "c", "d"])
+
+
+class TestTemperatureLadder(unittest.TestCase):
+    def test_three_passes_gives_three_starting_biases(self):
+        ladders = temperature_ladder(3)
+        self.assertEqual(len(ladders), 3)
+        self.assertEqual([ladder[0] for ladder in ladders], [0.0, 0.3, 0.6])
+
+    def test_every_pass_keeps_fallback_up_to_one(self):
+        # Each pass's ladder must end at 1.0 so faster-whisper's own
+        # retry-on-failure safety net stays active for every pass, not
+        # just a bare starting float that silently disables it.
+        for ladder in temperature_ladder(3):
+            self.assertEqual(ladder[-1], 1.0)
+
+    def test_single_pass_gets_the_full_standard_fallback_ladder(self):
+        ladders = temperature_ladder(1)
+        self.assertEqual(ladders, [(0.0, 0.2, 0.4, 0.6, 0.8, 1.0)])
+
+    def test_no_duplicate_temperature_within_one_passs_ladder(self):
+        for ladder in temperature_ladder(5):
+            self.assertEqual(len(ladder), len(set(ladder)))
 
 
 class TestReconcilePasses(unittest.TestCase):
