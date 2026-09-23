@@ -1,0 +1,21 @@
+# Home Assistant on mediahub-staging (x51), Phase 6 (docs/fleet-architecture.md F4): home-security
+# system on its own machine, isolated from GPU/game workloads so a game crash can't take security
+# down. Reachable only on x51's Tailscale address -- no port published to the LAN or internet.
+# No cameras wired up yet; see stacks/frigate-x51 for the NVR/detection half.
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    environment:
+      TZ: America/Chicago
+    volumes:
+      - /srv/docker/homeassistant/config:/config
+    ports:
+      - "100.124.234.117:8123:8123"
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true

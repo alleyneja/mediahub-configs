@@ -1,0 +1,29 @@
+# Frigate NVR/object detection on x51 (docs/fleet-architecture.md F4). GPU passthrough wired to
+# x51's GTX 1650 (same runtime/env pattern as stacks/immich-ml-r9, proven working on this fleet),
+# but the actual GPU (ONNX) detector is NOT enabled yet -- config.yml runs the built-in CPU
+# detector as a bootstrap. Switching detectors requires a one-time model export/build; do that
+# alongside real camera setup, not blind. No cameras configured: software shell only until camera
+# hardware is chosen (see ~/mediahub-cleanup.md backlog).
+services:
+  frigate:
+    image: ghcr.io/blakeblackshear/frigate:stable-tensorrt
+    container_name: frigate
+    runtime: nvidia
+    shm_size: "256mb"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=all
+      - TZ=America/Chicago
+    volumes:
+      - /srv/docker/frigate/config:/config
+      - /srv/docker/frigate/media:/media/frigate
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "100.124.234.117:5000:5000"
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true
