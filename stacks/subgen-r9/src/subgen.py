@@ -1127,7 +1127,13 @@ def asr_task_worker(task_data: dict) -> None:
                 for pass_result in pass_results
             ]
             reconciled_words = qa_voting.reconcile_passes(passes_as_words, overlap_threshold=qa_overlap_threshold)
-            result = stable_whisper.WhisperResult([reconciled_words])
+            # force_order=True: adjacent winning words from different slots
+            # can carry natural ~0.02-0.1s timestamp overlap (normal
+            # word-level timing noise from independent passes) that
+            # WhisperResult's strict sorted-check otherwise rejects. This is
+            # stable-ts's own built-in repair (clamps start forward to the
+            # previous word's end), not a workaround.
+            result = stable_whisper.WhisperResult([reconciled_words], force_order=True)
             if custom_regroup and custom_regroup.lower() != 'default':
                 result.regroup(custom_regroup)
         elif len(pass_results) == 1:
