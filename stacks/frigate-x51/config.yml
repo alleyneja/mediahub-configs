@@ -1,0 +1,10 @@
+mqtt:
+  enabled: true
+  host: mosquitto
+  port: 1883
+
+detectors:
+  cpu1:
+    type: cpu
+
+cameras: {}

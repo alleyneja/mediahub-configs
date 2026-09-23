@@ -1,0 +1,17 @@
+# MQTT broker on x51 -- ties Frigate's detection events to Home Assistant. Internal only, no
+# published port: reachable only from containers on x51's own mediahub_internal network, so
+# anonymous access is fine here (same trust boundary as any other container-to-container link).
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    volumes:
+      - /srv/docker/mosquitto/config/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - /srv/docker/mosquitto/data:/mosquitto/data
+    networks:
+      - mediahub_internal
+    restart: unless-stopped
+
+networks:
+  mediahub_internal:
+    external: true
