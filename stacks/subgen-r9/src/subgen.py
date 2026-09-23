@@ -67,6 +67,7 @@ import faster_whisper
 import ffmpeg
 import numpy as np
 import requests
+import qa_voting
 import stable_whisper
 import torch
 from fastapi import Body, FastAPI, File, Form, Header, Query, Request, UploadFile
@@ -144,6 +145,23 @@ append = convert_to_bool(os.getenv('APPEND', False))
 reload_script_on_change = convert_to_bool(os.getenv('RELOAD_SCRIPT_ON_CHANGE', False))
 lrc_for_audio_files = convert_to_bool(os.getenv('LRC_FOR_AUDIO_FILES', True))
 custom_regroup = os.getenv('CUSTOM_REGROUP', 'cm_sl=84_sl=42++++++1')
+qa_passes = int(os.getenv('SUBGEN_QA_PASSES', '3'))
+qa_overlap_threshold = float(os.getenv('SUBGEN_QA_OVERLAP_THRESHOLD', '0.5'))
+
+
+def _temperature_ladder(passes: int) -> list:
+    """Per-pass decoding temperature, spread across Whisper's native
+    fallback range [0.0, 1.0]. 3 passes (the default) gives [0.0, 0.3, 0.6].
+    Deliberately varying temperature per pass (rather than repeating
+    identical calls) is what makes the passes different hypotheses to vote
+    on -- faster-whisper's decoding is otherwise largely deterministic.
+    """
+    if passes <= 1:
+        return [0.0]
+    step = min(0.3, 1.0 / (passes - 1))
+    return [round(min(i * step, 1.0), 2) for i in range(passes)]
+
+
 detect_language_length = int(os.getenv('DETECT_LANGUAGE_LENGTH', 30))
 detect_language_offset = int(os.getenv('DETECT_LANGUAGE_OFFSET', 0))
 model_cleanup_delay = int(os.getenv('MODEL_CLEANUP_DELAY', 30))
@@ -1081,13 +1099,43 @@ def asr_task_worker(task_data: dict) -> None:
             args['regroup'] = custom_regroup
 
         args.update(kwargs)
-        
+
         # Detect audio start_time offset from source file (if accessible)
         audio_offset = get_audio_start_time(video_file) if video_file else 0.0
-        
-        # Perform transcription
-        result = model.transcribe(task=task, language=language, **args, verbose=None)
-        
+
+        # Multi-pass QA: run qa_passes transcription passes with an
+        # increasing temperature ladder, then reconcile via time-window
+        # clustering + majority vote instead of trusting a single pass.
+        # See docs/superpowers/specs/2026-09-23-subgen-multipass-voting-design.md
+        pass_results = []
+        for i, temperature in enumerate(_temperature_ladder(qa_passes)):
+            try:
+                pass_args = dict(args)
+                pass_args['temperature'] = temperature
+                pass_args['progress_callback'] = ProgressHandler(f"{display_name} (pass {i + 1}/{qa_passes})")
+                pass_results.append(model.transcribe(task=task, language=language, **pass_args, verbose=None))
+            except Exception as e:
+                logging.error(f"QA pass {i + 1}/{qa_passes} at temperature={temperature} failed (ID: {task_id}): {e}", exc_info=True)
+
+        if len(pass_results) >= 2:
+            passes_as_words = [
+                [
+                    {"start": word.start, "end": word.end, "word": word.word, "probability": word.probability}
+                    for seg in pass_result.segments
+                    for word in seg.words
+                ]
+                for pass_result in pass_results
+            ]
+            reconciled_words = qa_voting.reconcile_passes(passes_as_words, overlap_threshold=qa_overlap_threshold)
+            result = stable_whisper.WhisperResult([reconciled_words])
+            if custom_regroup and custom_regroup.lower() != 'default':
+                result.regroup(custom_regroup)
+        elif len(pass_results) == 1:
+            logging.warning(f"Only 1 of {qa_passes} QA passes succeeded (ID: {task_id}); using it unreconciled")
+            result = pass_results[0]
+        else:
+            raise RuntimeError(f"All {qa_passes} QA passes failed for ASR request (ID: {task_id})")
+
         # Apply audio start_time offset to compensate for container timing
         # Whisper ignores silence padding (adelay) from Bazarr, so timestamps
         # are relative to audio stream start, not container start
