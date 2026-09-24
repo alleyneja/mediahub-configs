@@ -57,6 +57,18 @@
 # redesign (e.g. phrase-level voting, or skip multi-pass for translate tasks
 # specifically) is worth revisiting -- see the plan doc's final findings before
 # reusing it.
+#
+# beam_size=1 added 2026-09-24 after a decoding-settings sweep (WER/CER-scored
+# against all 7 test episodes via scripts/run_sweep.sh + score_sweep.py): the
+# default (unset, faster-whisper's beam_size=5) was matched or slightly beaten
+# by beam_size=1 on every clean English-transcription episode tested (Everybody
+# Hates Chris 15.0%->14.5% WER, Bob's Burgers 8.8%->8.6%, Dexter a wash) while
+# running faster. Other settings tried and rejected: vad_filter=True and
+# condition_on_previous_text=True both measurably hurt (Dexter, Chris);
+# hallucination_silence_threshold at 1.0 or 4.0 showed no consistent gain over
+# the current 2.0; large-v3-turbo was a clear loss, catastrophic specifically
+# on translate-mode anime content (WER up to 99-100%, versus large-v3's 79-90%
+# on the same episodes -- turbo is known to be weaker at translation).
 services:
   subgen:
     image: mccloud/subgen:2026.07.3
@@ -70,7 +82,7 @@ services:
       - COMPUTE_TYPE=float16
       - CONCURRENT_TRANSCRIPTIONS=1
       - CLEAR_VRAM_ON_COMPLETE=true
-      - "SUBGEN_KWARGS={'condition_on_previous_text': False, 'hallucination_silence_threshold': 2.0}"
+      - "SUBGEN_KWARGS={'condition_on_previous_text': False, 'hallucination_silence_threshold': 2.0, 'beam_size': 1}"
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - TZ=America/Chicago
