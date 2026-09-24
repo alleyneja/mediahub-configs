@@ -69,10 +69,17 @@ on the same drive as what they protect.
 
 **Conclusion:** the per-source split clearly helped -- everything under about 200 MB got through, sometimes needing one retry, which is why 6 of 8 succeeded tonight where the single bundled 2.5 GB run failed outright twice. The two remaining sources are simply too large to reliably clear the shared quota's remaining headroom tonight. This still points at the same fix.
 
-**Remaining before the full nightly job is live:**
-- Jay creates a personal Google Cloud OAuth client ID and gives it to the `gdrive` rclone remote (`rclone config update gdrive client_id ... client_secret ...`).
-- Re-run the (already fixed and tested) full script; verify the same way (restore + diff, or at least `restic check`).
-- Create the Kuma push monitor and install the crontab line -- deliberately still not done, so a job with a known-broken upload path cannot rack up nightly failure alerts before the client ID fix lands.
+**Update 2026-09-23 -- personal client ID working, 8 of 8 sources now off-site.**
+A personal Google Cloud OAuth client is now in use, and the last two sources went through in one pass each with no rate-limit errors: `nextcloud-files` (736 MiB, 2m16s, snapshot `e60c6bac`) and `immich-db` (2.26 GiB, 7m42s, snapshot `eee5fbe5`). Verified beyond the exit codes: `restic check --read-data-subset=5%` clean, and one Nextcloud file restored from Drive and matched the live copy by SHA-256. The nightly job is still NOT scheduled (see the Testing-mode item below).
+
+What the two days of `unauthorized_client` / `invalid_client` actually were (none of it was Google propagation delay, despite the working theory at the time):
+- **Every failed `rclone authorize` was a copy/paste problem.** The long command was split at line wraps, so PowerShell ran `rclone authorize "drive"` alone -- which silently uses rclone's *default* shared client -- and then tried to run the client ID and secret as separate commands. A token from the default client fails with `unauthorized_client` when paired with a custom client ID in `rclone.conf`. Fix: set `$id` / `$secret` as PowerShell variables on separate short lines, then `rclone authorize "drive" $id $secret`. The proof it used the custom client: Google shows "Google hasn't verified this app" (the default client is verified, so it never does).
+- **`rclone config update gdrive token '...'` writes the token and then hangs** waiting for interactive input. Kill it after the write; check with `rclone about gdrive:`. Prefer `--non-interactive`.
+- The client ID itself was valid the whole time (probed against Google's auth endpoint, with rclone's default ID and a made-up ID as controls).
+
+**Still open before the nightly job goes live:**
+- **The OAuth app is in Testing mode, so its refresh token expires after 7 days** (this one issued 2026-09-23, dies about 2026-09-30). Publishing to "In production" is blocked: the Audience page says "To publish your app, you must complete your configuration on the Branding page" without naming the field. Suspect: the Developer contact email on the Branding page (not saved / empty) -- unconfirmed. After publishing, re-run `rclone authorize` for a fresh token and revoke the old grant at myaccount.google.com/permissions.
+- Create the Kuma push monitor and install the crontab line -- only after the token is durable, so the job cannot start failing nightly a week from now.
 
 **Costs / sacrifices:**
 1. Off-site restore depends on the repository password. Losing all three copies (this file, Apple Keychain, paper) means the Google Drive copy is unrecoverable, by design (that is what encryption means).
