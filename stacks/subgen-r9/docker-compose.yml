@@ -41,15 +41,25 @@
 # own now-removed v1.10.0-gpu pin).
 #
 # Forked 2026-09-23 to add multi-pass transcription + alignment/voting QA
-# (see docs/superpowers/specs/2026-09-23-subgen-multipass-voting-design.md).
-# Source vendored from the exact running mccloud/subgen:2026.07.3 image,
-# not upstream main, so this build is behavior-identical to production
-# until the QA logic is layered on in a later change.
+# (see docs/superpowers/specs/2026-09-23-subgen-multipass-voting-design.md), then
+# REVERTED the same day back to the plain pinned image after testing across 7 real
+# episodes (docs/superpowers/plans/2026-09-23-subgen-multipass-voting.md, Task 5 +
+# follow-up round). Translate-mode (anime JA->EN) content was severely, consistently
+# WORSE under multi-pass voting -- word-level time-clustering assumes independent
+# passes are noisy variants of the same words, which is false for translation (three
+# valid English phrasings of the same Japanese line can use entirely different words/
+# order), so slots split and quorum drops legitimate content, splicing fragments no
+# single pass produced. Transcribe-mode (same-language) was roughly a wash: no severe
+# fragmenting, but a small steady rate of dropped short function words versus none in
+# single-pass, plus a real readability regression from merging rapid back-and-forth
+# dialogue into fewer, denser cues -- not enough benefit to justify 3x the GPU time.
+# The forked source is kept at ./src for reference (not deployed) in case a future
+# redesign (e.g. phrase-level voting, or skip multi-pass for translate tasks
+# specifically) is worth revisiting -- see the plan doc's final findings before
+# reusing it.
 services:
   subgen:
-    build:
-      context: ./src
-      dockerfile: Dockerfile
+    image: mccloud/subgen:2026.07.3
     container_name: subgen
     runtime: nvidia
     environment:
@@ -64,12 +74,9 @@ services:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - TZ=America/Chicago
-      - SUBGEN_QA_PASSES=3
-      - SUBGEN_QA_OVERLAP_THRESHOLD=0.5
-      - SUBGEN_QA_MAX_GAP=0.5
-      # launcher.py re-downloads subgen.py from GitHub main if this is
-      # truthy, which would silently overwrite our fork's multi-pass logic.
-      # Explicit False, not just relying on the var being absent.
+      # launcher.py re-downloads subgen.py from GitHub main if this is truthy --
+      # explicit False rather than relying on the var being absent, kept from the
+      # fork as cheap insurance even though we're back on the plain image.
       - UPDATE=False
     volumes:
       - /srv/docker/subgen/models:/subgen/models
