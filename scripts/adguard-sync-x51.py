@@ -6,10 +6,14 @@ overrides (its own admin user, plain-UDP upstreams), and pushes it to x51 only i
 differ in anything that matters. x51's AdGuard is stopped around the write because AdGuard
 rewrites its config on shutdown. Needs: PyYAML, ssh key access to x51, NOPASSWD sudo on both.
 
+Every run (in sync or not) also asks x51 for a .lan rewrite and compares it with production's answer, and
+reports the outcome to an Uptime Kuma push monitor (KUMA_PUSH_URL in the env file): up on success, down with
+the reason on any failure. Kuma also alerts if no heartbeat arrives for 2 h (cron dead, script broken).
+
 Credentials: stacks/adguard-x51/adguard-x51.env (gitignored). Design: docs/dns-resilience.md.
 Usage: adguard-sync-x51.py [--dry-run] [--force]
 """
-import argparse, copy, hashlib, json, os, subprocess, sys, tempfile
+import argparse, copy, os, subprocess, sys, tempfile, time, urllib.parse, urllib.request
 import yaml
 
 X51 = "192.168.0.20"
@@ -35,6 +39,29 @@ def load_env():
             k, v = line.rstrip("\n").split("=", 1)
             env[k] = v
     return env
+
+
+def heartbeat(env, status, msg):
+    url = env.get("KUMA_PUSH_URL")
+    if not url:
+        return
+    try:
+        q = urllib.parse.urlencode({"status": status, "msg": msg[:200], "ping": ""})
+        urllib.request.urlopen(f"{url.split('?')[0]}?{q}", timeout=15).read()
+    except Exception as e:  # never let alerting break the sync itself
+        print(f"WARNING: could not send Kuma heartbeat: {e}", file=sys.stderr)
+
+
+def check_answers(prod, tries=12, wait=5):
+    """x51 must answer a .lan rewrite exactly as production's config says (AdGuard needs a while to load blocklists)."""
+    rw = prod["filtering"]["rewrites"][0]
+    for _ in range(tries):
+        out = subprocess.run(["dig", "+short", "+time=3", "+tries=1", f"@{X51}", rw["domain"], "A"],
+                             capture_output=True, text=True).stdout.split()
+        if out == [rw["answer"]]:
+            return
+        time.sleep(wait)
+    raise RuntimeError(f"x51 does not answer {rw['domain']} with {rw['answer']} (got {out})")
 
 
 def build_replica(prod, env):
@@ -71,13 +98,7 @@ def diff_keys(a, b):
     return out
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--dry-run", action="store_true")
-    ap.add_argument("--force", action="store_true")
-    args = ap.parse_args()
-
-    env = load_env()
+def sync(args, env):
     prod = yaml.safe_load(run(["sudo", "-n", "cat", PROD_YAML]))
     replica = build_replica(prod, env)
     try:
@@ -86,11 +107,11 @@ def main():
         live = {"dns": {}}
     diffs = diff_keys(replica, live)
     if not diffs and not args.force:
-        print("in sync")
-        return 0
+        check_answers(prod, tries=2, wait=2)
+        return "in sync, x51 answering"
     print("differs in:", ", ".join(diffs) or "(forced)")
     if args.dry_run:
-        return 0
+        return None
 
     with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as t:
         yaml.safe_dump(replica, t, sort_keys=False, default_flow_style=False)
@@ -103,7 +124,31 @@ def main():
         f"sudo -n install -m 600 -o root -g root /tmp/AdGuardHome.yaml.new conf/AdGuardHome.yaml && "
         f"rm -f /tmp/AdGuardHome.yaml.new && docker compose start"
     ])
-    print("pushed and restarted x51 AdGuard")
+    check_answers(prod)
+    left = diff_keys(replica, yaml.safe_load(run(SSH + ["sudo", "-n", "cat", f"{X51_DIR}/conf/AdGuardHome.yaml"])))
+    if left:
+        raise RuntimeError(f"still differs after push: {', '.join(left)}")
+    return "pushed and restarted x51 AdGuard; verified"
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--force", action="store_true")
+    args = ap.parse_args()
+    env = load_env()
+    try:
+        result = sync(args, env)
+    except Exception as e:
+        detail = (e.stderr.strip() if isinstance(e, subprocess.CalledProcessError) and e.stderr else str(e))
+        print(f"FAILED: {detail}", file=sys.stderr)
+        if not args.dry_run:
+            heartbeat(env, "down", f"sync failed: {detail}")
+        return 1
+    if result:
+        print(result)
+        if not args.dry_run:
+            heartbeat(env, "up", result)
     return 0
 
 
