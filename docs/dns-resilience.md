@@ -91,3 +91,12 @@ everywhere; x51 is added, never substituted (a clean-stop test cannot cover the 
   r9 returned to `.21` within ~2 min via the resolved-prefer-adguard timer (its resolved restart caused
   one refused query, ~1 s).
 - Not tested: a stall (AdGuard up, upstream path dropped) with x51 in the chain; real phone/PC clients.
+
+**Real-client test, 2026-09-24 (jays-iphone over Tailscale, production AdGuard stopped 60 s):**
+- All 29 of the iPhone's lookups in the window were answered by x51: `.lan` rewrites (homepage, lidarr,
+  sabnzbd, calibre-web, auth, bookshelf-ebooks) in <0.1 ms, public names via plain UDP (`1.1.1.1:53`,
+  `9.9.9.10:53`, 27-140 ms), and ad-blocking still worked (`sentry.servarr.com` filtered by blocklist).
+- Also observed: even with production healthy, Tailscale clients send some lookups to x51 (the iPhone had
+  15 before the test), so drift between the two AdGuards is user-visible, not just a failover concern.
+  The hourly sync is what keeps that harmless.
+
