@@ -1,0 +1,14 @@
+# Replica AdGuard Home on mediahub-staging (x51): DNS failover for production's AdGuard (.21).
+# Config is NOT edited here -- scripts/adguard-sync-x51.py copies production's AdGuardHome.yaml over
+# (rewrites, blocklists, rules, clients, rate limit), overriding only the admin user and the upstreams.
+# Upstreams here are deliberately plain UDP so a DoH/TCP stall that hurts production does not hurt x51
+# (docs/dns-resilience.md). Image pinned to production's running version; bump both together.
+services:
+  adguardhome:
+    image: adguard/adguardhome:v0.107.72
+    container_name: adguardhome
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /srv/docker/adguardhome/work:/opt/adguardhome/work
+      - /srv/docker/adguardhome/conf:/opt/adguardhome/conf
