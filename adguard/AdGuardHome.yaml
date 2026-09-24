@@ -31,8 +31,8 @@ dns:
     - 0.0.0.0
   port: 53
   anonymize_client_ip: false
-  ratelimit: 500
-  ratelimit_subnet_len_ipv4: 24
+  ratelimit: 200
+  ratelimit_subnet_len_ipv4: 32
   ratelimit_subnet_len_ipv6: 56
   ratelimit_whitelist: []
   refuse_any: true
