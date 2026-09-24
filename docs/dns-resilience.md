@@ -75,3 +75,19 @@ everything is healthy. Fallback traffic is cleartext by design (D-R2).
 - Off-house alerting: Kuma runs on the box it monitors, so a whole-server outage cannot
   alert anyone. Candidate: mediahub-r9 or an external heartbeat. Not decided.
 - Tailscale `down` on the server has no guard. The alert in D-R5 should cover it.
+
+## x51 replica AdGuard (2026-09-24)
+
+A replica AdGuard runs on x51 (`stacks/adguard-x51/`), synced hourly from production by
+`scripts/adguard-sync-x51.py` (cron `17 * * * *`, log `~/logs/adguard-sync-x51.log`). Its upstreams are
+plain UDP (`9.9.9.10`, `1.1.1.1`) with Quad9 DoH as fallback, deliberately different from production's
+DoH so one transport stall does not take both down. `1.1.1.1` stays as the last client-side resolver
+everywhere; x51 is added, never substituted (a clean-stop test cannot cover the Sep 20 stall failure).
+
+**Failover test, 2026-09-24 (r9 as client, runtime DNS list `.21 .20 1.1.1.1`):**
+- Production AdGuard stopped 24 s. r9 switched to `.20` on its first query, `.lan` and public lookups
+  answered in ~0.1 s with no gaps; x51's query counter rose 42 -> 60.
+- Production restarted: it took longer than 3 s to answer again (refused at +3 s; a 2.2 M-rule blocklist loads).
+  r9 returned to `.21` within ~2 min via the resolved-prefer-adguard timer (its resolved restart caused
+  one refused query, ~1 s).
+- Not tested: a stall (AdGuard up, upstream path dropped) with x51 in the chain; real phone/PC clients.
