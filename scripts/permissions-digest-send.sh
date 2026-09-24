@@ -16,13 +16,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DIGEST_FILE="/home/jay/logs/permissions-digest-pending.txt"
 FORENSIC_LOG="/home/jay/logs/permissions-forensics.log"
 HOST_TAG="$(hostname)"
+LOCK_FILE="/tmp/permissions-monitor.lock"   # same lock permissions-monitor.sh holds while it appends
+SNAPSHOT="$(mktemp)"
+trap 'rm -f "$SNAPSHOT"' EXIT
 
 # shellcheck disable=SC1090
 source "$SCRIPT_DIR/lib-permissions-alert.sh"
 
 touch "$DIGEST_FILE"
 
-if [ ! -s "$DIGEST_FILE" ]; then
+# Snapshot-and-truncate under the monitor's lock so a run appending mid-digest can't be
+# wiped by the truncate. The Discord send happens outside the lock (it can be slow).
+(
+    flock -w 120 9 || exit 1
+    cat "$DIGEST_FILE" > "$SNAPSHOT"
+    : > "$DIGEST_FILE"
+) 9>"$LOCK_FILE" || { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) host=$HOST_TAG WARNING: digest could not get monitor lock, skipping" >> "$FORENSIC_LOG"; exit 1; }
+
+if [ ! -s "$SNAPSHOT" ]; then
     exit 0
 fi
 
@@ -39,10 +50,16 @@ while IFS= read -r line; do
     [ -n "$count" ] && total_count=$((total_count + count))
     [ -z "$first_ts" ] && first_ts="$ts"
     last_ts="$ts"
-done < "$DIGEST_FILE"
+done < "$SNAPSHOT"
 
 if send_discord_alert "Daily permissions-monitor digest for **$HOST_TAG**: $total_count routine new anomaly file(s) across $run_count run(s) below the burst threshold, $first_ts to $last_ts. Not auto-fixed - review permissions-forensics.log / permissions-pending-fixes.txt as usual."; then
-    : > "$DIGEST_FILE"
+    :
 else
+    # Put the snapshot back ahead of anything appended since, under the lock.
+    (
+        flock -w 120 9 || exit 1
+        cat "$SNAPSHOT" "$DIGEST_FILE" > "$SNAPSHOT.merged" && cat "$SNAPSHOT.merged" > "$DIGEST_FILE"
+        rm -f "$SNAPSHOT.merged"
+    ) 9>"$LOCK_FILE"
     echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) host=$HOST_TAG WARNING: digest send failed, leaving accumulator ($run_count run(s), $total_count file(s)) for next attempt" >> "$FORENSIC_LOG"
 fi
