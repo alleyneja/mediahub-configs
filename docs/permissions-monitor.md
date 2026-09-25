@@ -310,3 +310,25 @@ sudo gpasswd -d alleyneja systemd-journal
 This has been owed since the last time this investigation was opened — don't let this
 pass close it out silently. It's an access-hygiene step, separate from whether root
 cause was ever found.
+
+## Canary: live proof of the lookupcache fix (2026-09-25)
+
+`scripts/permissions-canary.sh` (production cron `11,41 * * * *`) keeps 200 files in the hidden NAS dir
+`/mnt/nas/.permissions-canary`:
+
+- `ctl-*` are checked **only** through `/mnt/permissions-canary-control`. That's a read-only NFS mount deliberately
+  set up without `lookupcache=none` (see `system/fstab`), so it flips when the NAS evicts inodes.
+- `fix-*` are read **only** through the fixed `/mnt/media`.
+
+The two halves never overlap, because a by-name lookup heals the NAS-side state. `permissions-monitor.sh` prunes
+the directory for the same reason.
+
+| Control | Fixed | Meaning | Discord |
+|---|---|---|---|
+| clean | clean | nothing happened | none |
+| flipped | clean | NAS evicted and the fix held (the evidence we want) | info post, then control is healed by name |
+| any | denied | **the fix is incomplete** | alert (once per transition) |
+| mount missing | - | canary blind | alert |
+
+Log: `~/logs/permissions-canary.log`. This replaces the retired per-minute sentinel pilot, which was confounded
+because stat'ing every minute kept its files warm.
