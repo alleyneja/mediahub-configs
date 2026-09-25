@@ -1,0 +1,17 @@
+# Fleet health check after every boot (docs/os-updates.md). Waits 3 min so Docker has restored its containers,
+# then checks mounts/containers/endpoints, auto-fixes known-safe cases and posts to Discord #service-outages.
+# SCRIPT_PATH is substituted at install time: production runs it from the repo, r9/staging from ~/scripts.
+[Unit]
+Description=Fleet health check after boot
+Wants=network-online.target
+After=network-online.target docker.service remote-fs.target
+
+[Service]
+Type=oneshot
+User=jay
+ExecStartPre=/bin/sleep 180
+ExecStart=SCRIPT_PATH --boot
+TimeoutStartSec=900
+
+[Install]
+WantedBy=multi-user.target
