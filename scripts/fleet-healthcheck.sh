@@ -33,7 +33,7 @@ case "$HOST" in
                "Uptime Kuma|http://127.0.0.1:3001" "Caddy|https://plex.lan") ;;
   mediahub-r9)
     MOUNTS=(/mnt/nas /mnt/prod-internal /mnt/media); LOOKUPCACHE_MOUNT=/mnt/nas
-    ENDPOINTS=("Plex|http://127.0.0.1:32400/identity" "subgen (tailnet-only)|http://100.121.244.45:9000/") ;;
+    ENDPOINTS=("Plex|http://127.0.0.1:32400/identity" "subgen (tailnet-only)|http://100.121.244.45:9000/" "Immich ML (tailnet-only, used by production Immich)|http://100.121.244.45:3003/ping") ;;
   mediahub-staging)
     MOUNTS=(); LOOKUPCACHE_MOUNT=""
     ENDPOINTS=("Home Assistant (tailnet-only)|http://100.124.234.117:8123/") ;;
@@ -107,8 +107,12 @@ done
 if [ "$HOST" = mediahub-r9 ] && docker ps --format '{{.Names}}' | grep -qx plex; then
   tok=$(sudo -n grep -o 'PlexOnlineToken="[^"]*"' "/srv/docker/plex/Library/Application Support/Plex Media Server/Preferences.xml" 2>/dev/null | cut -d'"' -f2)
   if [ -n "$tok" ]; then
-    st=$(curl -s -m 8 -H 'Accept: application/json' "http://127.0.0.1:32400/media/grabbers/devices?X-Plex-Token=$tok" \
-         | python3 -c "import json,sys; print(','.join(d.get('status','?') for d in json.load(sys.stdin)['MediaContainer'].get('Device',[])))" 2>/dev/null)
+    # Plex takes a minute after (re)start to load its tuner list: retry for up to ~2 min before calling it a problem.
+    for _ in 1 2 3 4 5 6 7 8; do
+      st=$(curl -s -m 8 -H 'Accept: application/json' "http://127.0.0.1:32400/media/grabbers/devices?X-Plex-Token=$tok" \
+           | python3 -c "import json,sys; print(','.join(d.get('status','?') for d in json.load(sys.stdin)['MediaContainer'].get('Device',[])))" 2>/dev/null)
+      [ "$st" = alive ] && break; sleep 15
+    done
     [ "$st" = alive ] || bad "Plex Live TV tuner status is '${st:-unknown}' (expected alive)"
   fi
 fi
