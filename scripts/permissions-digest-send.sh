@@ -7,8 +7,9 @@
 # ~40 routine pings/day. Real incidents (>= BURST_THRESHOLD in one run) still alert
 # immediately from permissions-monitor.sh itself and are NOT held for this digest.
 #
-# Wire into cron once daily on both hosts, e.g.:
-#   0 8 * * * /path/to/permissions-digest-send.sh
+# Wire into cron once daily on both hosts, OFF the monitor's */15 tick (the monitor holds the flock for its whole
+# multi-minute scan; 08:00 collided with it on 2026-09-25 and the 120 s wait timed out), e.g.:
+#   7 8 * * * /path/to/permissions-digest-send.sh
 # If the accumulator is empty, this sends nothing (no "0 findings" spam).
 set -uo pipefail
 
@@ -28,7 +29,7 @@ touch "$DIGEST_FILE"
 # Snapshot-and-truncate under the monitor's lock so a run appending mid-digest can't be
 # wiped by the truncate. The Discord send happens outside the lock (it can be slow).
 (
-    flock -w 120 9 || exit 1
+    flock -w 300 9 || exit 1
     cat "$DIGEST_FILE" > "$SNAPSHOT"
     : > "$DIGEST_FILE"
 ) 9>"$LOCK_FILE" || { echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) host=$HOST_TAG WARNING: digest could not get monitor lock, skipping" >> "$FORENSIC_LOG"; exit 1; }
@@ -57,7 +58,7 @@ if send_discord_alert "Daily permissions-monitor digest for **$HOST_TAG**: $tota
 else
     # Put the snapshot back ahead of anything appended since, under the lock.
     (
-        flock -w 120 9 || exit 1
+        flock -w 300 9 || exit 1
         cat "$SNAPSHOT" "$DIGEST_FILE" > "$SNAPSHOT.merged" && cat "$SNAPSHOT.merged" > "$DIGEST_FILE"
         rm -f "$SNAPSHOT.merged"
     ) 9>"$LOCK_FILE"
