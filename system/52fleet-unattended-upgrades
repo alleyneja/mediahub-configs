@@ -1,0 +1,12 @@
+// Fleet OS-update policy (mediahub-configs docs/os-updates.md), installed as /etc/apt/apt.conf.d/52fleet-unattended-upgrades
+// on production, r9 and staging. Daily: install regular Ubuntu updates too (not only -security), never reboot.
+// Docker and NVIDIA driver packages are excluded: Docker upgrades restart every container (could cut off a Plex
+// stream) and are applied in the maintenance window instead; NVIDIA driver packages are apt-mark held entirely.
+Unattended-Upgrade::Allowed-Origins {
+        "${distro_id}:${distro_codename}-updates";
+};
+Unattended-Upgrade::Package-Blacklist {
+        "docker-ce"; "docker-ce-cli"; "docker-ce-rootless-extras"; "docker-compose-plugin"; "docker-buildx-plugin";
+        "containerd.io"; "nvidia-"; "libnvidia-"; "xserver-xorg-video-nvidia";
+};
+Unattended-Upgrade::Automatic-Reboot "false";
