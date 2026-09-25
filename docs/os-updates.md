@@ -71,6 +71,6 @@ What already worked: Ubuntu's `unattended-upgrades` installs **security** update
       was active. First real runs: staging Sat 2026-09-26, production Tue 09-29, r9 Thu 10-01.
 - [x] A. unattended-upgrades widened, Docker/NVIDIA excluded (verified via `unattended-upgrade --dry-run` log)
 - [x] A2. NVIDIA driver packages held on all three machines
-- [ ] B. Ubuntu Pro attached (needs Jay's token)
+- [x] B. Ubuntu Pro attached on all three (2026-09-25, free personal subscription): esm-apps, esm-infra, Livepatch running on a supported kernel. Token in gitignored `scripts/ubuntu-pro.env` on each machine
 - [x] E. Old `apt upgrade && reboot` cron removed from production (2026-09-25)
 - [ ] Later: extend the "nobody is using it" check to Minecraft (Pterodactyl on r9) and Sunshine/Moonlight sessions
