@@ -2,6 +2,8 @@ services:
   audiobookshelf:
     image: ghcr.io/advplyr/audiobookshelf:latest
     container_name: audiobookshelf
+    # Runs as jay (2026-09-25, D12): was implicitly root, which left the library root-owned.
+    user: "1000:1000"
     labels:
       # Opt this container into the manual dockercompose trigger defined in
       # stacks/wud/docker-compose.yml (third pilot, 2026-09-05).

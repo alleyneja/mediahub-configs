@@ -2,6 +2,8 @@ services:
   immich-server:
     image: ghcr.io/immich-app/immich-server:release
     container_name: immich-server
+    # Runs as jay (2026-09-25, D12): was implicitly root, which left the library root-owned.
+    user: "1000:1000"
     labels:
       # Opt into the manual dockercompose trigger defined in
       # stacks/wud/docker-compose.yml (2026-09-06). Coupled with
