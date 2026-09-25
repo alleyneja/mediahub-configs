@@ -1,0 +1,43 @@
+# Staging (x51) resource monitoring: its own Netdata + Glances (2026-09-25). Split out of the Sep 17 rehearsal's copy of
+# production's uptime-kuma stack, which reported itself as hostname "mediahub-production". Same shape as production's
+# netdata/glances services (stacks/uptime-kuma) minus the /mnt/media mount (staging has no NAS mount) and the shared
+# mediahub_internal network (nothing on staging proxies to these). Netdata Discord alerting is NOT configured here yet.
+services:
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+    hostname: mediahub-staging
+    restart: unless-stopped
+    pid: host
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /srv/docker/visibility/netdata/config:/etc/netdata
+      - /srv/docker/visibility/netdata/lib:/var/lib/netdata
+      - /srv/docker/visibility/netdata/cache:/var/cache/netdata
+    ports:
+      - "19999:19999"
+
+  glances:
+    image: nicolargo/glances:latest
+    container_name: glances
+    restart: unless-stopped
+    pid: host
+    privileged: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /sys/class/hwmon:/sys/class/hwmon:ro
+      - /sys/class/thermal:/sys/class/thermal:ro
+      - /run/udev:/run/udev:ro
+      - /srv/docker/visibility/glances:/etc/glances:ro
+    environment:
+      - GLANCES_OPT=-w --enable-plugin sensors
+    ports:
+      - "61208:61208"
