@@ -3,9 +3,17 @@
 Operational guide for the alert-first permissions monitor built under D12
 (`~/mediahub-cleanup.md`) to catch the recurring mode-000 / mode-777 anomaly pattern
 across the whole `/mnt/media` pool, on both production and r9. This monitor **never
-auto-fixes** — it detects, logs, and queues. Root cause of the underlying anomaly
-pattern is still not found; this guardrail only protects the library while that
-investigation continues.
+auto-fixes** — it detects, logs, and queues. 
+**Root cause (found 2026-09-25):** the mode-000 half is a defect in UGREEN's `ugacl`
+kernel on the NAS. When the NAS evicts an inode under memory pressure and a client asks
+for it again by NFS file handle, the NAS renders the mode wrong (000/700) and denies the
+read. A lookup by name renders it correctly. Nothing changes on disk (no ctime change).
+r9 made it worse because it's a second full-library client, which means more evictions.
+**Fix:** `lookupcache=none` on the `/mnt/nas` mount on both hosts (see
+`scripts/nas-lookupcache-fix.sh` and `system/fstab`). Measured in the same eviction round:
+normal mount 0/200 readable, `lookupcache=none` 200/200. The monitor stays in place to
+confirm the fix holds. The mode-777-on-create half is separate and harmless: NAS
+directories are 777 and ugacl ignores umask.
 
 ## What runs where
 
