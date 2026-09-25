@@ -576,3 +576,25 @@ Decision D3: game servers are compute-role services and belong on r9. Three serv
 | 2026-09-22 | Phase 6 started: fixed x51's clock (NTP was disabled, clock had drifted ~2 months, which was silently breaking Tailscale auth), enabled ufw matching production's ruleset, rejoined x51 to the tailnet. Deployed Home Assistant, Frigate and Mosquitto (`stacks/homeassistant-x51`, `stacks/frigate-x51`, `stacks/mosquitto-x51`), all bound only to x51's Tailscale address. Frigate's GPU passthrough to the GTX 1650 verified working; detector left on CPU since no cameras exist yet. |
 | 2026-09-24 | Q9: built the x51 replica AdGuard and a one-way sync script from production; verified rewrite parity and plain-UDP upstreams. Retired x51's stale rehearsal AdGuard (kept as `/srv/docker/adguardhome.rehearsal-old-20260924`). Sync is manual until scheduled; no client points at the replica yet. |
 | 2026-09-24 | D5 option D done: per-device rate limit (200 q/s per /32) on production and x51; measured against the query log and burst-tested. |
+
+## Deployment convention: every machine runs from its own git checkout (2026-09-25)
+
+All three machines deploy the same way: `~/mediahub-configs` is a real git clone, and each machine runs **only its
+own stacks** from `stacks/<name>/` with `docker compose up -d`. Per-machine stacks carry a suffix:
+
+| Machine | Stacks |
+|---|---|
+| production (i7, .21) | un-suffixed stacks (arr-stack, caddy, immich, nextcloud, threadfin, ...) |
+| r9 (.22) | `plex-r9`, `caddy-r9`, `immich-ml-r9`, `stirling-pdf-r9`, `subgen-r9` (+ Pterodactyl game servers, managed by Wings) |
+| staging / x51 (.20) | `adguard-x51`, `frigate-x51`, `homeassistant-x51`, `mosquitto-x51`, `monitoring-x51` |
+
+Scripts (health check, maintenance window, permissions monitor) run from `~/mediahub-configs/scripts/` on every
+machine; their secrets are gitignored `*.env` files beside them (mode 600). Update a machine with `git pull` in its
+checkout, then `docker compose up -d` only in the stack(s) that changed.
+
+Before this, r9 and staging ran from loose `/srv/docker/<x>` copies (identical to the repo, verified) and Plex on r9
+had been started from stdin with no file on disk. Staging was also still running 11 production stacks left over from
+the Sep 17 fresh-machine rehearsal, with production's `.env` secrets. Among them, openGym was firing real users' push
+reminders and Threadfin was using the IPTV account. Those were removed 2026-09-25. Their data folders are kept until
+2026-10-09, along with `~/mediahub-configs.stale-20260925` (staging), `~/mediahub-configs.pre-git-20260925` and
+`~/scripts.retired-20260925` (both machines).
