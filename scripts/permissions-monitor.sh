@@ -57,8 +57,11 @@ if ! mountpoint -q "$MEDIA_ROOT"; then
     exit 1
 fi
 
-mapfile -d '' -t bad_000 < <(find "$MEDIA_ROOT" -type f -not -perm -u+r -print0 2>/dev/null)
-mapfile -d '' -t bad_777 < <(find "$MEDIA_ROOT" -type f -perm 777 -print0 2>/dev/null)
+# .permissions-canary is excluded: permissions-canary.sh keeps an unfixed control half there that must never be
+# looked up by name (a by-name lookup heals the NAS-side state the canary exists to observe).
+CANARY_PRUNE=(-path "$MEDIA_ROOT/.permissions-canary" -prune -o)
+mapfile -d '' -t bad_000 < <(find "$MEDIA_ROOT" "${CANARY_PRUNE[@]}" -type f -not -perm -u+r -print0 2>/dev/null)
+mapfile -d '' -t bad_777 < <(find "$MEDIA_ROOT" "${CANARY_PRUNE[@]}" -type f -perm 777 -print0 2>/dev/null)
 total_scanned=$(( ${#bad_000[@]} + ${#bad_777[@]} ))
 
 # Load the dedup state once into an associative array instead of running grep -qxF
