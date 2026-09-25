@@ -19,7 +19,7 @@ investigation continues.
 | Queued-but-unfixed paths | `/home/jay/logs/permissions-pending-fixes.txt` | same path, separate file |
 | Discord alerting | `scripts/lib-permissions-alert.sh` + `scripts/permissions-alerts.env` (gitignored, webhook URL) | same files, separately populated |
 | Digest accumulator (routine, below-threshold findings) | `/home/jay/logs/permissions-digest-pending.txt` | same path, separate file |
-| Daily digest sender cron | `0 8 * * * /home/jay/mediahub-configs/scripts/permissions-digest-send.sh` | `0 8 * * * /home/jay/scripts/permissions-digest-send.sh` |
+| Daily digest sender cron | `7 8 * * * /home/jay/mediahub-configs/scripts/permissions-digest-send.sh` | `7 8 * * * /home/jay/scripts/permissions-digest-send.sh` |
 | Fleet identity audit cron (repo-wide, production only) | `0 6 1 * * /home/jay/mediahub-configs/scripts/check-fleet-identity.sh` | n/a — audits the repo's `stacks/`, doesn't need a per-host run |
 
 **Deployment asymmetry to remember:** r9 does *not* have a full `mediahub-configs` git
@@ -209,7 +209,7 @@ queue. Only the *immediate Discord alert* decision changes:
   `/home/jay/logs/permissions-digest-pending.txt`.
 
 `scripts/permissions-digest-send.sh` reads that accumulator once a day (cron'd
-`0 8 * * *` on both hosts — see the table above), sends **one** Discord message
+`7 8 * * *` on both hosts — see the table above), sends **one** Discord message
 summarizing total findings, run count, and the date range covered, then clears the
 accumulator. If the accumulator is empty, it sends nothing (no "0 findings" spam). If
 the Discord send itself fails, it leaves the accumulator alone (logs a warning to the
