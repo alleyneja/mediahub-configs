@@ -1,7 +1,7 @@
 # Fleet Permissions Monitor
 
 Operational guide for the alert-first permissions monitor built under D12
-(`~/mediahub-cleanup.md`) to catch the recurring mode-000 / mode-777 anomaly pattern
+(private tracker `alleyneja/mediahub-issues` #33, formerly `~/mediahub-cleanup.md`) to catch the recurring mode-000 / mode-777 anomaly pattern
 across the whole `/mnt/media` pool, on both production and r9. This monitor **never
 auto-fixes** — it detects, logs, and queues. 
 **Root cause (found 2026-09-25):** the mode-000 half is a defect in UGREEN's `ugacl`

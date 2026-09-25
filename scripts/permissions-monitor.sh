@@ -2,7 +2,7 @@
 # Fleet-wide permissions forensic monitor. Replaces zero-perm-subtitle-monitor.sh
 # (subtitles only) with whole-pool coverage of both known anomaly patterns: mode 000
 # (unreadable, even by owner) and mode 777 (unexpectedly permissive). See D12 in
-# ~/mediahub-cleanup.md for the investigation this supports.
+# the private tracker alleyneja/mediahub-issues #33 for the investigation this supports.
 #
 # ALERT-FIRST, NEVER AUTO-FIX: this script only detects, logs, and queues. It never
 # runs chmod. Run permissions-apply-fix.sh after reviewing the queue to actually fix.

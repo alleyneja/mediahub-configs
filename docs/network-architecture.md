@@ -312,7 +312,7 @@ Worth a second look only if remote clients actually report the server offline.
 host reboots, LAN clients lose DNS and the internet appears down even though routing is
 unaffected — a partial violation of R3.
 
-Accepted deliberately on 2026-08-22 rather than solved. Logged in `~/mediahub-cleanup.md`.
+Accepted deliberately on 2026-08-22 rather than solved. Logged in the private tracker (`alleyneja/mediahub-issues` #11; resolved 2026-09-24 by the x51 AdGuard replica).
 Failure mode is short, self-healing, and understood. Revisit when more household members
 depend on the network, or if reboots become frequent.
 
