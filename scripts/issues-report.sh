@@ -6,7 +6,7 @@
 set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 R=alleyneja/mediahub-issues
-json=$(gh issue list -R "$R" --state all --limit 1000 --json number,title,state,createdAt,closedAt,labels,body)
+json=$(gh issue list -R "$R" --state all --limit 1000 --json number,title,state,createdAt,closedAt,labels,body,comments)
 report=$(python3 - "$json" <<'EOF'
 import json, sys, datetime as dt
 issues = json.loads(sys.argv[1]); now = dt.datetime.now(dt.timezone.utc)
@@ -32,6 +32,8 @@ out.append('Open by priority: ' + count(op, 'priority:'))
 out.append('Open by machine: ' + count(op, 'machine:'))
 svc = count(op, 'svc:'); out.append('Open by service: ' + svc)
 rec = [i for i in issues if any(l['name'] == 'recurring' for l in i['labels'])]
+norb = [i for i in rec if 'runbooks/' not in (i.get('body') or '') + ' '.join(c.get('body','') for c in i.get('comments') or [])]
+out.append(f'Recurring without a runbook: {len(norb)}' + (' - ' + ', '.join(f"#{i['number']}" for i in norb) if norb else ' (target: 0)'))
 out.append(f'Recurring: {len(rec)}' + (' - ' + ', '.join(f"#{i['number']}" for i in rec) if rec else ''))
 real = [i for i in cl if not any(l['name'] == 'migrated' for l in i['labels'])]
 if real:
