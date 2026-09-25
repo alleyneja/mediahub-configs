@@ -66,6 +66,11 @@ services:
       TRUSTED_PROXIES: 172.20.0.0/16
       REQUESTS_CA_BUNDLE: /etc/ssl/certs/caddy-root.crt
       REDIS_HOST: nextcloud-redis
+      # Apache runs as www-data with PRIMARY group 10 ("uucp" in this image = NAS "admin" gid). The NAS media share's
+      # UGREEN ACL admits only gid 10 and uid 1000; www-data (33) alone is refused, which caused the Sep 13-14, Sep 23
+      # and Sep 25 2026 "data directory invalid" outages (D12). It must be the primary group: mergerfs only sees the
+      # caller's primary gid reliably (supplementary groups are cached per thread). Run occ as `-u www-data:uucp`.
+      APACHE_RUN_GROUP: uucp
     volumes:
       - /srv/docker/nextcloud/html:/var/www/html
       - /mnt/media/nextcloud/data:/var/www/html/data
@@ -84,7 +89,10 @@ services:
     container_name: nextcloud-cron
     labels:
       - wud.tag.include=^(30|31)-apache$$
-    entrypoint: /cron.sh
+    # 33:10 for the same NAS-ACL reason as APACHE_RUN_GROUP above. busybox crond (/cron.sh) would run the job with
+    # www-data's primary group 33, so a plain loop replaces it (2026-09-25).
+    user: "33:10"
+    entrypoint: ["sh", "-c", "while true; do php -f /var/www/html/cron.php; sleep 300; done"]
     depends_on:
       postgres:
         condition: service_healthy
