@@ -2,7 +2,7 @@
 # Launch RPCS3 and force its window fullscreen.
 # RPCS3's own --fullscreen flag and its "Start games in fullscreen" setting are both ignored under
 # GNOME/mutter on X11 (2026-09-20: window opened decorated + maximized, banner still showing), so wait
-# for the game window and ask the window manager directly. Needs: wmctrl, xdotool.
+# for the game window and ask the window manager directly. Needs: wmctrl, xprop.
 [ $# -ge 1 ] || { echo "usage: $0 <game dir or eboot>"; exit 2; }
 # Official AppImage preferred: the Flathub build shows a blocking "unofficial build" popup that a
 # controller can't dismiss, gets no project support, and reports itself as local_build.
@@ -13,11 +13,18 @@ else
   flatpak run net.rpcs3.RPCS3 --no-gui --fullscreen "$1" &
 fi
 pid=$!
+# Pick the game window from wmctrl's client list by WM class, not by title alone: mutter's decoration
+# window (class mutter-x11-frames) carries the same "FPS: ..." title, and `xdotool search --name`
+# sometimes returned it, so the fullscreen request hit the frame and the game stayed windowed
+# (2026-09-25: 1854x715 window, picture letterboxed). Retry until the state actually sticks.
 (
   for _ in $(seq 1 120); do
     sleep 1
-    w=$(xdotool search --name '^FPS:' 2>/dev/null | tail -1)
-    if [ -n "$w" ]; then wmctrl -i -r "$(printf '0x%08x' "$w")" -b add,fullscreen; exit 0; fi
+    w=$(wmctrl -lx 2>/dev/null | awk '$3 ~ /\.RPCS3$/ && $5 ~ /^FPS:/ {print $1; exit}')
+    [ -n "$w" ] || continue
+    wmctrl -i -r "$w" -b add,fullscreen
+    sleep 1
+    xprop -id "$w" _NET_WM_STATE 2>/dev/null | grep -q _NET_WM_STATE_FULLSCREEN && exit 0
   done
 ) &
 wait "$pid"
