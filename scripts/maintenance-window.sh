@@ -68,8 +68,14 @@ if [ "$reboot_needed" = 1 ]; then
       fi ;;
   esac
 fi
+# --- services needrestart holds back from the daily updates (system/needrestart-50-fleet-defer.conf, production only;
+#     keep the two lists in sync). A reboot restarts them anyway; otherwise they're restarted below. #53
+DEFERRED_RE='^(tailscaled|xorg-headless|openbox-headless|sunshine)\.service$'
+deferred_waiting(){ command -v needrestart >/dev/null 2>&1 || return 0
+  needrestart -b -r l 2>/dev/null | sed -n 's/^NEEDRESTART-SVC: //p' | grep -E "$DEFERRED_RE"; }
+
 if [ "$DRY" = 1 ]; then
-  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] plex_streams=$( [ "$HOST" = mediahub-staging ] && echo n/a || plex_streams)"; exit 0
+  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] deferred_restarts=[$(deferred_waiting | tr '\n' ' ')] plex_streams=$( [ "$HOST" = mediahub-staging ] && echo n/a || plex_streams)"; exit 0
 fi
 
 # --- apply updates (only packages that don't need a restart are handled here when no reboot is due) ---------------
@@ -88,6 +94,19 @@ if [ "$reboot_needed" = 0 ] && [ -f /var/run/reboot-required ]; then
 fi
 if [ "$reboot_needed" = 0 ]; then
   [ -n "$pending" ] && log "updates applied, no reboot required"
+  # xorg-headless first: sunshine Requires= it and openbox is PartOf= it, so they follow its restart
+  mapfile -t svc < <(deferred_waiting | sort -r)
+  if [ "${#svc[@]}" -gt 0 ]; then
+    # restarting tailscaled blips the tailnet path remote Plex viewers may be using: same "nobody watching" rule
+    s=$(plex_streams)
+    if [ "$s" != 0 ]; then log "deferred restarts waiting (${svc[*]}) but Plex streams=$s - retrying next run"; exit 0; fi
+    log "restarting services held back from daily updates: ${svc[*]}"
+    if systemctl restart "${svc[@]}"; then
+      post "🔁 **$HOST** maintenance window: restarted services held back from the daily updates: \`${svc[*]}\`"
+    else
+      post "❌ **$HOST** maintenance window: restarting held-back services FAILED (${svc[*]}) - check \`systemctl status\`"
+    fi
+  fi
   exit 0
 fi
 log "rebooting: required by $why"
