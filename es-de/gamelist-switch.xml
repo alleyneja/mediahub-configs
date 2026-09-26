@@ -1,0 +1,261 @@
+<?xml version="1.0"?>
+<alternativeEmulator>
+	<label>Ryujinx (Standalone)</label>
+</alternativeEmulator>
+<gameList>
+	<game>
+		<path>./Super Smash Bros Ultimate/Super Smash Bros Ultimate[01006A800016E800][US][v917504][CR-15].nsp</path>
+		<name>Super Smash Bros Ultimate[01006A800016E800][US][v917504][CR-15]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Challenger Pack 4] [01006A800016F005][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Challenger Pack 4] [01006A800016F005][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06D][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06D][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06B][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06B][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06A][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06A][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F067][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F067][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F065][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F065][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Akira_dlc.nsp</path>
+		<name>Akira_dlc</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Goemon Outfit and Wig] [01006A800016F02A][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Goemon Outfit and Wig] [01006A800016F02A][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Jackys_dlc.nsp</path>
+		<name>Jackys_dlc</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Challenger Pack 2] [01006A800016F003][v131072].nsp</path>
+		<name>Super Smash Bros Ultimate [Challenger Pack 2] [01006A800016F003][v131072]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Challenger Pack 1] [01006A800016F002][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Challenger Pack 1] [01006A800016F002][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Iori_yagami_dlc.nsp</path>
+		<name>Iori_yagami_dlc</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Nakoruru_dlc.nsp</path>
+		<name>Nakoruru_dlc</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F068][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F068][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Challenger Pack 3] [01006A800016F004][v65536].nsp</path>
+		<name>Super Smash Bros Ultimate [Challenger Pack 3] [01006A800016F004][v65536]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Slime Hat] [01006A800016F028][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Slime Hat] [01006A800016F028][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Gold_tickets_2_dlc.nsp</path>
+		<name>Gold_tickets_2_dlc</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Ryo_sakazaki_dlc.nsp</path>
+		<name>Ryo_sakazaki_dlc</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Zero's Armor and Helmet] [01006A800016F02D][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Zero's Armor and Helmet] [01006A800016F02D][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06C][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F06C][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Team Rocket Outfit and Hat] [01006A800016F029][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Team Rocket Outfit and Hat] [01006A800016F029][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Challenger Pack 4] [01006A800016F005][v65536].nsp</path>
+		<name>Super Smash Bros Ultimate [Challenger Pack 4] [01006A800016F005][v65536]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F069][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 2 -Challenge Strong Enemies!-] [01006A800016F069][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Challenger Pack 5] [01006A800016F006][v65536].nsp</path>
+		<name>Super Smash Bros Ultimate [Challenger Pack 5] [01006A800016F006][v65536]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Super Smash Bros Ultimate Piranha Plant Standalone Fighter] [01006A800016F001][v65536].nsp</path>
+		<name>Super Smash Bros Ultimate [Super Smash Bros Ultimate Piranha Plant Standalone Fighter] [01006A800016F001][v65536]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Challenger Pack 2] [01006A800016F003][v65536].nsp</path>
+		<name>Super Smash Bros Ultimate [Challenger Pack 2] [01006A800016F003][v65536]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Super Smash Bros Ultimate Fighters Pass Bonus Mii Fighter Costume Rex] [01006A800016F015][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Super Smash Bros Ultimate Fighters Pass Bonus Mii Fighter Costume Rex] [01006A800016F015][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Proto Man's Armor and Helmet] [01006A800016F02C][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Proto Man's Armor and Helmet] [01006A800016F02C][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Martial Artist Gi and Wig] [01006A800016F026][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Martial Artist Gi and Wig] [01006A800016F026][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Erdrick's Armour and Helmet] [01006A800016F025][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Erdrick's Armour and Helmet] [01006A800016F025][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Super Smash Bros Ultimate Challenger Pack 1] [01006A800016F002][v65536].nsp</path>
+		<name>Super Smash Bros Ultimate [Super Smash Bros Ultimate Challenger Pack 1] [01006A800016F002][v65536]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F066][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [Spirit Board Challenge Pack 1 -Challenge various Spirits!-] [01006A800016F066][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Veronica's Outfit and Hat] [01006A800016F027][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Veronica's Outfit and Hat] [01006A800016F027][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [【Costume】Sans Outfit and Mask] [01006A800016F02B][v0].nsp</path>
+		<name>Super Smash Bros Ultimate [【Costume】Sans Outfit and Mask] [01006A800016F02B][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Gold_tickets_1_dlc.nsp</path>
+		<name>Gold_tickets_1_dlc</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs/Super Smash Bros Ultimate [Super Smash Bros Ultimate Fighters Pass Bonus Mii Fighter Costume Rex] [01006A800016F015][v65536].nsp</path>
+		<name>Super Smash Bros Ultimate [Super Smash Bros Ultimate Fighters Pass Bonus Mii Fighter Costume Rex] [01006A800016F015][v65536]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Portal Companion Collection/Portal/Portal [01007BB017812800][v196608].nsp</path>
+		<name>Portal [01007BB017812800][v196608]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Portal Companion Collection/Portal 2/Portal 2 [0100ABD01785C800][v196608].nsp</path>
+		<name>Portal 2 [0100ABD01785C800][v196608]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Luigis Mansion 3/Luigis Mansion 3 [0100DCA0064A6800][v327680] (1.01 GB).nsp</path>
+		<name>Luigis Mansion 3 [0100DCA0064A6800][v327680] (1.01 GB)</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Mario Kart 8 Deluxe/[UPDATE] Mario Kart 8 Deluxe - Update v1.7.0.nsp</path>
+		<name>[UPDATE] Mario Kart 8 Deluxe - Update v1.7.0</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Animal Crossing New Horizons [NSP]/Animal Crossing New Horizons [01006F8002326800][v458752].nsp</path>
+		<name>Animal Crossing New Horizons [01006F8002326800][v458752]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Animal Crossing New Horizons [NSP]/Events Unlock/3 ACNH Easter Egg, May Day, Museum Day Events (3 pcs, BCAT)/switch/switch-time.nro</path>
+		<name>switch-time</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Animal Crossing New Horizons [NSP]/Events Unlock/3 ACNH Easter Egg, May Day, Museum Day Events (3 pcs, BCAT)/switch/JKSV.nro</path>
+		<name>JKSV</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Animal Crossing New Horizons [NSP]/DLC/Animal Crossing New Horizons [DLC Special Order Ticket ACPC Tie-in Campaign] [01006F800232712C][v0].nsp</path>
+		<name>Animal Crossing New Horizons [DLC Special Order Ticket ACPC Tie-in Campaign] [01006F800232712C][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<game>
+		<path>./Animal Crossing New Horizons [NSP]/DLC/Animal Crossing New Horizons [DLC Nook Inc silk rug] [01006F800232712D][v0].nsp</path>
+		<name>Animal Crossing New Horizons [DLC Nook Inc silk rug] [01006F800232712D][v0]</name>
+		<hidden>true</hidden>
+	</game>
+	<folder>
+		<path>./Animal Crossing New Horizons [NSP]/DLC</path>
+		<name>DLC</name>
+		<hidden>true</hidden>
+	</folder>
+	<folder>
+		<path>./Animal Crossing New Horizons [NSP]/Events Unlock</path>
+		<name>Events Unlock</name>
+		<hidden>true</hidden>
+	</folder>
+	<folder>
+		<path>./Animal Crossing New Horizons [NSP]/Book (Rus)</path>
+		<name>Book (Rus)</name>
+		<hidden>true</hidden>
+	</folder>
+	<folder>
+		<path>./Luigis Mansion 3/2 DLC</path>
+		<name>2 DLC</name>
+		<hidden>true</hidden>
+	</folder>
+	<folder>
+		<path>./Super Smash Bros Ultimate/Smash Bros All DLCs</path>
+		<name>Smash Bros All DLCs</name>
+		<hidden>true</hidden>
+	</folder>
+</gameList>

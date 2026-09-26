@@ -178,6 +178,12 @@ This applies regardless of which email was used.
 
 ## Hiding PS3 and Switch
 
+> **Superseded on r9 (2026-09-26):** Switch is live on r9 (5070 Ti) via Ryujinx 1.3.3 flatpak. All six
+> titles boot with updates applied. ES-DE's default Switch emulator is Eden (not installed), so
+> `es-de/gamelist-switch.xml` selects "Ryujinx (Standalone)" and uses the `hidden` flag for
+> update/DLC/homebrew files; `ShowHiddenGames` is `false`. The Ryujinx config is kept out of this public
+> repo. New update/DLC files: open the Ryujinx GUI once so it rescans; direct launches never autoload.
+
 Both are visible-but-unplayable on this hardware: Switch is a hard 2GB VRAM wall,
 PS3 is deferred to Phase 4 and RPCS3 is not installed. `switch/` is empty at this
 path anyway (the 47G lives on the pool, bind-mounted into RomM only).
