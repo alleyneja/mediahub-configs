@@ -60,7 +60,11 @@ fi
 # .permissions-canary is excluded: permissions-canary.sh keeps an unfixed control half there that must never be
 # looked up by name (a by-name lookup heals the NAS-side state the canary exists to observe).
 CANARY_PRUNE=(-path "$MEDIA_ROOT/.permissions-canary" -prune -o)
-mapfile -d '' -t bad_000 < <(find "$MEDIA_ROOT" "${CANARY_PRUNE[@]}" -type f -not -perm -u+r -print0 2>/dev/null)
+# Record the mode find actually matched on (%m): the stat below runs seconds-to-minutes later and can show a different,
+# healthy mode (2026-09-26: 12 .es.srt files flagged mid-write read as 0640 at stat time; alleyneja/mediahub-issues#33).
+mapfile -d '' -t raw_000 < <(find "$MEDIA_ROOT" "${CANARY_PRUNE[@]}" -type f -not -perm -u+r -printf '%m %p\0' 2>/dev/null)
+declare -A find_mode; bad_000=()
+for e in "${raw_000[@]}"; do find_mode["${e#* }"]="${e%% *}"; bad_000+=("${e#* }"); done
 mapfile -d '' -t bad_777 < <(find "$MEDIA_ROOT" "${CANARY_PRUNE[@]}" -type f -perm 777 -print0 2>/dev/null)
 total_scanned=$(( ${#bad_000[@]} + ${#bad_777[@]} ))
 
@@ -95,6 +99,16 @@ fi
         branch=$(getfattr --only-values -n user.mergerfs.basepath "$f" 2>/dev/null)
         echo "mergerfs branch: ${branch:-unknown}"
         echo "$f" >> "$STATE_FILE"
+        seen_mode=${find_mode[$f]:-}
+        now_mode=$(stat -c %a "$f" 2>/dev/null)
+        if [ -n "$seen_mode" ]; then
+            echo "mode seen by find: $seen_mode"
+            if [ -n "$now_mode" ] && [ $(( 8#$now_mode & 8#400 )) -ne 0 ]; then
+                # owner-readable again already: nothing to fix, and a chmod would overwrite the writer's intended mode
+                echo "TRANSIENT: owner-unreadable ($seen_mode) when find saw it, $now_mode at stat time - not queued for fix"
+                continue
+            fi
+        fi
         echo "$f" >> "$PENDING_FILE"
     done
     echo "--- mount info for $MEDIA_ROOT ---"
