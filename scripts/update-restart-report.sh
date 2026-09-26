@@ -42,7 +42,7 @@ npkgs=$(wc -w <<<"$pkgs")
 #  with no _PID, and those are exactly the seconds that matter - tailscaled was missed that way on 2026-09-26)
 restarted=$(journalctl -q --no-pager -o short -t systemd --since "@$start" 2>/dev/null \
   | sed -nE 's/.* systemd\[1\]: Stopping ([^ ]+)\.service - .*/\1/p' \
-  | grep -vE '^(apt-daily-upgrade|unattended-upgrades|user@[0-9]+|session-.*|packagekit|fwupd|man-db|motd-news|systemd-tmpfiles-clean)$' \
+  | grep -vE '^(apt-daily-upgrade|unattended-upgrades|user@[0-9]+|user-runtime-dir@[0-9]+|session-.*|packagekit|fwupd|man-db|motd-news|systemd-tmpfiles-clean)$' \
   | sort -u | tr '\n' ' ' | sed 's/ $//')
 
 # --- services needrestart is holding for the maintenance window ----------------------------------------------------
