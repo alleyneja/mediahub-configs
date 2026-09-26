@@ -52,4 +52,14 @@
         <platform>ps3</platform>
         <theme>ps3</theme>
     </system>
+    <system>
+        <!-- Ryujinx via scripts/ryujinx-launch: adds a pad quit (hold or double-tap the Xbox button) -->
+        <name>switch</name>
+        <fullname>Nintendo Switch</fullname>
+        <path>%ROMPATH%/switch</path>
+        <extension>.nca .NCA .nro .NRO .nso .NSO .nsp .NSP .xci .XCI</extension>
+        <command label="Ryujinx (Standalone)">/home/jay/.local/bin/ryujinx-launch %ROM%</command>
+        <platform>switch</platform>
+        <theme>switch</theme>
+    </system>
 </systemList>
