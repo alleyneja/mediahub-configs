@@ -58,6 +58,26 @@ What already worked: Ubuntu's `unattended-upgrades` installs **security** update
   Tested 2026-09-25 with a throwaway container: network loss -> recreated; missing after a simulated reboot -> started;
   deliberately stopped -> left alone.
 - **E.** The twice-weekly cron is removed once C is live.
+- **F. Service restarts from the daily updates (added 2026-09-26, alleyneja/mediahub-issues#53):** a daily run is
+  "no reboot" but not "no disruption". On production `needrestart` restarts every service using an updated library.
+  On 2026-09-26 07:00 a libaudit update restarted tailscaled (dropping all Tailscale SSH sessions) and, twice, the
+  Sunshine display stack, with no Discord message. Two changes:
+  - **Hold:** `system/needrestart-50-fleet-defer.conf` -> `/etc/needrestart/conf.d/50-fleet-defer.conf` (production
+    only, the only machine with needrestart) keeps `tailscaled`, `xorg-headless`, `openbox-headless` and `sunshine`
+    out of the daily restarts. Xorg is included because `sunshine` `Requires=` it: restarting Xorg alone drops the
+    stream. `maintenance-window.sh` restarts whichever of them needrestart still lists, on window nights with no
+    reboot, after the same Plex check. Their old library stays loaded for up to a week; for a security fix in
+    something tailscaled uses, restart it by hand.
+  - **Report:** `scripts/update-restart-report.sh`, run from `system/apt-daily-upgrade-restart-report.conf` ->
+    `/etc/systemd/system/apt-daily-upgrade.service.d/50-restart-report.conf` (all three machines), posts to
+    Discord as Fleet Health after each daily run: services restarted, a warning if tailscaled or the Sunshine stack
+    restarted, and what's waiting for the window. Silent when nothing restarted and the waiting list hasn't grown.
+  - Challenge (light): the strongest case against the hold is that it leaves a vulnerable library loaded in the
+    service that faces the network (tailscaled) for up to a week. Accepted: NIST SP 800-40r4 allows scheduled
+    maintenance for routine updates, Tailscale's own package updates aren't affected (its repo isn't in
+    Allowed-Origins), and the report shows what's waiting. What if it fails? If the hold doesn't work, the report
+    posts "tailscaled restarted" the same morning. If the report breaks, it fails silently (`-` prefix, log at
+    `~/logs/update-restart-report.log`); the next restart that goes unreported would show it.
 
 ## Risks accepted
 - Regular (non-security) updates occasionally misbehave. This is rare on LTS, and the health check reports within minutes.
@@ -73,4 +93,6 @@ What already worked: Ubuntu's `unattended-upgrades` installs **security** update
 - [x] A2. NVIDIA driver packages held on all three machines
 - [x] B. Ubuntu Pro attached on all three (2026-09-25, free personal subscription): esm-apps, esm-infra, Livepatch running on a supported kernel. Token in gitignored `scripts/ubuntu-pro.env` on each machine
 - [x] E. Old `apt upgrade && reboot` cron removed from production (2026-09-25)
+- [x] F. needrestart hold (production) + daily restart report (all three), 2026-09-26, #53. Needs a real daily run to
+      confirm end to end
 - [ ] Later: extend the "nobody is using it" check to Minecraft (Pterodactyl on r9) and Sunshine/Moonlight sessions
