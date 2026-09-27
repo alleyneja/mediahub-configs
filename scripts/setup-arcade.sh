@@ -92,7 +92,8 @@ step_rpcs3() {
   # RPCS3 ignores its fullscreen flag under GNOME/X11; the wrapper forces it (needs wmctrl + xdotool)
   command -v wmctrl >/dev/null || sudo apt-get install -y wmctrl
   install -m 755 "$here/scripts/rpcs3-fullscreen" "$HOME/.local/bin/rpcs3-fullscreen"
-  for s in arcade-pad-select dolphin-launch ryujinx-launch; do install -m 755 "$here/scripts/$s" "$HOME/.local/bin/$s"; done
+  for s in arcade-pad-select arcade-guide-launcher dolphin-launch ryujinx-launch; do install -m 755 "$here/scripts/$s" "$HOME/.local/bin/$s"; done
+  install -D -m 644 "$here/es-de/arcade-guide-launcher.desktop" "$HOME/.config/autostart/arcade-guide-launcher.desktop"
 }
 
 step_wiimote() {
