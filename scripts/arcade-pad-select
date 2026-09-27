@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""Point Player 1 at whichever pad is actually connected, just before an emulator starts.
+
+    arcade-pad-select dolphin|rpcs3|ryujinx
+
+Players 1-4 are bound to Sunshine's virtual pad (what a Moonlight client's controller becomes).
+With no Moonlight controller connected, a pad plugged into r9 over USB (xone driver) is a
+different device, and Dolphin, RPCS3 and Ryujinx bind by name/GUID, so it does nothing.
+
+Rule: any Sunshine pad present -> Player 1 = Sunshine pad 1 (streaming wins).
+      else a wired Xbox pad present -> Player 1 = wired pad for this session.
+      else -> Sunshine (the committed default).
+Only the Player 1 device line changes; button bindings and Players 2-4 are untouched.
+Dolphin OR-ing both devices in one binding was tested 2026-09-27 and was inconclusive,
+so this switches the device instead (mediahub-issues #56).
+
+ARCADE_PAD_INDEX picks the Nth wired pad (default 0); tests use it to target a virtual pad.
+"""
+import json, os, re, sys
+
+HOME = os.path.expanduser('~')
+INDEX = int(os.environ.get('ARCADE_PAD_INDEX', '0'))
+
+# (Dolphin device, RPCS3 device, Ryujinx id, Ryujinx name) per identity.
+# Ryujinx ids are "<index>-<SDL GUID with the name CRC zeroed>", read from its own config/log.
+SUNSHINE = ('SDL/0/Xbox One S Controller', 'Xbox One S Controller 1',
+            '0-00000003-045e-0000-ea02-000008040000', 'Xbox One S Controller')
+WIRED = (f'SDL/{INDEX}/Xbox Series X Controller', f'Xbox Series X Controller {INDEX + 1}',
+         f'{INDEX}-00000006-045e-0000-120b-000017050000', 'Xbox Series X Controller')
+
+DOLPHIN = f'{HOME}/.var/app/org.DolphinEmu.dolphin-emu/config/dolphin-emu/GCPadNew.ini'
+RPCS3 = [f'{HOME}/.config/rpcs3/input_configs/global/Default.yml',
+         f'{HOME}/.var/app/net.rpcs3.RPCS3/config/rpcs3/input_configs/global/Default.yml']
+RYUJINX = f'{HOME}/.var/app/io.github.ryubing.Ryujinx/config/Ryujinx/Config.json'
+
+
+def connected():
+    """Return (sunshine, wired) presence from the kernel's input device list."""
+    devs = open('/proc/bus/input/devices').read().split('\n\n')
+    sunshine = any('Name="Sunshine X-Box One' in d for d in devs)
+    # xone wired pads: Microsoft vendor on the GIP bus (0006), e.g. "Microsoft Xbox Controller" 045e:0b12
+    wired = any(re.search(r'Bus=0006 Vendor=045e', d) and 'Xbox' in d for d in devs)
+    return sunshine, wired
+
+
+def rewrite(path, pattern, repl):
+    if not os.path.exists(path):
+        return False
+    old = open(path).read()
+    new = re.sub(pattern, repl, old, count=1, flags=re.M)
+    if new != old:
+        open(path, 'w').write(new)
+    return True
+
+
+def main(emu):
+    sunshine, wired = connected()
+    ident = SUNSHINE if sunshine or not wired else WIRED
+    mode = 'sunshine' if ident is SUNSHINE else 'wired'
+    if emu == 'dolphin':
+        rewrite(DOLPHIN, r'(\[GCPad1\]\nDevice = ).*$', r'\g<1>' + ident[0])
+    elif emu == 'rpcs3':
+        for p in RPCS3:
+            rewrite(p, r'(^Player 1 Input:\n  Handler: SDL\n  Device: ).*$', r'\g<1>' + ident[1])
+    elif emu == 'ryujinx':
+        if os.path.exists(RYUJINX):
+            c = json.load(open(RYUJINX))
+            for e in c.get('input_config', []):
+                if e.get('player_index') == 'Player1':
+                    e['id'], e['name'] = ident[2], ident[3]
+            json.dump(c, open(RYUJINX, 'w'), indent=2)
+    else:
+        sys.exit('usage: arcade-pad-select dolphin|rpcs3|ryujinx')
+    print(f'arcade-pad-select: {emu} Player 1 -> {mode} (sunshine={sunshine}, wired={wired})', flush=True)
+
+
+if __name__ == '__main__':
+    main(sys.argv[1] if len(sys.argv) > 1 else '')

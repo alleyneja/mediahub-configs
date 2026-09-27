@@ -8,6 +8,7 @@
 # Moonlight session, so devices are rescanned every 2s rather than opened once.
 [ $# -ge 1 ] || { echo "usage: $0 <rom>"; exit 2; }
 
+"$HOME/.local/bin/arcade-pad-select" ryujinx   # Player 1 -> Sunshine pad or wired pad
 flatpak run io.github.ryubing.Ryujinx "$1" &
 launcher=$!
 
