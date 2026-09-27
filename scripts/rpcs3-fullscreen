@@ -6,6 +6,7 @@
 [ $# -ge 1 ] || { echo "usage: $0 <game dir or eboot>"; exit 2; }
 # Official AppImage preferred: the Flathub build shows a blocking "unofficial build" popup that a
 # controller can't dismiss, gets no project support, and reports itself as local_build.
+"$HOME/.local/bin/arcade-pad-select" rpcs3   # Player 1 -> Sunshine pad or wired pad
 APP="$HOME/Applications/rpcs3.AppImage"
 if [ -x "$APP" ]; then
   "$APP" --no-gui --fullscreen "$1" &

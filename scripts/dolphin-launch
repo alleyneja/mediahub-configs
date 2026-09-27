@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Launch Dolphin for ES-DE after pointing Player 1 at the connected pad (see arcade-pad-select).
+# ES-DE's gc/wii "Dolphin (Standalone)" commands call this instead of %EMULATOR_DOLPHIN%.
+"$HOME/.local/bin/arcade-pad-select" dolphin
+exec flatpak run org.DolphinEmu.dolphin-emu "$@"
