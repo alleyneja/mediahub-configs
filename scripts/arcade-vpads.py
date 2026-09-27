@@ -23,7 +23,7 @@ import fcntl, os, struct, sys, time
 UI_DEV_CREATE, UI_DEV_DESTROY = 0x5501, 0x5502
 UI_SET_EVBIT, UI_SET_KEYBIT, UI_SET_ABSBIT = 0x40045564, 0x40045565, 0x40045567
 EV_SYN, EV_KEY, EV_ABS, SYN_REPORT = 0x00, 0x01, 0x03, 0x00
-FIFO = '/tmp/arcade-vpads.fifo'
+FIFO = os.environ.get('ARCADE_VPADS_FIFO', '/tmp/arcade-vpads.fifo')  # one per running instance
 
 IDENTITIES = {
     'sunshine': (b'Sunshine X-Box One (virtual) pad', 0x03, 0x045e, 0x02ea, 0x0408),
