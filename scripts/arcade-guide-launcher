@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""Press the Xbox (Guide) button on any pad to open ES-DE on r9's own screen.
+
+Started with jay's GNOME session (es-de/arcade-guide-launcher.desktop -> ~/.config/autostart),
+so it inherits DISPLAY. Watches every evdev node that has BTN_MODE: wired xone pads,
+Sunshine/Moonlight pads, anything else. Pads come and go, so devices are rescanned every 2s,
+same pattern as ryujinx-launch. Nothing is grabbed; other apps still see every press.
+
+A press does nothing while ES-DE or an emulator is running, so it never collides with
+ryujinx-launch's Guide-hold quit or RPCS3's PS button. Only one copy runs (flock).
+"""
+import fcntl, glob, os, select, struct, subprocess, sys, time
+
+ESDE = os.path.expanduser('~/Applications/ES-DE_x64.AppImage')
+BUSY = ('es-de', 'dolphin-emu', 'pcsx2-qt', 'AppRun.wrapped', 'rpcs3', 'Ryujinx', 'retroarch')
+BTN_MODE, EV_KEY = 0x13c, 0x01
+COOLDOWN = 15                      # seconds; ES-DE takes a few to appear
+
+lock = open('/tmp/arcade-guide-launcher.lock', 'w')
+try:
+    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except OSError:
+    sys.exit('arcade-guide-launcher: already running')
+
+
+def has_guide(ev):
+    # capabilities/key is a hex bitmask, most significant word first
+    try:
+        words = open(f'/sys/class/input/{ev}/device/capabilities/key').read().split()
+    except OSError:
+        return False
+    return bool(int(''.join(w.zfill(16) for w in words), 16) >> BTN_MODE & 1)
+
+
+def busy():
+    out = subprocess.run(['ps', '-eo', 'comm='], capture_output=True, text=True).stdout.split()
+    return next((c for c in out if c in BUSY), None)
+
+
+def log(msg):
+    print(time.strftime('%F %T'), msg, flush=True)
+
+
+fds, last_scan, last_launch = {}, 0.0, 0.0
+log('watching for Guide presses')
+while True:
+    now = time.time()
+    if now - last_scan > 2:
+        last_scan = now
+        present = {os.path.basename(p) for p in glob.glob('/sys/class/input/event*')}
+        for ev in list(fds):
+            if ev not in present:
+                os.close(fds.pop(ev))
+        for ev in present - fds.keys():
+            if has_guide(ev):
+                try:
+                    fds[ev] = os.open(f'/dev/input/{ev}', os.O_RDONLY | os.O_NONBLOCK)
+                except OSError:
+                    pass
+    ready, _, _ = select.select(list(fds.values()), [], [], 1.0)
+    for fd in ready:
+        try:
+            data = os.read(fd, 24 * 64)
+        except OSError:
+            continue
+        for off in range(0, len(data) - 23, 24):
+            _, _, etype, code, value = struct.unpack('llHHi', data[off:off + 24])
+            if etype != EV_KEY or code != BTN_MODE or value != 1:
+                continue
+            if time.time() - last_launch < COOLDOWN:
+                continue
+            running = busy()
+            if running:
+                log(f'Guide pressed, ignored ({running} running)')
+                continue
+            last_launch = time.time()
+            subprocess.Popen([ESDE], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+            log('Guide pressed, launched ES-DE')

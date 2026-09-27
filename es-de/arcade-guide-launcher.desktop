@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Arcade Guide Launcher
+Comment=Press the Xbox button on any pad to open ES-DE (scripts/arcade-guide-launcher)
+Exec=sh -c 'exec "$HOME/.local/bin/arcade-guide-launcher" >> "$HOME/.cache/arcade-guide-launcher.log" 2>&1'
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
