@@ -120,16 +120,24 @@ fi
     echo ""
 } >> "$FORENSIC_LOG"
 
-if [ ${#new_files[@]} -ge "$BURST_THRESHOLD" ]; then
-    sample=$(printf '%s\n' "${new_files[@]:0:5}")
-    if ! send_discord_alert "Permissions anomaly on **$HOST_TAG**: ${#new_files[@]} new file(s) at mode 000/777 (>= burst threshold $BURST_THRESHOLD - alerting immediately).
+# Only mode 000 (the ugacl defect: unreadable) can page immediately. Mode 777 is the harmless
+# NAS-ugacl-ignores-umask-on-create half (runbook), and a bulk podcast/library download
+# tripped the burst rule on 2026-09-28 (51-225 files/run, all 777 jay:jay) - those go to the digest.
+new_000=()
+for f in "${new_files[@]}"; do
+    [ -n "${find_mode[$f]+x}" ] && new_000+=("$f")
+done
+
+if [ ${#new_000[@]} -ge "$BURST_THRESHOLD" ]; then
+    sample=$(printf '%s\n' "${new_000[@]:0:5}")
+    if ! send_discord_alert "Permissions anomaly on **$HOST_TAG**: ${#new_000[@]} new mode-000 file(s) (>= burst threshold $BURST_THRESHOLD - alerting immediately; ${#new_files[@]} new flagged files total incl. mode 777).
 Sample:
 $sample
 Full detail in $FORENSIC_LOG on $HOST_TAG. NOT auto-fixed - review then run permissions-apply-fix.sh."; then
         echo "$TS host=$HOST_TAG WARNING: burst Discord alert failed to send for ${#new_files[@]} new files - they were still logged to $FORENSIC_LOG and queued to $PENDING_FILE above, just no notification went out" >> "$FORENSIC_LOG"
     fi
 else
-    # Below threshold: routine noise. Full detail already went to the forensics log
+    # Below threshold, or mode-777-only: routine noise. Full detail already went to the forensics log
     # and PENDING_FILE above - this only defers the immediate Discord ping in favor
     # of permissions-digest-send.sh's once-daily rollup.
     echo "$TS host=$HOST_TAG count=${#new_files[@]}" >> "$DIGEST_FILE"

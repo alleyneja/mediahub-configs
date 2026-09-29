@@ -20,7 +20,7 @@ directories are 777 and ugacl ignores umask.
 | | Production | r9 |
 |---|---|---|
 | Cron | `*/15 * * * * /home/jay/mediahub-configs/scripts/permissions-monitor.sh` | `*/15 * * * * /home/jay/scripts/permissions-monitor.sh` |
-| Scripts deployed from | `~/mediahub-configs/scripts/` (repo checkout in place) | `~/scripts/` — **plain copies, not a repo checkout** |
+| Scripts deployed from | `~/mediahub-configs/scripts/` (repo checkout in place) | `~/mediahub-configs/scripts/` (repo checkout, verified 2026-09-29; the "plain copies" note below is stale) |
 | Scanned root | `/mnt/media` | `/mnt/media` |
 | State (already-seen files) | `/home/jay/logs/permissions-monitor-seen.txt` | same path, separate file |
 | Forensic log | `/home/jay/logs/permissions-forensics.log` | same path, separate file |
@@ -209,10 +209,10 @@ file. Detection, forensic logging, and queueing are **unchanged** regardless of
 threshold — every anomaly still gets a full forensic block and lands in the pending
 queue. Only the *immediate Discord alert* decision changes:
 
-- **`new_files` count >= `BURST_THRESHOLD`:** alert immediately, exactly as before —
+- **new mode-000 count >= `BURST_THRESHOLD`** (changed 2026-09-29; mode-777 files no longer count toward the burst): alert immediately, exactly as before —
   this is the incident-signature case (e.g. the Sep 20 burst, which was in the
   hundreds-to-thousands).
-- **Below `BURST_THRESHOLD`:** no immediate alert. Instead, one line
+- **Below `BURST_THRESHOLD`, or mode-777-only (any size):** no immediate alert. Instead, one line
   (`timestamp host=<host> count=<n>`) is appended to
   `/home/jay/logs/permissions-digest-pending.txt`.
 
@@ -332,3 +332,10 @@ the directory for the same reason.
 
 Log: `~/logs/permissions-canary.log`. This replaces the retired per-minute sentinel pilot, which was confounded
 because stat'ing every minute kept its files warm.
+
+## 2026-09-29: mode-777 bursts no longer page
+
+A bulk podcast download (Sep 28, ~9:44-10:44pm CDT) put 51-225 new 777 `jay:jay` files per run
+into `/mnt/media/podcasts` and tripped the burst rule on both hosts, though nothing was wrong
+(mode 777 on create is the harmless ugacl-ignores-umask half). Only mode-000 files can now
+alert immediately; 777 findings are still logged, queued, and rolled into the daily digest.
