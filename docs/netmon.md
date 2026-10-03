@@ -25,7 +25,7 @@ that server", so this logs the connection continuously.
 
 ## Modem credentials
 `scripts/modem.env` (gitignored, mode 600): `MODEM_USER` is the email registered in the SURFboard app, `MODEM_PASS` the
-gateway password. The password was set temporarily (2026-10-02, "Passw0rd!"-style) with the plan to change it after about a
+gateway password. The password was set temporarily (2026-10-02) with the plan to change it after about a
 week of data collection: **when you change it, edit `modem.env` too.** If the gateway rejects the login, netmon logs
 `credentials rejected` and does NOT retry until `modem.env` is edited (repeated bad logins can lock the gateway out).
 Login mechanics: plain `curl`/urllib works (the page's JS encryption is switched off); a JSON `PUT` to
