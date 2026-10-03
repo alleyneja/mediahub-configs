@@ -97,7 +97,8 @@ def main():
     # ---- Plex buffering events lined up with line load (minute.csv + buffering-events.csv) --------------------------------
     bp, mp = os.path.expanduser('~/logs/netmon/buffering-events.csv'), os.path.expanduser('~/logs/netmon/minute.csv')
     if os.path.exists(bp):
-        events = [e for e in csv.DictReader(open(bp)) if not days or e['ts_local'] >= cut]
+        events = sorted((e for f in glob.glob(os.path.expanduser('~/logs/netmon/buffering-events*.csv')) for e in csv.DictReader(open(f))
+                         if not days or e['ts_local'] >= cut), key=lambda e: e['ts_local'])
         mins = {r['ts_local'][:16]: r for r in csv.DictReader(open(mp))} if os.path.exists(mp) else {}
         windows = []
         for r in tests:                                   # our own speed tests: events inside one are suspect

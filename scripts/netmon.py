@@ -29,7 +29,7 @@ STATE_PATH, LOCK_PATH = f'{LOG_DIR}/state.json', f'{LOG_DIR}/.lock'
 MINUTE_PATH, MINUTE_STATE_PATH, MINUTE_LOCK = f'{LOG_DIR}/minute.csv', f'{LOG_DIR}/minute-state.json', f'{LOG_DIR}/.lock-minute'
 BUFFER_PATH = f'{LOG_DIR}/buffering-events.csv'
 MINUTE_COLUMNS = ['ts_local', 'gluetun_rx_kbps', 'gluetun_tx_kbps', 'sab_rx_kbps', 'sab_tx_kbps', 'cf_avg', 'cf_max', 'cf_loss']
-BUFFER_COLUMNS = ['ts_local', 'client', 'playback_ms', 'startup', 'rating_key']
+BUFFER_COLUMNS = ['ts_local', 'client', 'playback_ms', 'startup', 'rating_key', 'position_ms', 'duration_ms']   # playback_ms = time since the session began (includes pauses), position_ms = place in the movie
 PINNED_SERVER = '6030'                      # fdcservers.net Ashburn VA: datacenter-grade, stable reference across runs
 ALT_SERVER = '70055'                        # Brightspeed Charlottesville VA: a different network, to tell line problems from route problems
 UPLOAD_EVERY_S, DOWNLOAD_EVERY_S = 170 * 60, 11 * 3600
@@ -261,17 +261,20 @@ def buffering_events(state):
     raw = sh(R9_SSH + [cmd], 30)
     last, events, newest = state.get('last_buffer_ts', 0), [], 0
     for line in raw.splitlines():
-        m = re.match(r'(\w{3} \d{2}, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Client \[([^\]]+)\].*playbackTime=(\d+)ms ratingKey=(\d+)', line)
+        m = re.match(r'(\w{3} \d{2}, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Client \[([^\]]+)\].*progress of (\d+)/(\d+)ms.*playbackTime=(\d+)ms ratingKey=(\d+)', line)
         if not m: continue
         try: ts = datetime.datetime.strptime(m.group(1), '%b %d, %Y %H:%M:%S')
         except ValueError: continue
         e = ts.timestamp()
         if e > last:
-            events.append({'ts_local': ts.strftime('%F %T'), 'client': m.group(2), 'playback_ms': m.group(3),
-                           'startup': int(int(m.group(3)) < 3000), 'rating_key': m.group(4)})
+            events.append({'ts_local': ts.strftime('%F %T'), 'client': m.group(2), 'playback_ms': m.group(5),
+                           'startup': int(int(m.group(5)) < 3000), 'rating_key': m.group(6),
+                           'position_ms': m.group(3), 'duration_ms': m.group(4)})
             newest = max(newest, e)
     if events:
         events.sort(key=lambda r: r['ts_local'])
+        if os.path.exists(BUFFER_PATH) and open(BUFFER_PATH).readline().strip() != ','.join(BUFFER_COLUMNS):
+            os.rename(BUFFER_PATH, f"{LOG_DIR}/buffering-events-old-{int(time.time())}.csv")   # schema changed: keep old rows
         new = not os.path.exists(BUFFER_PATH)
         with open(BUFFER_PATH, 'a', newline='') as f:
             w = csv.DictWriter(f, fieldnames=BUFFER_COLUMNS)
