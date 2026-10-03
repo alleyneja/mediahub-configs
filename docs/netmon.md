@@ -19,9 +19,33 @@ that server", so this logs the connection continuously.
   about every 3 h, ~100 MB each. Download is added about every 11 h (~1 GB). Roughly 3-5 GB/day in total.
 - A continuous ping to 1.1.1.1 runs during each test, so **latency under load (bufferbloat)** is recorded next to the
   idle figure. The SBG8300 has no queue management (see the SABnzbd burst note in `project_sabnzbd_burst_downloads`).
-- **Never runs while a remote Plex stream is playing**, nor when Plex can't be read. The row is logged with
-  `skip_reason` (`remote_streams` / `plex_unreadable`) and it retries 30 min later. Consequence: evening peak data will
-  have gaps whenever someone is watching; the idle-latency probes still run then.
+- **Never runs while any video stream is playing, LAN included** (changed 2026-10-03), nor when Plex can't be read. The
+  gateway is also the LAN switch and Wi-Fi AP, and on 2026-10-02 22:00 three buffering reports on a LAN Fire TV landed inside
+  our own scheduled test, which only checked for *remote* streams. Music (Plexamp) doesn't block. The row is logged with
+  `skip_reason` (`streams_active` / `plex_unreadable`) and it retries 30 min later. Consequence: evening peak data will have
+  gaps whenever someone is watching; the idle-latency probes still run then. `test_start`/`test_end` are logged.
+
+## Buffering events and the 1-minute sampler (added 2026-10-03)
+- Every 30-min run copies new `client reported state buffering` lines from r9's Plex logs into `buffering-events.csv`
+  (`startup=1` when within 3 s of the start). Plex rotates its logs in ~6 h, so nothing is missed.
+- `netmon.py --sample` (cron, every minute) writes `minute.csv`: qBittorrent (gluetun tun0) and SABnzbd rx/tx kbps as the average
+  since the last sample, plus 4 pings to 1.1.1.1. `netmon-report.py` joins the two: for each mid-play buffering event it shows
+  what the line was doing that minute, and compares "share of events during heavy qBittorrent upload" with "share of all
+  minutes with heavy upload" (the control). Needs a few days of data before it means anything.
+
+## Change log (things we changed because of what this showed)
+- **2026-10-03 ~10:15 CDT: qBittorrent global upload limit 0 (unlimited) -> 1,800,000 B/s (~14.4 Mbps).** It had no limit and
+  no seed ratio/time limit, and 92 torrents seeding; it sometimes used 25-38 Mbps of the ~38 Mbps uplink (the 06:00 test got
+  6.2 Mbps up while qBittorrent sent 38). Jay: Plex users take priority. Revert: set `up_limit` to 0. Connection counts were
+  deliberately left alone so the before/after stays clean. Not yet shown to fix any buffering: see the evidence notes below.
+
+## Evidence so far (2026-10-03, to be re-read after a few days of data)
+- Supports upload contention: measured upload dips line up with heavy qBittorrent seeding.
+- Does not explain: Josef's remote stall on 2026-10-02 ~08:15 (qBittorrent idle; SABnzbd downloading at 87 Mbps, ~2% TCP
+  retransmits on his path); and ~15 mid-play stalls on two LAN Fire TVs direct-playing 6-7 Mbps HEVC files overnight
+  (qBittorrent sending only 1-7 Mbps, no speed test running). r9's read path was healthy when checked (cold reads of the file at
+  ~100 MB/s, 1 NFS retransmit in 1.75e9 calls, ~4 ms read RTT), so remaining suspects for those are the Fire TV / its Wi-Fi link or
+  the gateway's Wi-Fi/LAN handling.
 
 ## Modem credentials
 `scripts/modem.env` (gitignored, mode 600): `MODEM_USER` is the email registered in the SURFboard app, `MODEM_PASS` the

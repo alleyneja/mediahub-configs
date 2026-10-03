@@ -8,10 +8,13 @@ Every run (cheap, no load): idle latency/jitter/loss to the gateway, 1.1.1.1 and
 (sessions, remote, transcodes, burned-in subtitles, WAN kbps, read from r9 over SSH) and what the downloaders on this host
 are doing (gluetun/qBittorrent, SABnzbd), so a slow test can be blamed on the right thing. Also logs into the SBG8300 and
 records DOCSIS signal (SNR, power, modulation) and error-codeword deltas since the last run (credentials: modem.env).
-Sometimes (saturating the line, so only when NO remote Plex stream is playing; otherwise the reason is logged):
+Sometimes (saturating the line, so only when NO video stream is playing, LAN included: the gateway is also the LAN
+switch and Wi-Fi AP; otherwise the reason is logged):
   - upload test to two fixed servers on different networks, every ~3 h           (~100 MB each)
   - download test as well, every ~11 h                                           (~1 GB)
 During each test it pings 1.1.1.1 continuously, so the latency increase under load (bufferbloat) is recorded.
+Also: every run copies new Plex 'buffering' reports from r9's logs into buffering-events.csv, and `--sample` (cron, every
+minute) writes minute.csv (qBittorrent/SABnzbd rates + latency) so the two can be lined up: netmon-report.py does the join.
 
 Logs hold the public IP, so they live outside the repo (the repo is public). Stdlib only.
 """
@@ -23,6 +26,10 @@ MODEM_ENV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modem.env'
 LOG_DIR = os.path.expanduser('~/logs/netmon')
 CSV_PATH, JSONL_PATH = f'{LOG_DIR}/netmon.csv', f'{LOG_DIR}/netmon.jsonl'
 STATE_PATH, LOCK_PATH = f'{LOG_DIR}/state.json', f'{LOG_DIR}/.lock'
+MINUTE_PATH, MINUTE_STATE_PATH, MINUTE_LOCK = f'{LOG_DIR}/minute.csv', f'{LOG_DIR}/minute-state.json', f'{LOG_DIR}/.lock-minute'
+BUFFER_PATH = f'{LOG_DIR}/buffering-events.csv'
+MINUTE_COLUMNS = ['ts_local', 'gluetun_rx_kbps', 'gluetun_tx_kbps', 'sab_rx_kbps', 'sab_tx_kbps', 'cf_avg', 'cf_max', 'cf_loss']
+BUFFER_COLUMNS = ['ts_local', 'client', 'playback_ms', 'startup', 'rating_key']
 PINNED_SERVER = '6030'                      # fdcservers.net Ashburn VA: datacenter-grade, stable reference across runs
 ALT_SERVER = '70055'                        # Brightspeed Charlottesville VA: a different network, to tell line problems from route problems
 UPLOAD_EVERY_S, DOWNLOAD_EVERY_S = 170 * 60, 11 * 3600
@@ -33,7 +40,7 @@ PLEX_CMD = ("T=$(sudo grep -o 'PlexOnlineToken=\"[^\"]*\"' '/srv/docker/plex/Lib
             "Preferences.xml' | cut -d'\"' -f2); curl -s -m 8 -H \"X-Plex-Token: $T\" -H 'Accept: application/json' "
             "http://127.0.0.1:32400/status/sessions")
 
-COLUMNS = ['ts_utc', 'ts_local', 'dow', 'hour', 'kind', 'skip_reason', 'plex_ok', 'plex_streams', 'plex_remote',
+COLUMNS = ['ts_utc', 'ts_local', 'dow', 'hour', 'kind', 'skip_reason', 'test_start', 'test_end', 'plex_ok', 'plex_streams', 'plex_remote',
            'plex_transcodes', 'plex_burned_subs', 'plex_wan_kbps',
            'gw_loss', 'gw_avg', 'gw_max', 'gw_jitter', 'cf_loss', 'cf_avg', 'cf_max', 'cf_jitter',
            'g8_loss', 'g8_avg', 'g8_max', 'g8_jitter',
@@ -98,21 +105,22 @@ def container_rates(spec, secs=4):
 
 
 def plex_state():
-    """Returns (summary dict for the CSV, per-session list for the jsonl, remote_active bool or None if unknown)."""
+    """Returns (summary dict for the CSV, per-session list for the jsonl, any_active bool or None if unknown)."""
     raw = sh(R9_SSH + [PLEX_CMD], 20)
     try: d = json.loads(raw)['MediaContainer']
     except Exception: return {'plex_ok': 0}, [], None
-    sessions, remote_active, wan, tr, burn = [], False, 0, 0, 0
+    sessions, remote_active, any_active, wan, tr, burn = [], False, False, 0, 0, 0
     for m in d.get('Metadata', []):
         pl, se, ts = m.get('Player', {}), m.get('Session', {}), m.get('TranscodeSession')
         md = (m.get('Media') or [{}])[0]
         remote = (se.get('location') or ('lan' if pl.get('local') else 'wan')) != 'lan'
         active = pl.get('state') in ('playing', 'buffering')
         if remote and active: remote_active = True
+        if active and m.get('type') != 'track': any_active = True    # any video stream, LAN included; music (Plexamp) doesn't block
         if remote: wan += int(se.get('bandwidth') or 0)
         if ts: tr += 1
         if ts and ts.get('subtitleDecision') == 'burn': burn += 1
-        sessions.append({'client': pl.get('product'), 'platform': pl.get('platform'), 'state': pl.get('state'),
+        sessions.append({'type': m.get('type'), 'client': pl.get('product'), 'platform': pl.get('platform'), 'state': pl.get('state'),
                          'location': se.get('location'), 'kbps': se.get('bandwidth'),
                          'src_res': md.get('videoResolution'), 'src_kbps': md.get('bitrate'),
                          'src_vcodec': md.get('videoCodec'), 'src_acodec': md.get('audioCodec'),
@@ -120,7 +128,7 @@ def plex_state():
                          'subs': ts.get('subtitleDecision') if ts else None, 'out_height': ts.get('height') if ts else None,
                          'hw': ts.get('transcodeHwFullPipeline') if ts else None})
     return ({'plex_ok': 1, 'plex_streams': len(sessions), 'plex_remote': sum(1 for s in sessions if s['location'] != 'lan'),
-             'plex_transcodes': tr, 'plex_burned_subs': burn, 'plex_wan_kbps': wan}, sessions, remote_active)
+             'plex_transcodes': tr, 'plex_burned_subs': burn, 'plex_wan_kbps': wan}, sessions, any_active)
 
 
 def read_env(path):
@@ -217,6 +225,63 @@ def test_columns(prefix, data, err, loaded, download):
     return c
 
 
+def sample_minute():
+    """`netmon.py --sample`, cron every minute: line load and latency at 1-minute resolution, so a Plex buffering event
+    can be lined up with what qBittorrent/SABnzbd were doing at that moment. Rates are the average since the previous
+    sample (counters are stored), so nothing sleeps and a minute's bursts are not missed."""
+    os.makedirs(LOG_DIR, exist_ok=True)
+    lock = open(MINUTE_LOCK, 'w')
+    try: fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError: return
+    try: prev = json.load(open(MINUTE_STATE_PATH))
+    except Exception: prev = {}
+    cur, row = {}, {'ts_local': datetime.datetime.now().strftime('%F %T')}
+    for name, (container, iface) in {'gluetun': ('gluetun', 'tun0'), 'sab': ('sabnzbd', 'eth0')}.items():
+        c = net_dev(container, iface)
+        if c: cur[name] = list(c)
+        p = prev.get(name)
+        if c and p and 20 <= c[2] - p[2] <= 300 and c[0] >= p[0] and c[1] >= p[1]:
+            dt = c[2] - p[2]
+            row[f'{name}_rx_kbps'], row[f'{name}_tx_kbps'] = round((c[0] - p[0]) * 8 / dt / 1000), round((c[1] - p[1]) * 8 / dt / 1000)
+    ping = parse_ping(sh(['ping', '-n', '-q', '-c', '4', '-i', '0.2', LOADED_PING_TARGET], 15))
+    row.update(cf_avg=ping['avg'], cf_max=ping['max'], cf_loss=ping['loss'])
+    json.dump(cur, open(MINUTE_STATE_PATH, 'w'))
+    new = not os.path.exists(MINUTE_PATH)
+    with open(MINUTE_PATH, 'a', newline='') as f:
+        w = csv.DictWriter(f, fieldnames=MINUTE_COLUMNS, extrasaction='ignore')
+        if new: w.writeheader()
+        w.writerow(row)
+
+
+def buffering_events(state):
+    """New 'client reported state buffering' lines from r9's Plex logs (they rotate in ~6 h, a 30-min scan misses nothing).
+    startup=1 when playback was within 3 s of the start: that is start-up wait, not a mid-play stall."""
+    cmd = ("d='/srv/docker/plex/Library/Application Support/Plex Media Server/Logs'; sudo sh -c "
+           "'cat \"'\"$d\"'\"/Plex\\ Media\\ Server*.log* 2>/dev/null' | grep -a 'reporting timeline state buffering'")
+    raw = sh(R9_SSH + [cmd], 30)
+    last, events, newest = state.get('last_buffer_ts', 0), [], 0
+    for line in raw.splitlines():
+        m = re.match(r'(\w{3} \d{2}, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Client \[([^\]]+)\].*playbackTime=(\d+)ms ratingKey=(\d+)', line)
+        if not m: continue
+        try: ts = datetime.datetime.strptime(m.group(1), '%b %d, %Y %H:%M:%S')
+        except ValueError: continue
+        e = ts.timestamp()
+        if e > last:
+            events.append({'ts_local': ts.strftime('%F %T'), 'client': m.group(2), 'playback_ms': m.group(3),
+                           'startup': int(int(m.group(3)) < 3000), 'rating_key': m.group(4)})
+            newest = max(newest, e)
+    if events:
+        events.sort(key=lambda r: r['ts_local'])
+        new = not os.path.exists(BUFFER_PATH)
+        with open(BUFFER_PATH, 'a', newline='') as f:
+            w = csv.DictWriter(f, fieldnames=BUFFER_COLUMNS)
+            if new: w.writeheader()
+            w.writerows(events)
+        state['last_buffer_ts'] = newest
+    elif raw.strip() and 'last_buffer_ts' not in state:
+        state['last_buffer_ts'] = 0
+
+
 def main():
     os.makedirs(LOG_DIR, exist_ok=True)
     lock = open(LOCK_PATH, 'w')
@@ -228,8 +293,9 @@ def main():
     try: state = json.load(open(STATE_PATH))
     except Exception: state = {}
 
-    plex, sessions, remote_active = plex_state()
+    plex, sessions, active = plex_state()
     row.update(plex)
+    buffering_events(state)
     modem_row, modem_detail = modem_stats(state)
     row.update(modem_row)
     row.update(idle_probe())
@@ -239,16 +305,18 @@ def main():
     want_up = t - state.get('last_up', 0) >= UPLOAD_EVERY_S
     want_down = want_up and t - state.get('last_down', 0) >= DOWNLOAD_EVERY_S
     detail = {'ts': row['ts_utc'], 'plex_sessions': sessions, 'modem': modem_detail}
-    if want_up and remote_active is not False:               # None (Plex unreadable) also blocks: never risk viewers
-        row['skip_reason'] = 'remote_streams' if remote_active else 'plex_unreadable'
+    if want_up and active is not False:                      # None (Plex unreadable) also blocks: never risk viewers
+        row['skip_reason'] = 'streams_active' if active else 'plex_unreadable'
     elif want_up:
         row['kind'] = 'full' if want_down else 'upload'
+        row['test_start'] = datetime.datetime.now().strftime('%F %T')
         for prefix, server in (('pin', PINNED_SERVER), ('alt', ALT_SERVER)):
             data, err, loaded = run_test(server, want_down)
             if not data and server:                          # fixed server gone: don't lose the run
                 data, err, loaded = run_test(None, want_down); err = f'{server} failed, used nearest. {err}'
             row.update(test_columns(prefix, data, err, loaded, want_down))
             detail[prefix] = data
+        row['test_end'] = datetime.datetime.now().strftime('%F %T')
         if row.get('pin_up_mbps') or row.get('alt_up_mbps'):
             state['last_up'] = t
             if want_down and (row.get('pin_down_mbps') or row.get('alt_down_mbps')): state['last_down'] = t
@@ -266,4 +334,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    sample_minute() if '--sample' in sys.argv else main()
