@@ -39,6 +39,11 @@ that server", so this logs the connection continuously.
   6.2 Mbps up while qBittorrent sent 38). Jay: Plex users take priority. Revert: set `up_limit` to 0. Connection counts were
   deliberately left alone so the before/after stays clean. Not yet shown to fix any buffering: see the evidence notes below.
 
+- **2026-10-03 ~11:00 CDT: Plex remote limits (r9)** `WanPerStreamMaxUploadRate` 30000 -> **5000** kbps and `WanTotalMaxUploadRate` 0 -> **24000** kbps,
+  set through the Plex API (`PUT /:/prefs`), no restart. Sizing for 5 concurrent remote viewers: ~38 Mbps uplink - 14.4 (qBittorrent cap) - ~4
+  margin = ~20 Mbps for Plex, so about 4-5 Mbps per stream. Effect: remote files over 5 Mbps are transcoded down (GPU); files under it still
+  direct play. LAN and Tailscale viewers are unaffected. Revert: set the two values back to 30000 and 0.
+
 ## Evidence so far (2026-10-03, to be re-read after a few days of data)
 - Supports upload contention: measured upload dips line up with heavy qBittorrent seeding.
 - Does not explain: Josef's remote stall on 2026-10-02 ~08:15 (qBittorrent idle; SABnzbd downloading at 87 Mbps, ~2% TCP
