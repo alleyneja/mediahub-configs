@@ -9,6 +9,10 @@ that server", so this logs the connection continuously.
 - Idle latency, jitter and packet loss to the gateway (192.168.0.1), 1.1.1.1 and 8.8.8.8 (20 pings each).
 - What Plex is serving, read from r9 over SSH: sessions, remote sessions, transcodes, **burned-in subtitles**, WAN kbps.
 - What this host's downloaders are doing (gluetun/qBittorrent and SABnzbd rx/tx kbps), so a slow test can be blamed on them.
+- **Modem signal (added 2026-10-03):** logs into the SBG8300 and records downstream SNR/power per run (min/avg/max over 31
+  channels), OFDM RxMER, upstream power, how many upstream channels fell back below 64QAM, and the correctable /
+  uncorrectable codeword **delta since the previous run** (a counter that goes down is logged as `m_reset`, i.e. the modem
+  rebooted or resynced). Per-channel detail goes to `netmon.jsonl`.
 
 **Speed tests, which saturate the line**
 - Upload test to two fixed servers on different networks (6030 fdcservers Ashburn, 70055 Brightspeed Charlottesville),
@@ -18,6 +22,16 @@ that server", so this logs the connection continuously.
 - **Never runs while a remote Plex stream is playing**, nor when Plex can't be read. The row is logged with
   `skip_reason` (`remote_streams` / `plex_unreadable`) and it retries 30 min later. Consequence: evening peak data will
   have gaps whenever someone is watching; the idle-latency probes still run then.
+
+## Modem credentials
+`scripts/modem.env` (gitignored, mode 600): `MODEM_USER` is the email registered in the SURFboard app, `MODEM_PASS` the
+gateway password. The password was set temporarily (2026-10-02, "Passw0rd!"-style) with the plan to change it after about a
+week of data collection: **when you change it, edit `modem.env` too.** If the gateway rejects the login, netmon logs
+`credentials rejected` and does NOT retry until `modem.env` is edited (repeated bad logins can lock the gateway out).
+Login mechanics: plain `curl`/urllib works (the page's JS encryption is switched off); a JSON `PUT` to
+`/actionHandler/ajaxSet_login.php`, then `wan.php` embeds the tables as `let channelData = {...}`. Sessions expire after a few
+minutes, so each run logs in and out. Only one admin session exists: if someone is in the gateway UI while a run happens,
+that run may fail or kick them out (logged as `modem_error`).
 
 ## Where the data is
 `~/logs/netmon/netmon.csv` (one row per run), `netmon.jsonl` (raw speedtest JSON incl. public IP and per-session Plex
@@ -29,8 +43,7 @@ is public and these hold the public IP.
 bufferbloat per test, Plex activity next to each upload result, and how many tests were skipped for streams.
 
 ## Not collected (could be added)
-- DOCSIS signal levels, SNR and uncorrectable errors from the SBG8300: the status pages need a login over HTTPS and the
-  modem address (192.168.100.1) isn't reachable from the LAN. Worth adding if the data points at the line itself.
+- The modem's event log (`ajax_troubleshooting_logs.php`): returns 401 even when logged in, not solved.
 - Evening upload while people are streaming. Skipped by design; a lower-rate probe could be allowed if that gap matters.
 
 ## Tuning

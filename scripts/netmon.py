@@ -6,7 +6,8 @@ management) is the cause. See docs/netmon.md. Run from cron every 30 min on prod
 
 Every run (cheap, no load): idle latency/jitter/loss to the gateway, 1.1.1.1 and 8.8.8.8, what Plex is serving
 (sessions, remote, transcodes, burned-in subtitles, WAN kbps, read from r9 over SSH) and what the downloaders on this host
-are doing (gluetun/qBittorrent, SABnzbd), so a slow test can be blamed on the right thing.
+are doing (gluetun/qBittorrent, SABnzbd), so a slow test can be blamed on the right thing. Also logs into the SBG8300 and
+records DOCSIS signal (SNR, power, modulation) and error-codeword deltas since the last run (credentials: modem.env).
 Sometimes (saturating the line, so only when NO remote Plex stream is playing; otherwise the reason is logged):
   - upload test to two fixed servers on different networks, every ~3 h           (~100 MB each)
   - download test as well, every ~11 h                                           (~1 GB)
@@ -14,8 +15,11 @@ During each test it pings 1.1.1.1 continuously, so the latency increase under lo
 
 Logs hold the public IP, so they live outside the repo (the repo is public). Stdlib only.
 """
-import csv, datetime, fcntl, json, os, re, signal, subprocess, sys, time
+import csv, datetime, fcntl, http.cookiejar, json, os, re, signal, ssl, statistics, subprocess, sys, time
+import urllib.error, urllib.request
 
+MODEM_URL = 'https://192.168.0.1'           # ARRIS SBG8300 gateway; login is a JSON PUT, DOCSIS tables are embedded in wan.php
+MODEM_ENV = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'modem.env')   # MODEM_USER (SURFboard email), MODEM_PASS; gitignored
 LOG_DIR = os.path.expanduser('~/logs/netmon')
 CSV_PATH, JSONL_PATH = f'{LOG_DIR}/netmon.csv', f'{LOG_DIR}/netmon.jsonl'
 STATE_PATH, LOCK_PATH = f'{LOG_DIR}/state.json', f'{LOG_DIR}/.lock'
@@ -33,7 +37,10 @@ COLUMNS = ['ts_utc', 'ts_local', 'dow', 'hour', 'kind', 'skip_reason', 'plex_ok'
            'plex_transcodes', 'plex_burned_subs', 'plex_wan_kbps',
            'gw_loss', 'gw_avg', 'gw_max', 'gw_jitter', 'cf_loss', 'cf_avg', 'cf_max', 'cf_jitter',
            'g8_loss', 'g8_avg', 'g8_max', 'g8_jitter',
-           'ctx_gluetun_rx_kbps', 'ctx_gluetun_tx_kbps', 'ctx_sab_rx_kbps', 'ctx_sab_tx_kbps']
+           'ctx_gluetun_rx_kbps', 'ctx_gluetun_tx_kbps', 'ctx_sab_rx_kbps', 'ctx_sab_tx_kbps',
+           'modem_ok', 'modem_error', 'modem_status', 'mds_n', 'mds_locked', 'mds_pwr_min', 'mds_pwr_avg', 'mds_pwr_max',
+           'mds_snr_min', 'mds_snr_avg', 'mofdm_mer', 'mus_n', 'mus_pwr_min', 'mus_pwr_max', 'mus_low_mod',
+           'm_corr_total', 'm_uncorr_total', 'm_corr_delta', 'm_uncorr_delta', 'm_good_delta', 'm_reset']
 for p in ('pin', 'alt'):                    # one block per test server
     COLUMNS += [f'{p}_server', f'{p}_km', f'{p}_ping', f'{p}_down_mbps', f'{p}_up_mbps', f'{p}_bytes_sent',
                 f'{p}_bytes_recv', f'{p}_loaded_avg', f'{p}_loaded_max', f'{p}_loaded_loss', f'{p}_error']
@@ -116,6 +123,69 @@ def plex_state():
              'plex_transcodes': tr, 'plex_burned_subs': burn, 'plex_wan_kbps': wan}, sessions, remote_active)
 
 
+def read_env(path):
+    out = {}
+    try:
+        for line in open(path):
+            if '=' in line and not line.lstrip().startswith('#'):
+                k, v = line.rstrip('\n').split('=', 1); out[k.strip()] = v
+    except OSError: pass
+    return out
+
+
+def modem_stats(state):
+    """Log into the gateway, read the DOCSIS tables, log out. Returns (CSV columns, per-channel detail or None).
+    A rejected password is NOT retried until modem.env changes (repeated bad logins can lock the gateway out)."""
+    env = read_env(MODEM_ENV)
+    if not env.get('MODEM_USER') or not env.get('MODEM_PASS'):
+        return {'modem_ok': 0, 'modem_error': 'no credentials in modem.env'}, None
+    mtime = os.path.getmtime(MODEM_ENV)
+    if state.get('modem_bad_cred_mtime') == mtime:
+        return {'modem_ok': 0, 'modem_error': 'password rejected earlier; edit modem.env to retry'}, None
+    ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE   # self-signed gateway cert
+    op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()), urllib.request.HTTPSHandler(context=ctx))
+
+    def call(path, method='GET', body=None):
+        r = urllib.request.Request(MODEM_URL + path, data=body, method=method, headers={'Content-Type': 'application/json'} if body else {})
+        return op.open(r, timeout=20).read().decode(errors='replace')
+
+    try:
+        call('/login.php')
+        try:
+            call('/actionHandler/ajaxSet_login.php', 'PUT', json.dumps({'username': env['MODEM_USER'], 'password': env['MODEM_PASS']}).encode())
+        except urllib.error.HTTPError as e:
+            if e.code == 409: state['modem_bad_cred_mtime'] = mtime
+            return {'modem_ok': 0, 'modem_error': f'login HTTP {e.code}' + (' (credentials rejected)' if e.code == 409 else '')}, None
+        html = call('/wan.php')
+        d = json.loads(re.search(r'let channelData = (\{.*?\});\s*\n', html, re.S).group(1))
+    except Exception as e:
+        return {'modem_ok': 0, 'modem_error': f'{type(e).__name__}: {e}'[:120]}, None
+    finally:
+        try: call('/actionHandler/ajaxSet_logout.php', 'PUT', b'')   # free the gateway's single admin session
+        except Exception: pass
+
+    ds, us, of, ec = d.get('ds_channels', []), d.get('us_channels', []), d.get('ofdm_channels', []), d.get('error_codewords', [])
+    P, S = [float(c['PowerLevel']) for c in ds], [float(c['SNRLevel']) for c in ds]
+    UP = [float(c['PowerLevel']) for c in us]
+    row = {'modem_ok': 1, 'modem_status': d.get('cm_status'), 'mds_n': len(ds), 'mds_locked': sum(c['LockStatus'] == 'Locked' for c in ds),
+           'mus_n': len(us), 'mus_low_mod': sum(c.get('Modulation') != '64QAM' for c in us)}
+    if P: row.update(mds_pwr_min=round(min(P), 1), mds_pwr_avg=round(statistics.mean(P), 1), mds_pwr_max=round(max(P), 1),
+                     mds_snr_min=round(min(S), 1), mds_snr_avg=round(statistics.mean(S), 1))
+    if UP: row.update(mus_pwr_min=round(min(UP), 1), mus_pwr_max=round(max(UP), 1))
+    if of: row['mofdm_mer'] = round(float(of[0]['DataScAvgMer']), 1)
+    tot = {k: sum(int(e[v]) for e in ec) for k, v in (('good', 'UnerroredCodewords'), ('corr', 'CorrectableCodewords'), ('uncorr', 'UncorrectableCodewords'))}
+    row.update(m_corr_total=tot['corr'], m_uncorr_total=tot['uncorr'])
+    prev = state.get('modem_prev')
+    if prev:
+        if all(tot[k] >= prev[k] for k in tot):
+            row.update(m_corr_delta=tot['corr'] - prev['corr'], m_uncorr_delta=tot['uncorr'] - prev['uncorr'],
+                       m_good_delta=tot['good'] - prev['good'], m_reset=0)
+        else:
+            row['m_reset'] = 1                               # counters went down: the modem rebooted/resynced since last run
+    state['modem_prev'] = tot
+    return row, {'ds': ds, 'us': us, 'ofdm': of, 'errors': ec}
+
+
 def run_test(server, download):
     """One speedtest-cli run with a continuous ping alongside to capture latency under load."""
     cmd = ['speedtest', '--json'] + ([] if download else ['--no-download']) + (['--server', server] if server else [])
@@ -160,13 +230,15 @@ def main():
 
     plex, sessions, remote_active = plex_state()
     row.update(plex)
+    modem_row, modem_detail = modem_stats(state)
+    row.update(modem_row)
     row.update(idle_probe())
     row.update(container_rates({'gluetun': ('gluetun', 'tun0'), 'sab': ('sabnzbd', 'eth0')}, secs=3))
 
     t = time.time()
     want_up = t - state.get('last_up', 0) >= UPLOAD_EVERY_S
     want_down = want_up and t - state.get('last_down', 0) >= DOWNLOAD_EVERY_S
-    detail = {'ts': row['ts_utc'], 'plex_sessions': sessions}
+    detail = {'ts': row['ts_utc'], 'plex_sessions': sessions, 'modem': modem_detail}
     if want_up and remote_active is not False:               # None (Plex unreadable) also blocks: never risk viewers
         row['skip_reason'] = 'remote_streams' if remote_active else 'plex_unreadable'
     elif want_up:
@@ -180,8 +252,10 @@ def main():
         if row.get('pin_up_mbps') or row.get('alt_up_mbps'):
             state['last_up'] = t
             if want_down and (row.get('pin_down_mbps') or row.get('alt_down_mbps')): state['last_down'] = t
-            json.dump(state, open(STATE_PATH, 'w'))
+    json.dump(state, open(STATE_PATH, 'w'))
 
+    if os.path.exists(CSV_PATH) and open(CSV_PATH).readline().strip() != ','.join(COLUMNS):
+        os.rename(CSV_PATH, f"{LOG_DIR}/netmon-{now.strftime('%Y%m%d-%H%M%S')}.csv")   # schema changed: keep the old rows, start fresh
     new = not os.path.exists(CSV_PATH)
     with open(CSV_PATH, 'a', newline='') as f:
         w = csv.DictWriter(f, fieldnames=COLUMNS, extrasaction='ignore')

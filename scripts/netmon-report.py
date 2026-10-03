@@ -3,9 +3,9 @@
    netmon-report.py [--days N]      (default: everything logged)
 Answers: how fast is the uplink, does it dip at certain hours, how much does latency rise under load (bufferbloat),
 what was Plex doing at the time, and where are the gaps (tests skipped because someone was streaming)."""
-import csv, datetime, os, statistics, sys
+import csv, datetime, glob, os, statistics, sys
 
-PATH = os.path.expanduser('~/logs/netmon/netmon.csv')
+PATHS = sorted(glob.glob(os.path.expanduser('~/logs/netmon/netmon*.csv')))   # older files are kept when the column set changes
 
 
 def f(v):
@@ -22,7 +22,7 @@ def stat(xs):
 
 def main():
     days = int(sys.argv[sys.argv.index('--days') + 1]) if '--days' in sys.argv else None
-    rows = list(csv.DictReader(open(PATH)))
+    rows = sorted((r for p in PATHS for r in csv.DictReader(open(p))), key=lambda r: r['ts_local'])
     if days:
         cut = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%F %T')
         rows = [r for r in rows if r['ts_local'] >= cut]
@@ -72,6 +72,26 @@ def main():
     if busy:
         print(f'\n== While Plex was streaming remotely ({len(busy)} runs): idle latency to 1.1.1.1 ==')
         print(stat(vals(busy, 'cf_avg')), '  vs quiet:', stat(vals([r for r in rows if r not in busy], 'cf_avg')))
+
+    mrows = [r for r in rows if r.get('modem_ok') == '1']
+    if mrows:
+        print(f'\n== Modem / DOCSIS signal ({len(mrows)} readings; healthy: SNR >= 36 dB, down power -7..+7 dBmV, up power 35..50 dBmV) ==')
+        for label, col in (('downstream SNR min (dB)', 'mds_snr_min'), ('downstream power max (dBmV)', 'mds_pwr_max'),
+                           ('downstream power min (dBmV)', 'mds_pwr_min'), ('upstream power max (dBmV)', 'mus_pwr_max'),
+                           ('OFDM RxMER (dB)', 'mofdm_mer')):
+            print(f'{label:<30}{stat(vals(mrows, col))}')
+        print(f"locked downstream channels: min {min(vals(mrows, 'mds_locked') or [0]):.0f} of {max(vals(mrows, 'mds_n') or [0]):.0f}; "
+              f"readings with a non-64QAM upstream channel: {sum(1 for x in vals(mrows, 'mus_low_mod') if x > 0)}")
+        resets = [r['ts_local'] for r in mrows if r.get('m_reset') == '1']
+        if resets: print('counter resets (modem rebooted or resynced):', ', '.join(resets))
+        unc = [(f(r.get('m_uncorr_delta')), r) for r in mrows if f(r.get('m_uncorr_delta')) is not None]
+        print(f"uncorrectable codewords: {sum(u for u, _ in unc):.0f} over {len(unc)} intervals; corrected: {sum(f(r.get('m_corr_delta')) or 0 for _, r in unc):.0f}")
+        for u, r in sorted(unc, key=lambda x: -x[0])[:5]:
+            if u > 0: print(f"  +{u:.0f} uncorrectable in the 30 min before {r['ts_local']}  (plex streams {r.get('plex_streams') or 0}, wan {f(r.get('plex_wan_kbps')) or 0:.0f} kbps)")
+        bad = [r for r in mrows if (f(r.get('mds_snr_min')) or 99) < 36 or (f(r.get('mus_pwr_max')) or 0) > 50]
+        if bad: print(f'{len(bad)} reading(s) outside healthy range, first at {bad[0]["ts_local"]}')
+    errm = [r for r in rows if r.get('modem_error')]
+    if errm: print(f"\n{len(errm)} run(s) could not read the modem; latest: {errm[-1]['modem_error']}")
     errs = [r for r in tests if r.get('pin_error') or r.get('alt_error')]
     if errs: print(f'\n{len(errs)} test(s) had errors; first: {errs[0].get("pin_error") or errs[0].get("alt_error")}')
 
