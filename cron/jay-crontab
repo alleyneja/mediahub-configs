@@ -18,3 +18,4 @@
 # Internet connection monitor (latency every run; upload/download tests only when no remote Plex stream is playing).
 # Logs to ~/logs/netmon/ (outside the repo: contains the public IP). Report: scripts/netmon-report.py. docs/netmon.md
 */30 * * * * flock -n /tmp/netmon.lock /home/jay/mediahub-configs/scripts/netmon.py >> /home/jay/logs/netmon/cron.log 2>&1  # internet monitor, see docs/netmon.md
+* * * * * /home/jay/mediahub-configs/scripts/netmon.py --sample >> /home/jay/logs/netmon/cron.log 2>&1  # netmon 1-minute load+latency sampler, see docs/netmon.md

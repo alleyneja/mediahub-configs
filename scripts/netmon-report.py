@@ -23,6 +23,7 @@ def stat(xs):
 def main():
     days = int(sys.argv[sys.argv.index('--days') + 1]) if '--days' in sys.argv else None
     rows = sorted((r for p in PATHS for r in csv.DictReader(open(p))), key=lambda r: r['ts_local'])
+    cut = None
     if days:
         cut = (datetime.datetime.now() - datetime.timedelta(days=days)).strftime('%F %T')
         rows = [r for r in rows if r['ts_local'] >= cut]
@@ -30,7 +31,7 @@ def main():
     tests = [r for r in rows if r['kind'] in ('upload', 'full')]
     skipped = [r for r in rows if r['skip_reason']]
     print(f"{rows[0]['ts_local']} .. {rows[-1]['ts_local']}   {len(rows)} runs, {len(tests)} speed tests, "
-          f"{len(skipped)} skipped ({sum(r['skip_reason'] == 'remote_streams' for r in skipped)} because of remote streams)")
+          f"{len(skipped)} skipped ({sum(r['skip_reason'] in ('remote_streams', 'streams_active') for r in skipped)} because someone was streaming)")
     gb = sum((f(r.get('pin_bytes_sent')) or 0) + (f(r.get('pin_bytes_recv')) or 0) + (f(r.get('alt_bytes_sent')) or 0)
              + (f(r.get('alt_bytes_recv')) or 0) for r in tests) / 1e9
     print(f'data used by the tests: {gb:.1f} GB')
@@ -92,6 +93,31 @@ def main():
         if bad: print(f'{len(bad)} reading(s) outside healthy range, first at {bad[0]["ts_local"]}')
     errm = [r for r in rows if r.get('modem_error')]
     if errm: print(f"\n{len(errm)} run(s) could not read the modem; latest: {errm[-1]['modem_error']}")
+
+    # ---- Plex buffering events lined up with line load (minute.csv + buffering-events.csv) --------------------------------
+    bp, mp = os.path.expanduser('~/logs/netmon/buffering-events.csv'), os.path.expanduser('~/logs/netmon/minute.csv')
+    if os.path.exists(bp):
+        events = [e for e in csv.DictReader(open(bp)) if not days or e['ts_local'] >= cut]
+        mins = {r['ts_local'][:16]: r for r in csv.DictReader(open(mp))} if os.path.exists(mp) else {}
+        windows = []
+        for r in tests:                                   # our own speed tests: events inside one are suspect
+            a = r.get('test_start') or (datetime.datetime.strptime(r['ts_local'], '%Y-%m-%d %H:%M:%S') + datetime.timedelta(seconds=10)).strftime('%F %T')
+            b = r.get('test_end') or (datetime.datetime.strptime(a, '%Y-%m-%d %H:%M:%S') + datetime.timedelta(seconds=110)).strftime('%F %T')
+            windows.append((a, b))
+        mid = [e for e in events if e['startup'] == '0']
+        print(f'\n== Plex buffering events: {len(events)} ({len(mid)} mid-play, {len(events) - len(mid)} at start-up) ==')
+        inside = [e for e in events if any(a <= e['ts_local'] <= b for a, b in windows)]
+        print(f'inside one of our own speed tests: {len(inside)}   <- the speed test itself may cause these; the gate now skips tests while video plays')
+        hi = lambda m: (f(m.get('gluetun_tx_kbps')) or 0) > 10000
+        known = [(e, mins.get(e['ts_local'][:16])) for e in events]
+        known = [(e, m) for e, m in known if m and e not in inside]
+        if mins:
+            base = sum(1 for m in mins.values() if hi(m)) / len(mins)
+            print(f'qBittorrent sending > 10 Mbps in {100 * base:.0f}% of all logged minutes ({len(mins)} minutes); '
+                  f'during buffering events: {sum(1 for _, m in known if hi(m))} of {len(known)} ({100 * sum(1 for _, m in known if hi(m)) / max(len(known), 1):.0f}%)')
+            print('  (if the second number is clearly higher than the first, upload contention is implicated; similar = it is not)')
+        for e, m in known[-12:]:
+            print(f"  {e['ts_local']}  {'start-up' if e['startup'] == '1' else 'mid-play'}  qbit tx {m.get('gluetun_tx_kbps') or '-':>6} kbps  sab rx {m.get('sab_rx_kbps') or '-':>6}  1.1.1.1 {m.get('cf_avg')}/{m.get('cf_max')} ms")
     errs = [r for r in tests if r.get('pin_error') or r.get('alt_error')]
     if errs: print(f'\n{len(errs)} test(s) had errors; first: {errs[0].get("pin_error") or errs[0].get("alt_error")}')
 
