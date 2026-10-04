@@ -141,6 +141,7 @@ STATION_MAP = {
     "foxsports1.us": "82547",  # FS1 HD
     "foxsports2.us": "59305",  # FS2 HD
     "nflredzone.us": "65025",  # NFL RedZone HD
+    "nflnetwork.us": "45399",  # NFL Network HD
     "nhlnetwork.us": "58690",  # NHL Network HD
     "tennischannel.us": "33395",  # Tennis Channel
 }
