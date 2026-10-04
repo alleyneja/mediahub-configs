@@ -112,6 +112,7 @@ CURATED_GROUPS = {
         "Olympic Channel", "Stadium 1", "FS1", "FS2",
         "NHL NETWORK HD", "CBS Sports Golazo",
         "FOX DEPORTES HD",
+        "NFL NETWORK (Backup)",
     ],
     "USA NBC Sports": [
         "NBC GOLF HD",
@@ -167,6 +168,12 @@ CURATED_GROUPS = {
     ],
 }
 
+# Exact channel names (case-sensitive) for groups where a substring keyword would also
+# pull in unwanted siblings (e.g. "USA NFL Network" would also match the "... SD" feed)
+EXACT_NAMES = {
+    "USA NFL - Sunday Ticket": {"USA NFL Network"},
+}
+
 def fetch(action):
     url = f"{HOST}/player_api.php?username={USERNAME}&password={PASSWORD}&action={action}"
     with urllib.request.urlopen(url, timeout=60) as r:
@@ -217,6 +224,8 @@ with os.fdopen(tmp_fd, "w", encoding="utf-8") as f:
             include = True
         elif group in CURATED_GROUPS:
             include = matches_curated(name, CURATED_GROUPS[group])
+        elif name in EXACT_NAMES.get(group, ()):
+            include = True
 
         if include:
             url = f"{HOST}/{USERNAME}/{PASSWORD}/{stream_id}.ts"
