@@ -10,8 +10,9 @@
 # for the same reason. A control flip is sticky until healed, so a 30-min cadence misses nothing. After logging a
 # flip, the control files are healed by name so the next eviction registers as a new event.
 #
-# Discord: fixed path denied -> ALERT (the fix is incomplete). Control flipped with the fixed path clean -> one
-# informational post per event (the proof the fix held through a real eviction). Control mount missing -> ALERT.
+# Discord: fixed path denied -> ALERT (the fix is incomplete). Control mount missing -> ALERT. Control flipped with the
+# fixed path clean (the proof the fix held through a real eviction) is only logged here; permissions-canary-rollup.sh
+# posts one daily summary (per-event posts retired 2026-10-05, issue #33 closed on the evidence).
 set -u
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck disable=SC1090
@@ -48,9 +49,6 @@ else
 fi
 
 if [ "$ctl_bad" -gt 0 ]; then
-    if [ "$fix_denied" -eq 0 ]; then
-        send_discord_alert "permissions-canary on **$HOST** (info): NAS eviction observed ($ctl_bad/100 control files mis-rendered on the unfixed mount) and the fixed path held (0/100 denied). This is evidence the lookupcache=none fix works."
-    fi
     # Heal the control half by name so the next eviction counts as a new event.
     for f in "$FIX"/ctl-*; do stat "$f" >/dev/null 2>&1; done
     echo "$TS host=$HOST control healed by name" >> "$LOG"
