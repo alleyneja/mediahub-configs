@@ -197,6 +197,57 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_AUTHENTIK_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_AUTHENTIK_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_AUTHENTIK_BACKUP: "true"
+      # 2026-10-06 batch: manual one-click triggers for the remaining standalone app images.
+      # Anything WITHOUT a trigger (databases, redis, gluetun, wud, portainer, authentik-worker,
+      # nextcloud-cron, bookshelf-audiobooks) is deliberate -- needs a conversation, not a button.
+      WUD_TRIGGER_DOCKERCOMPOSE_THREADFIN_FILE: /home/jay/mediahub-configs/stacks/threadfin/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_THREADFIN_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_THREADFIN_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_THREADFIN_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBREWEBAUTOMATED_FILE: /home/jay/mediahub-configs/stacks/calibre/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBREWEBAUTOMATED_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBREWEBAUTOMATED_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBREWEBAUTOMATED_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBRECONTENTSERVER_FILE: /home/jay/mediahub-configs/stacks/rreading-glasses/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBRECONTENTSERVER_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBRECONTENTSERVER_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_CALIBRECONTENTSERVER_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_SABNZBD_FILE: /home/jay/mediahub-configs/stacks/sabnzbd/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_SABNZBD_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_SABNZBD_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_SABNZBD_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_IPTVORGEPG_FILE: /home/jay/mediahub-configs/stacks/iptvorg-epg/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_IPTVORGEPG_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_IPTVORGEPG_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_IPTVORGEPG_BACKUP: "true"
+      # rreading-glasses stack: rreading-glasses, calibre-content-server, bookshelf-ebooks.
+      # bookshelf-ebooks and bookshelf-audiobooks share ONE image string and WUD matches services by
+      # image string, so only ebooks is wired; bump audiobooks by hand to the same tag right after
+      # (same convention as nextcloud-cron). Update rreading-glasses and bookshelf together.
+      WUD_TRIGGER_DOCKERCOMPOSE_RREADINGGLASSES_FILE: /home/jay/mediahub-configs/stacks/rreading-glasses/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_RREADINGGLASSES_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_RREADINGGLASSES_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_RREADINGGLASSES_BACKUP: "true"
+      WUD_TRIGGER_DOCKERCOMPOSE_BOOKSHELFEBOOKS_FILE: /home/jay/mediahub-configs/stacks/rreading-glasses/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_BOOKSHELFEBOOKS_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_BOOKSHELFEBOOKS_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_BOOKSHELFEBOOKS_BACKUP: "true"
+      # caddy: restart drops every .lan site for a few seconds.
+      WUD_TRIGGER_DOCKERCOMPOSE_CADDY_FILE: /home/jay/mediahub-configs/stacks/caddy/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_CADDY_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_CADDY_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_CADDY_BACKUP: "true"
+      # adguardhome: restart = a few seconds of LAN/Tailscale DNS loss; x51 replica is off.
+      WUD_TRIGGER_DOCKERCOMPOSE_ADGUARDHOME_FILE: /home/jay/mediahub-configs/stacks/adguard/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_ADGUARDHOME_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_ADGUARDHOME_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_ADGUARDHOME_BACKUP: "true"
+      # qbittorrent only, NOT gluetun: it shares gluetun's network namespace, so a gluetun
+      # recreate would orphan it. Check seeding/resume data before updating.
+      WUD_TRIGGER_DOCKERCOMPOSE_QBITTORRENT_FILE: /home/jay/mediahub-configs/stacks/gluetun/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_QBITTORRENT_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_QBITTORRENT_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_QBITTORRENT_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.
@@ -233,6 +284,14 @@ services:
       - /home/jay/mediahub-configs/stacks/vaultwarden:/home/jay/mediahub-configs/stacks/vaultwarden
       - /home/jay/mediahub-configs/stacks/authentik:/home/jay/mediahub-configs/stacks/authentik
       - /home/jay/mediahub-configs/stacks/aurral:/home/jay/mediahub-configs/stacks/aurral
+      - /home/jay/mediahub-configs/stacks/threadfin:/home/jay/mediahub-configs/stacks/threadfin
+      - /home/jay/mediahub-configs/stacks/calibre:/home/jay/mediahub-configs/stacks/calibre
+      - /home/jay/mediahub-configs/stacks/sabnzbd:/home/jay/mediahub-configs/stacks/sabnzbd
+      - /home/jay/mediahub-configs/stacks/iptvorg-epg:/home/jay/mediahub-configs/stacks/iptvorg-epg
+      - /home/jay/mediahub-configs/stacks/rreading-glasses:/home/jay/mediahub-configs/stacks/rreading-glasses
+      - /home/jay/mediahub-configs/stacks/caddy:/home/jay/mediahub-configs/stacks/caddy
+      - /home/jay/mediahub-configs/stacks/adguard:/home/jay/mediahub-configs/stacks/adguard
+      - /home/jay/mediahub-configs/stacks/gluetun:/home/jay/mediahub-configs/stacks/gluetun
       - /srv/docker/visibility/wud:/store
     networks:
       - mediahub_internal

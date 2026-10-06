@@ -5,6 +5,7 @@ services:
     labels:
       # Constrain WUD to plain Caddy 2.x. Without it, 2-windowsservercore-ltsc2025 is reported as an update - a WINDOWS container image, which cannot run here at all.
       - wud.tag.include=^2(\.\d+)*$$
+      - wud.trigger.include=dockercompose.caddy
     ports:
       - "80:80"
       - "443:443"

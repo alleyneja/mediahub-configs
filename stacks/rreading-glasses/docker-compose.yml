@@ -27,6 +27,9 @@ services:
     # HARDCOVER_AUTH. Built 2026-08-17 -- current as of this change.
     image: blampe/rreading-glasses:hardcover
     container_name: rreading-glasses
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.rreadingglasses
     depends_on:
       - rreading-glasses-db
     entrypoint: ["/main", "serve"]
@@ -50,6 +53,9 @@ services:
   calibre-content-server:
     image: wietsedv/calibre-server:latest
     container_name: calibre-content-server
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.calibrecontentserver
     user: "1000:1000"
     command:
       - calibre-server
@@ -72,6 +78,9 @@ services:
   bookshelf-ebooks:
     image: ghcr.io/pennydreadful/bookshelf:softcover
     container_name: bookshelf-ebooks
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.bookshelfebooks
     environment:
       METADATA_URL: "http://rreading-glasses:8788"
       TZ: "America/Chicago"

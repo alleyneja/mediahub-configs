@@ -2,6 +2,9 @@ services:
   calibre-web-automated:
     image: crocodilestick/calibre-web-automated:latest
     container_name: calibre-web-automated
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.calibrewebautomated
     dns:
       - ${SERVER_IP}
     environment:

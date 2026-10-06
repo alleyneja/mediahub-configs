@@ -2,6 +2,9 @@ services:
   threadfin:
     image: fyb3roptik/threadfin:latest
     container_name: threadfin
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.threadfin
     restart: unless-stopped
     environment:
       - PUID=1000

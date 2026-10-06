@@ -2,6 +2,9 @@ services:
   iptvorg-epg:
     image: ghcr.io/iptv-org/epg:master
     container_name: iptvorg-epg
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.iptvorgepg
     restart: unless-stopped
     environment:
       - TZ=America/Chicago

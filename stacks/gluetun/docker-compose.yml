@@ -54,6 +54,9 @@ services:
   qbittorrent:
     image: lscr.io/linuxserver/qbittorrent:latest
     container_name: qbittorrent
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.qbittorrent
 
     # THIS IS THE CRITICAL LINE — qBittorrent has no network of its own.
     # It shares Gluetun's network namespace entirely.

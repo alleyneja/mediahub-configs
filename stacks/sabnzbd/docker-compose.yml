@@ -2,6 +2,9 @@ services:
   sabnzbd:
     image: lscr.io/linuxserver/sabnzbd:latest
     container_name: sabnzbd
+    labels:
+      # Manual WUD update button (stacks/wud/docker-compose.yml)
+      - wud.trigger.include=dockercompose.sabnzbd
     restart: unless-stopped
     networks:
       - mediahub_internal
