@@ -11,7 +11,7 @@ for cmd in docker git curl python3; do
   command -v "$cmd" >/dev/null || { echo "ERROR: $cmd is not installed. See README for install instructions."; exit 1; }
 done
 docker compose version >/dev/null 2>&1 || { echo "ERROR: docker compose plugin not found. Install Docker Engine (not docker.io)."; exit 1; }
-command -v nvidia-smi >/dev/null || { echo "ERROR: nvidia-smi not found. Install the NVIDIA driver first (needed for Plex/Jellyfin hw transcode and docker-daemon.json's nvidia runtime)."; exit 1; }
+command -v nvidia-smi >/dev/null || { echo "ERROR: nvidia-smi not found. Install the NVIDIA driver first (needed for Plex hw transcode and docker-daemon.json's nvidia runtime)."; exit 1; }
 command -v nvidia-ctk >/dev/null || { echo "ERROR: nvidia-container-toolkit not installed. Run: sudo apt install -y nvidia-container-toolkit"; exit 1; }
 echo "✓ Prerequisites satisfied"
 
@@ -32,7 +32,6 @@ declare -A env_files=(
   [nextcloud]=.env
   [obsidian-sync]=.env
   [plex]=.env
-  [romm]=.env
   [rreading-glasses]=.env
   [scanopy]=.env
   [schedulesdirect-epg]=.env
@@ -90,15 +89,12 @@ dirs=(
   /srv/docker/immich/redis
   /srv/docker/immich/postgres
   /srv/docker/iptvorg-epg
-  /srv/docker/jellyfin
   /srv/docker/mealie/pgdata
   /srv/docker/mealie/data
   /srv/docker/nextcloud
   /srv/docker/opengym/data
   /srv/docker/plex
   /srv/docker/qbittorrent
-  /srv/docker/romm/assets
-  /srv/docker/romm/config
   /srv/docker/rreading-glasses
   /srv/docker/sabnzbd
   /srv/docker/seer
@@ -157,16 +153,6 @@ else
   echo "✓ Stirling PDF tessdata already seeded"
 fi
 
-# ── romm's legacy Portainer-named volumes ──────────────────────────────────────
-# romm's docker-compose.yml declares these as external. They only exist on
-# production because Portainer auto-created them years ago; nothing here
-# creates them, so `docker compose up` for romm fails outright on a fresh
-# machine unless they're created first.
-for vol in 33_mysql-data 33_romm-redis-data 33_romm-resources; do
-  docker volume inspect "$vol" >/dev/null 2>&1 || docker volume create "$vol"
-done
-echo "✓ romm's legacy volumes ready"
-
 # ── Docker network ─────────────────────────────────────────────────────────────
 docker network inspect mediahub_internal >/dev/null 2>&1 || \
   docker network create --driver bridge --subnet 172.18.0.0/16 mediahub_internal
@@ -196,6 +182,11 @@ fi
 # ── Start stacks in dependency order ──────────────────────────────────────────
 # adguard first (DNS), caddy second (TLS), authentik third (several stacks do
 # OIDC against it), then everything else.
+# Jellyfin and RomM are RETIRED (stopped on production, deletion tracked in
+# mediahub-issues#27). Their stacks/ dirs are kept in the repo but deliberately not
+# deployed here. To bring one back: add it to this list, its .env to env_files, its
+# dirs to the mkdir list; RomM also needs external volumes 33_mysql-data,
+# 33_romm-redis-data, 33_romm-resources (docker volume create).
 stacks=(
   adguard
   caddy
@@ -203,9 +194,7 @@ stacks=(
   immich
   nextcloud
   mealie
-  romm
   vaultwarden
-  jellyfin
   plex
   sabnzbd
   gluetun
@@ -232,7 +221,7 @@ for stack in "${stacks[@]}"; do
     (cd "$REPO_DIR/stacks/$stack" && docker compose up -d 2>&1 | grep -v "^time=") || true
 
     # After Caddy starts: wait for its CA cert, then distribute it everywhere
-    # it's needed — the system trust store, Jellyfin, and the extracted copy
+    # it's needed — the system trust store and the extracted copy
     # that nextcloud/immich/mealie/audiobookshelf bind-mount for
     # REQUESTS_CA_BUNDLE / OIDC TLS verification. All of these are single-file
     # binds, so this must happen before any of those stacks start.
@@ -243,11 +232,9 @@ for stack in "${stacks[@]}"; do
       sudo cp "$caddy_cert" /usr/local/share/ca-certificates/caddy-root.crt
       sudo chmod 644 /usr/local/share/ca-certificates/caddy-root.crt
       sudo update-ca-certificates >/dev/null 2>&1
-      sudo mkdir -p /srv/docker/jellyfin/config
-      sudo cp "$caddy_cert" /srv/docker/jellyfin/config/caddy-ca.crt
       sudo cp "$caddy_cert" /srv/docker/caddy/caddy-root.crt
-      sudo chmod 644 /srv/docker/jellyfin/config/caddy-ca.crt /srv/docker/caddy/caddy-root.crt
-      echo "✓ Caddy CA cert distributed (system trust store, Jellyfin, and /srv/docker/caddy/caddy-root.crt)"
+      sudo chmod 644 /srv/docker/caddy/caddy-root.crt
+      echo "✓ Caddy CA cert distributed (system trust store and /srv/docker/caddy/caddy-root.crt)"
     fi
   else
     echo "  ⚠ Skipping $stack (no compose file at stacks/$stack/docker-compose.yml)"
