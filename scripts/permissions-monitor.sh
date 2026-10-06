@@ -109,6 +109,12 @@ fi
                 continue
             fi
         fi
+        if [ "$now_mode" = 777 ]; then
+            # #62 (2026-09-29): 777 is the NAS ugacl's create-time default, harmless and not actionable. Logged above
+            # and in the daily digest, but kept out of the fix queue so it only ever holds mode-000 files.
+            echo "mode 777: logged, not queued for fix (see #62)"
+            continue
+        fi
         echo "$f" >> "$PENDING_FILE"
     done
     echo "--- mount info for $MEDIA_ROOT ---"
