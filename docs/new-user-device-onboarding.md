@@ -31,7 +31,8 @@ All `.lan` sites use Caddy's `tls internal`, so browsers and apps only trust the
   (subject `Caddy Local Authority - 2026 ECC Root`, valid until **2036-01-19**).
   Regenerate/copy from `/srv/docker/caddy/data/caddy/pki/authorities/local/root.crt` if lost.
   It is a public certificate (no private key), safe to send by message or email.
-- It is **not served anywhere**; it is handed over manually (AirDrop, message, email).
+- **Distribution is deliberately manual:** Jay keeps a copy in Nextcloud and texts it to the new
+  user. It is not hosted anywhere permanent, by choice (few users, one-time step per device).
 
 ### Per platform
 
@@ -58,9 +59,3 @@ warning. If DNS resolves (layer 2) but you still get a warning or a blank load, 
 
 `gym.lan` (openGym) is passkey-only and WebAuthn refuses untrusted certificates, so the CA
 must be trusted there too. See `opengym-gym-lan-passkeys.md`.
-
-## Open decision
-
-Where to host the cert so it does not have to be sent by hand each time (for example a
-download link on the Homepage dashboard, or a tiny Caddy `file_server` route). Not decided;
-tracked in mediahub-issues#68.
