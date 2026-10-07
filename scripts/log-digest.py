@@ -40,7 +40,6 @@ LEAD_TS = re.compile(r"^\s*(\[?\d{4}[-/]\d{2}[-/]\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.
 IP = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b")
 UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
 HEX = re.compile(r"\b(?:0x)?[0-9a-f]{8,}\b", re.I)
-IP_OR_NUM = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}\b|\d+")
 
 
 def load_env():
@@ -62,13 +61,37 @@ def loki_get(base, path, params):
         return json.load(r)
 
 
+TIMESTAMP = re.compile(r"\[?\d{4}[-/]\d{2}[-/]\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?\]?|\b\d{1,2}[:.]\d{2}:\d{2}(?:\.\d+)?\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b")
+UNITS = {"ms", "us", "ns", "s", "m", "h", "d", "b", "kb", "mb", "gb", "tb", "kib", "mib", "gib", "tib", "mbps", "kbps"}
+TOKEN = re.compile(r"\b\d+([A-Za-z%]*)\b")
+
+
+def _num(m):
+    suffix = m.group(1)
+    if suffix and suffix.lower() not in UNITS:
+        return m.group(0)                      # 4K, 1080p, 5xx: the digits are part of a word, keep them
+    return "N" + suffix
+
+
+SECRET = re.compile(r"(?i)((?:api[-_]?key|apikey|x-plex-token|token|passw(?:or)?d|passwd|secret|authorization|bearer|auth|key)[\"']?\s*[=:]\s*[\"']?(?:bearer\s+)?)[^\s&\"',}]{4,}")
+
+
+def redact(text):
+    """Credentials in log lines (apikey=..., X-Plex-Token=..., password: ...) must never reach Discord or GitHub."""
+    return SECRET.sub(lambda m: m.group(1) + "<redacted>", text)
+
+
+def strip_time(line):
+    return redact(TIMESTAMP.sub("<time>", ANSI.sub("", line.replace("\x00", "")).strip()))
+
+
 def normalize(line):
-    """Make 'the same error' compare equal: drop colors/timestamps/ids, keep IPs (an old address IS the clue)."""
-    s = ANSI.sub("", line.replace("\x00", "")).strip()
-    s = LEAD_TS.sub("", s)
+    """Make 'the same error' compare equal: drop colors/timestamps/ids; IPs and digits inside words (4K, h264) are kept."""
+    s = re.sub(r"^(<time>\s*)+", "", LEAD_TS.sub("", strip_time(line)))
     s = UUID.sub("<id>", s)
     s = HEX.sub("<hex>", s)
-    s = IP_OR_NUM.sub(lambda m: m.group(0) if "." in m.group(0) else "N", s)   # numbers -> N, IP addresses kept
+    parts = re.split(r"(\b\d{1,3}(?:\.\d{1,3}){3}\b)", s)       # odd parts are IP addresses: leave untouched
+    s = "".join(p if i % 2 else TOKEN.sub(_num, p) for i, p in enumerate(parts))
     s = re.sub(r"\s+", " ", s)
     return s[:170]
 
@@ -123,7 +146,7 @@ def build(base):
     ignores = []
     if os.path.exists(IGNORE_FILE):
         ignores = [re.compile(l.strip()) for l in open(IGNORE_FILE) if l.strip() and not l.startswith("#")]
-    groups = defaultdict(lambda: {"n": 0, "days": set(), "first": None, "last": None, "sample": "", "host": ""})
+    groups = defaultdict(lambda: {"n": 0, "days": set(), "first": None, "last": None, "sample": "", "host": "", "variants": set()})
     for c, h, ts, line in fetch_errors(base, int(start * 1e9), int(end * 1e9)):
         if LOW_LEVEL.search(line[:120]) and not STRONG.search(line):
             continue          # INFO/DEBUG chatter that merely contains a word like "failed" (e.g. "0 failed")
@@ -137,7 +160,8 @@ def build(base):
         g["first"] = t if g["first"] is None else min(g["first"], t)
         g["last"] = t if g["last"] is None else max(g["last"], t)
         g["host"] = h
-        g["sample"] = g["sample"] or line
+        g["sample"] = g["sample"] or redact(ANSI.sub("", line).strip())[:230]
+        if len(g["variants"]) < 5000: g["variants"].add(strip_time(line))
     rep = {}
     for key, g in groups.items():
         if g["n"] >= MIN_COUNT or (len(g["days"]) >= MIN_DAYS and g["n"] >= 5):
@@ -175,7 +199,9 @@ def compose(end, rep, state, first_run):
         still_going = (end - g["last"]) < 6 * 3600
         tail = "still happening" if still_going else f"last seen {fmt_day(g['last'])}"
         more = f" (+{len(ks)-1} other kind(s))" if len(ks) > 1 else ""
-        return (f"• `{nice_name(c)}` ({g['host']}): \"{sig[:160]}\" — {g['n']:,}× on {len(g['days'])} day(s), "
+        nv = len(g["variants"])
+        var = f", {'5,000+' if nv >= 5000 else f'{nv:,}'} different variants (IDs/values)" if nv > 3 else ""
+        return (f"• `{nice_name(c)}` ({g['host']}): \"{sig[:160]}\" — {g['n']:,}× on {len(g['days'])} day(s){var}, "
                 f"since {fmt_day(g['first'])}, {tail}{more}")
 
     def section(title, ks, cap=10):
@@ -221,7 +247,10 @@ def github_issue(new, rep, end, first_run):
         body.append("_First run: this is the baseline sweep of everything repeating in the last 7 days._")
     for k in sorted(new, key=lambda k: -rep[k]["n"])[:25]:
         g = rep[k]
-        body.append(f"- `{k[0]}` ({g['host']}): `{k[1][:170]}` — {g['n']:,}× on {len(g['days'])} day(s), since {fmt_day(g['first'])}")
+        nv = len(g["variants"])
+        body.append(f"- `{k[0]}` ({g['host']}): `{k[1][:170]}` — {g['n']:,}× on {len(g['days'])} day(s), since {fmt_day(g['first'])}"
+                    + (f", {'5,000+' if nv >= 5000 else f'{nv:,}'} different variants" if nv > 3 else "")
+                    + f"\n  - real example: `{g['sample']}`")
     body.append("\nFound by `scripts/log-digest.py` from the central Loki (docs/log-monitoring.md). "
                 "Triage: fix it, or add a pattern to `scripts/log-digest-ignore.txt` if it is harmless noise.")
     text = "\n".join(body)
