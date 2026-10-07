@@ -381,6 +381,9 @@ filtering:
     - domain: health.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
+    - domain: grafana.lan
+      answer: R9_IP_PLACEHOLDER
+      enabled: true
     - domain: gym.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true

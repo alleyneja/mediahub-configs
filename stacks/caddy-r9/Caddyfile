@@ -22,3 +22,11 @@ stirling.lan {
 	log
 	reverse_proxy stirling-pdf:8080
 }
+
+# Grafana (log search/alerts, issue #71). Loki itself is deliberately NOT proxied: it is an unauthenticated API for the
+# collectors and stays on r9's tailnet address (100.121.244.45:3100).
+grafana.lan {
+	tls internal
+	log
+	reverse_proxy grafana:3000
+}

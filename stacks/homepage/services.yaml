@@ -166,6 +166,10 @@
           type: netdata
           url: http://netdata:19999
           chart: net.enp3s0
+    - Grafana Logs:
+        href: https://grafana.lan
+        description: Fleet container logs (Loki), 90 days
+        icon: grafana.png
 - Personal Cloud:
     - Immich:
         href: https://immich.lan

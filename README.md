@@ -280,4 +280,4 @@ Configure these in `.env` before running `setup.sh`:
 |---|---|---|
 | `SERVER_IP` | LAN IP of this machine | `192.168.0.21` |
 | `TAILSCALE_IP` | Tailscale-assigned IP | `100.104.43.6` |
-| `TAILSCALE_HOSTNAME` | Tailscale MagicDNS hostname | `mediahub-production.tail3b4ccf.ts.net` |
+| `TAILSCALE_HOSTNAME` | Tailscale MagicDNS hostname | `mediahub-i7.tail3b4ccf.ts.net` |
