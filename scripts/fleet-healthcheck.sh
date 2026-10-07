@@ -27,14 +27,14 @@ http_ok(){ curl -s -o /dev/null -m 8 -w '%{http_code}' "$1" 2>/dev/null | grep -
 
 # ---- per-host configuration -------------------------------------------------------------------------------------
 case "$HOST" in
-  mediahub-production)
+  mediahub-production|mediahub-i7)
     MOUNTS=(/mnt/nas /mnt/media /mnt/permissions-canary-control); LOOKUPCACHE_MOUNT=/mnt/nas
     ENDPOINTS=("Threadfin|http://127.0.0.1:34400/discover.json" "Nextcloud|https://nextcloud.lan/status.php"
                "Uptime Kuma|http://127.0.0.1:3001" "Caddy|https://plex.lan") ;;
   mediahub-r9)
     MOUNTS=(/mnt/nas /mnt/prod-internal /mnt/media); LOOKUPCACHE_MOUNT=/mnt/nas
     ENDPOINTS=("Plex|http://127.0.0.1:32400/identity" "subgen (tailnet-only)|http://100.121.244.45:9000/" "Immich ML (tailnet-only, used by production Immich)|http://100.121.244.45:3003/ping") ;;
-  mediahub-staging)
+  mediahub-staging|mediahub-x51)
     MOUNTS=(); LOOKUPCACHE_MOUNT=""
     ENDPOINTS=("Home Assistant (tailnet-only)|http://100.124.234.117:8123/") ;;
   *) MOUNTS=(); LOOKUPCACHE_MOUNT=""; ENDPOINTS=() ;;

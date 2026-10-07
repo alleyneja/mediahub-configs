@@ -57,7 +57,7 @@ echo "$TS host=$HOST since=@$start pkgs=$npkgs restarted=[$restarted] waiting=[$
 [ "$DRY" = 0 ] && echo "$waiting" > "$STATE"
 [ -z "$restarted" ] && [ -z "${new_waiting// }" ] && { [ "$DRY" = 1 ] && echo "DRY: nothing to report"; exit 0; }
 
-case "$HOST" in mediahub-production) win=Tue;; mediahub-r9) win=Thu;; *) win=Sat;; esac
+case "$HOST" in mediahub-production|mediahub-i7) win=Tue;; mediahub-r9) win=Thu;; *) win=Sat;; esac
 msg="🔁 **$HOST** daily updates ($npkgs package(s)): "
 if [ -n "$restarted" ]; then msg+="restarted \`${restarted// /\`, \`}\`"; else msg+="no services restarted"; fi
 [[ " $restarted " == *" tailscaled "* ]] && msg+=$'\n'"⚠️ tailscaled restarted: open Tailscale SSH sessions to this machine were dropped."

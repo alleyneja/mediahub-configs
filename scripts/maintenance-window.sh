@@ -58,7 +58,7 @@ fi
 # --- nobody may be watching before ANYTHING disruptive (a Docker upgrade alone restarts every container) ---------
 if [ "$reboot_needed" = 1 ]; then
   case "$HOST" in
-    mediahub-production|mediahub-r9)
+    mediahub-production|mediahub-i7|mediahub-r9)
       s=$(plex_streams)
       if [ "$s" != 0 ]; then
         log "reboot needed ($why) but Plex streams=$s - deferring"
@@ -88,7 +88,7 @@ fi
 if [ "$reboot_needed" = 0 ] && [ -f /var/run/reboot-required ]; then
   # an ordinary update turned out to need a reboot: the Plex check hasn't run yet, so run it now
   reboot_needed=1; why="$(tr '\n' ' ' 2>/dev/null < /var/run/reboot-required.pkgs)"
-  case "$HOST" in mediahub-production|mediahub-r9)
+  case "$HOST" in mediahub-production|mediahub-i7|mediahub-r9)
     s=$(plex_streams); [ "$s" != 0 ] && { log "updates applied; reboot now required ($why) but Plex streams=$s - deferring"; exit 0; } ;;
   esac
 fi
