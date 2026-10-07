@@ -21,3 +21,15 @@ folders were copied to r9 by `tar` rather than `git pull`. Re-sync them when the
 - **AdGuard:** rewrite `grafana.lan → 100.121.244.45` (added through the API; mirror `adguard/AdGuardHome.yaml` hand-edited; x51 replica syncs hourly).
 - **Homepage:** "Grafana Logs" tile in Infrastructure.
 - **Uptime Kuma** (monitors 45 and 46, linked to Discord): "Grafana (logs)" = `https://grafana.lan/api/health` (real client path), "Loki (logs)" = `http://100.121.244.45:3100/ready`. Created with Kuma stopped, DB owned by root (use `sudo sqlite3`). **Gap:** these prove the services are up, not that logs are arriving; a freshness check (each host sent a line in the last 10 min) is still to do.
+
+## Weekly digest (added 2026-10-07)
+`scripts/log-digest.py`, cron **Sunday 09:00 on i7** (`~/logs/log-digest.log`). Asks Loki for error-ish lines in the last 7 days,
+normalizes them (numbers/ids/timestamps removed, **IP addresses kept**) so repeats count as repeats, keeps those seen >= 20 times
+(or on >= 3 days), compares with last week (`~/logs/log-digest/state.json`: new / still broken / not seen = probably fixed) and posts
+plain English to the muted Discord channel (webhook in `scripts/log-digest.env`, gitignored; template `log-digest.env.example`).
+When something is **new** it also opens/comments on ONE rolling issue "Log digest: new repeating container errors" in mediahub-issues.
+INFO/DEBUG lines are ignored unless they contain a hard connectivity/crash word (ECONNREFUSED, Traceback, ...).
+- Mute harmless noise: add a regex to `scripts/log-digest-ignore.txt` (matched against `<container>: <normalized message>`).
+- `log-digest.py --dry-run` prints without sending; `--freshness` exits 1 if a host sent no logs for an hour (not scheduled yet).
+- If a run fails after Discord posted, rerun with `--no-discord` (state is saved before GitHub so nothing is double-posted).
+- Loki tip: plain `|= "a" or "b"` line filters are ~25x faster than one `(?i)` regex (1 s vs 30 s per day of logs).

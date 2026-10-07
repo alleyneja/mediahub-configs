@@ -1,0 +1,10 @@
+# Regexes (one per line) matched against "<container>: <normalized message>" by log-digest.py. Add harmless noise here.
+# Initial backfill of Docker history on 2026-10-07 produced one-off rejections for lines older than 90 days / burst limits.
+^alloy: .*(timestamp too old|too far behind|ingestion rate limit)
+^loki: .*(timestamp too old|too far behind|ingestion rate limit)
+^alloy: .*dropping data
+^plex: configuration:
+# Stack-trace frames are not separate problems; the exception line above them is what counts.
+^[^:]+: (at |---> |--- End of)
+# Loki's own complaints during the one-off 2026-10-07 history backfill.
+^loki: .*write operation failed
