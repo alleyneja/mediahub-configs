@@ -154,9 +154,12 @@ must respect F6. It is tracked in the private backlog until designed.
   that box, whether it is production, later demoted to staging, or scrapped.
   - `mediahub-r9` — the new machine. Renamed from `mediahub-arcade` on 2026-09-20 (before anything
     depended on it).
-  - `mediahub-i7` — the i7-7700 machine, **currently still named `mediahub-production`**; renamed in
-    the cutover naming pass (phase 7).
-  - `mediahub-x51` — the Alienware X51 R2, **currently still named `mediahub-staging`**; same pass.
+  - `mediahub-i7` — the i7-7700 machine. **Renamed from `mediahub-production` on 2026-10-07** (OS hostname,
+    `/etc/hosts`; Tailscale already used this name). Fleet scripts that branch on `hostname` accept both names
+    until every machine is renamed (`maintenance-window.sh`, `update-restart-report.sh`, `fleet-healthcheck.sh`).
+  - `mediahub-x51` — the Alienware X51 R2, **OS hostname still `mediahub-staging`** (Tailscale already says x51).
+    Rename pending: the machine was powered off (UPS, issue #67) on 2026-10-07. Do `sudo hostnamectl set-hostname
+    mediahub-x51`, fix the `127.0.1.1` line in `/etc/hosts`, then drop the old names from the three scripts.
   - `mediahub-production` and `mediahub-staging` then become **role names** (DNS aliases) that point
     at whichever machine holds the role.
   - The gaming PC keeps its own name; it is a client, not a server.
