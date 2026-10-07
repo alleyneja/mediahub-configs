@@ -1,0 +1,30 @@
+// Collector (ships to the central Loki on r9): reads every container's log via the Docker socket (read-only) and ships it to Loki.
+// Labels: container, host. Same shape as stacks/loki-r9/alloy-config.alloy.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = discovery.docker.containers.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+  rule {
+    target_label = "host"
+    replacement  = env("HOST_LABEL")
+  }
+}
+
+loki.source.docker "containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.containers.output
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = env("LOKI_URL")
+  }
+}

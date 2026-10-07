@@ -1,0 +1,50 @@
+# Central log store for the fleet (issue #71): Loki + Grafana + this machine's Alloy collector, on mediahub-r9.
+# Other machines run only the collector (stacks/alloy) and push here over Tailscale.
+# Loki has NO authentication, so both ports are published on r9's Tailscale address only (same pattern as
+# immich-ml-r9). Data lives in /srv/docker/loki (uid 10001) and /srv/docker/grafana (uid 472).
+# Retention: 90 days (loki-config.yml). Needs ./.env (gitignored) with GRAFANA_ADMIN_PASSWORD — compose
+# interpolation reads .env, not env_file.
+services:
+  loki:
+    image: grafana/loki:3.7.8
+    container_name: loki
+    command: -config.file=/etc/loki/config.yml
+    volumes:
+      - ./loki-config.yml:/etc/loki/config.yml:ro
+      - /srv/docker/loki:/loki
+    ports:
+      - "100.121.244.45:3100:3100"
+    networks: [default]
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_ANALYTICS_REPORTING_ENABLED=false
+      - GF_ANALYTICS_CHECK_FOR_UPDATES=false
+      - TZ=America/Chicago
+    volumes:
+      - /srv/docker/grafana:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "100.121.244.45:3000:3000"
+    depends_on: [loki]
+    restart: unless-stopped
+
+  alloy:
+    image: grafana/alloy:v1.20.1
+    container_name: alloy
+    command: run --server.http.listen-addr=127.0.0.1:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    environment:
+      - HOST_LABEL=r9
+      - LOKI_URL=http://loki:3100/loki/api/v1/push
+    volumes:
+      - ./alloy-config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /srv/docker/alloy:/var/lib/alloy/data
+    depends_on: [loki]
+    restart: unless-stopped

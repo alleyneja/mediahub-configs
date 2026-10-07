@@ -1,0 +1,15 @@
+# Log collector for mediahub-production / i7 (issue #71). Read-only: reads container logs via the Docker socket and
+# ships them to the central Loki on r9 over Tailscale. It never restarts or touches containers.
+services:
+  alloy:
+    image: grafana/alloy:v1.20.1
+    container_name: alloy
+    command: run --server.http.listen-addr=127.0.0.1:12345 --storage.path=/var/lib/alloy/data /etc/alloy/config.alloy
+    environment:
+      - HOST_LABEL=i7
+      - LOKI_URL=http://100.121.244.45:3100/loki/api/v1/push
+    volumes:
+      - ./config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /srv/docker/alloy:/var/lib/alloy/data
+    restart: unless-stopped
