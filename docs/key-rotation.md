@@ -9,7 +9,8 @@ Backups of the old configs (now-dead keys): `~/key-rotation-backup-20261008/` (m
 | Key | Own config | Also stored in |
 |---|---|---|
 | sonarr / radarr | `/srv/docker/<app>/config.xml` `<ApiKey>` | Prowlarr Applications, Bazarr `config.yaml`, Seer `settings.json` (+ `settings.old.json`, stale `/srv/docker/overseerr/`), `stacks/arr-stack/.env` (Unpackerr `UN_*_API_KEY`), `stacks/uptime-kuma/.env` (Homepage `HOMEPAGE_VAR_*`) |
-| lidarr, bookshelf-ebooks/-audiobooks | same pattern | Prowlarr Applications, `arr-stack/.env`, `uptime-kuma/.env` |
+| lidarr, bookshelf-ebooks/-audiobooks | same pattern | Prowlarr Applications, `arr-stack/.env`, `uptime-kuma/.env`; lidarr also **Aurral** (see below) |
+| aurral (consumer of lidarr's key) | `/srv/docker/aurral/data/aurral.db`, table `settings`, key `integrations` JSON field `lidarr.apiKey` (stored encrypted, `AURRAL_ENC:`) | not in env or any file: update it by hand in Aurral **Settings > Lidarr**. Missed in the 2026-10-08 rotation, fixed by hand 2026-10-09 (issue #74) |
 | prowlarr | `config.xml` | every *arr's synced indexers (`(Prowlarr)` entries, field `apiKey`), `uptime-kuma/.env` |
 | sabnzbd | `sabnzbd.ini` `api_key` | the SABnzbd download client in all 6 apps, Kuma monitor 7 (URL contains it), `uptime-kuma/.env` |
 | bazarr | `config/config.yaml` `apikey` | `uptime-kuma/.env` |
@@ -23,6 +24,7 @@ Backups of the old configs (now-dead keys): `~/key-rotation-backup-20261008/` (m
 - The running Seerr container uses `/srv/docker/seer/` (mounted at `/app/config`); `/srv/docker/overseerr/` is a stale copy.
 - Kuma's database is root-owned and ~600 MB: stop the container, `sudo sqlite3`, start.
 - Compose: use `docker compose up -d --no-deps <service>` from the stack dir so `.env` is read and only that container is recreated.
+- Aurral's Lidarr key lives encrypted in its own database, so grepping env/config files will not find it. After any Lidarr rotation, check `docker logs aurral | grep 'Lidarr API error (401)'` and re-enter the key in Aurral Settings.
 - Do not run `testall` repeatedly against indexers: it triggers 429s (TorrentGalaxy) and makes health look worse than it is.
 
 ## Verification used
