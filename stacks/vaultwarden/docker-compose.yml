@@ -1,6 +1,6 @@
 services:
   vaultwarden:
-    image: vaultwarden/server:1.37.2
+    image: vaultwarden/server:1.37.4
     container_name: vaultwarden
     labels:
       # Opt into the manual dockercompose trigger defined in
