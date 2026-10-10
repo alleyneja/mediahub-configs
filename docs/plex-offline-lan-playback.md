@@ -18,3 +18,20 @@ which is not in this repo because it holds the Plex token. Backup before the cha
 only if offline playback over Tailscale is wanted. Client apps may still want
 plex.tv to sign in fresh; already-signed-in apps on the LAN are the target.
 Needs a real test with WAN disconnected.
+
+## Test result (Oct 10, Fire Stick 192.168.0.138, Plex app 2026.19.1)
+
+Server side works offline: LAN no-token requests, GDM discovery and a 206 range
+stream all pass; a non-allow-listed source (Tailscale) still gets 401.
+
+**Client side does not.** With plex.tv blocked in AdGuard for the Fire Stick (and
+NordVPN off), the Plex app sat on a black screen at launch. It queried only
+`clients/features/luma/pubsub/cast-config/analytics.plex.tv`, never reached the
+server (0 requests in the Plex log). `allowedNetworks` cannot help: the app
+needs plex.tv before it ever contacts the server. A LAN-only fallback needs a
+client that does not depend on plex.tv (Plex DLNA + VLC/Kodi, Plex Web by IP, or
+direct NAS shares).
+
+Gotchas found: the Fire Stick runs NordVPN (HDO Box / Stremio), whose DNS bypasses
+AdGuard, so per-client AdGuard rules do nothing while it is connected. The Fire
+Stick is now a persistent AdGuard client named "Fire Stick".
