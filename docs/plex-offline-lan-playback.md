@@ -35,3 +35,16 @@ direct NAS shares).
 Gotchas found: the Fire Stick runs NordVPN (HDO Box / Stremio), whose DNS bypasses
 AdGuard, so per-client AdGuard rules do nothing while it is connected. The Fire
 Stick is now a persistent AdGuard client named "Fire Stick".
+
+## Fallback that works offline: Plex DLNA + VLC (Oct 10)
+
+`DlnaEnabled=1` set live via `PUT /:/prefs?DlnaEnabled=1` (no restart). Plex DLNA
+server: SSDP on UDP 1900, device description + ContentDirectory on TCP 32469
+(`http://192.168.0.22:32469/DeviceDescription.xml`). Verified from i7: SSDP discovery,
+ContentDirectory browse (Video -> Movies -> All Movies), and VLC on the Fire Stick
+(org.videolan.vlc) playing `http://192.168.0.22:32469/object/<id>/file.mkv` over
+an established TCP session (PlaybackState=playing, picture on screen). Uses
+LAN IP only; no plex.tv, DNS or internet. Watched state is not tracked.
+
+In VLC on the Fire Stick: Browse -> Local Network -> mediahub-prod (UPnP). Not
+yet verified: VLC's own UPnP browse UI (tested with a direct URL from the tree).
