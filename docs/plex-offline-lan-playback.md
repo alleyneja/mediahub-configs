@@ -48,3 +48,14 @@ LAN IP only; no plex.tv, DNS or internet. Watched state is not tracked.
 
 In VLC on the Fire Stick: Browse -> Local Network -> mediahub-prod (UPnP). Not
 yet verified: VLC's own UPnP browse UI (tested with a direct URL from the tree).
+
+## With NordVPN connected on the Fire Stick (Oct 10)
+
+Verified with the VPN up (Nordlynx, tun0 10.5.0.2): `192.168.0.22` routes out
+`wlan0` directly (LAN is not tunnelled), 0% loss, and VLC played a DLNA stream
+from `192.168.0.22:32469` (playing state + established TCP). NordVPN settings:
+"Local network discovery" On, Split tunneling On, Auto-connect Off, no kill
+switch option in the Fire TV app, and Android lockdown / always-on VPN unset
+(`settings get secure always_on_vpn_lockdown` = null). So a dead tunnel has
+nothing that blocks the LAN route. Not simulated: an actual tunnel drop with the
+internet down (cannot be forced headlessly).
