@@ -4,7 +4,8 @@ Rotated headlessly, one service at a time, each step verified (new key = 200, ol
 Bazarr, Seerr, SABnzbd, Prowlarr, Sonarr, Radarr, Lidarr, Bookshelf ebooks, Bookshelf audiobooks. Each service was down ~10-30 s.
 Backups of the old configs (now-dead keys): `~/key-rotation-backup-20261008/` (mode 700; delete once Jay is satisfied).
 **Vaultwarden ADMIN_TOKEN rotated 2026-10-11 (issue #38):** new random token, stored as an Argon2id hash (`vaultwarden hash --preset owasp`) in gitignored `stacks/vaultwarden/vaultwarden.env`; plaintext in gitignored `stacks/vaultwarden/vaultwarden-admin-plaintext.env` (mode 600). Gotcha: compose `env_file` interpolates `$`, so the hash MUST be single-quoted (`ADMIN_TOKEN='$argon2id$v=19$...'`) or the container gets a mangled value and crash-loops on "invalid Base64 encoding". Verified: new token 200, wrong token 401, live container env == file.
-**Not rotated here (need a human decision/UI): AdGuard login, qBittorrent password (deliberately deferred until Vaultwarden rollout, #64), Immich API keys.**
+**Not rotated here (need a human decision/UI): AdGuard login, qBittorrent password (deliberately deferred until Vaultwarden rollout, #64), Immich API keys (done below).**
+**Immich API key rotated 2026-10-11 (#64):** only consumer is the Homepage widget (`HOMEPAGE_VAR_IMMICH_KEY` in gitignored `stacks/uptime-kuma/.env` -> `services.yaml`). Replaced the single `all`-permission key with a scoped one (`server.statistics` only is what the v2 widget actually calls; `server.about` also granted) created headlessly via `POST /api/api-keys` using the old key, then old key deleted (now 401). Widget mapping names are `statistics_v2` / `version_v2`; `server/version` needs no permission.
 
 ## Where each key lives (the consumer map)
 | Key | Own config | Also stored in |
