@@ -29,4 +29,4 @@ Backups of the old configs (now-dead keys): `~/key-rotation-backup-20261008/` (m
 
 ## Verification used
 New key accepted / old rejected on every service; `downloadclient/testall` in all 6 apps; Prowlarr `applications/testall`; consumers' own logs (Unpackerr "Updated" lines); then a Loki query across all containers for `401:Unauthorized` / `API key incorrect` after the change (the weekly digest would also catch stragglers).
-Pre-existing, unrelated: TorrentGalaxyClone / MoviesDVDR / The Pirate Bay indexers failing (health warning "for more than 6 hours").
+Pre-existing, unrelated: TorrentGalaxyClone / MoviesDVDR / The Pirate Bay indexers failing (health warning "for more than 6 hours"). Update 2026-10-10: TorrentGalaxyClone, MoviesDVDR and Elitetorrent-wf were removed upstream (definitions deleted from Prowlarr/Indexers v11) and have been deleted from Prowlarr; not a key-rotation or AdGuard problem.
