@@ -56,3 +56,11 @@ UPnP-created mapping with its description and lease. Gateway's own UI does not s
 2026-10-11: `https 9443`, `http 9999`, `ssh 22` -> 192.168.0.23 are **UPnP mappings, lease 604800 s (7 d)**, renewed/re-added
 within ~1 min of deletion. UGREEN Remote Access and DDNS are OFF in UGOS, so the source is something else on the NAS (or a
 container on it). Router has no UPnP on/off page on this firmware.
+
+## RESOLVED 2026-10-11 (issue #77): NAS internet exposure
+Cause: UGOS **Control Panel > Connection & Access > Device Connection > Remote access > "Enable auto router port mapping"** was ON
+(independent of UGREENlink and DDNS, which were off). It UPnP-mapped ssh 22 / http 9999 / https 9443 to the internet with a 7-day
+lease and re-added them within ~1 min of router-side deletion. Unticking + saving removed the mappings; confirmed gone in both the
+UPnP listing and the router table after 90 s. Remaining deliberate forwards: Minecraft 25500-25502 and Plex 32400 -> r9,
+Tailscale 41641 -> mediahub. NAS UI/NFS/Plex unaffected. Re-check any time: `upnpc -u http://192.168.0.1:49152/IGDdevicedesc_brlan0.xml -l | grep 192.168.0.23`
+(expect no output). Same trap likely applies to any new UGREEN NAS or UGOS reinstall: untick that box on first setup.
