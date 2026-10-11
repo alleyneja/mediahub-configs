@@ -3,7 +3,8 @@
 Rotated headlessly, one service at a time, each step verified (new key = 200, old key = 401/403) before the next:
 Bazarr, Seerr, SABnzbd, Prowlarr, Sonarr, Radarr, Lidarr, Bookshelf ebooks, Bookshelf audiobooks. Each service was down ~10-30 s.
 Backups of the old configs (now-dead keys): `~/key-rotation-backup-20261008/` (mode 700; delete once Jay is satisfied).
-**Not rotated here (need a human decision/UI): AdGuard login, qBittorrent password, Vaultwarden ADMIN_TOKEN, Immich API keys.**
+**Vaultwarden ADMIN_TOKEN rotated 2026-10-11 (issue #38):** new random token, stored as an Argon2id hash (`vaultwarden hash --preset owasp`) in gitignored `stacks/vaultwarden/vaultwarden.env`; plaintext in gitignored `stacks/vaultwarden/vaultwarden-admin-plaintext.env` (mode 600). Gotcha: compose `env_file` interpolates `$`, so the hash MUST be single-quoted (`ADMIN_TOKEN='$argon2id$v=19$...'`) or the container gets a mangled value and crash-loops on "invalid Base64 encoding". Verified: new token 200, wrong token 401, live container env == file.
+**Not rotated here (need a human decision/UI): AdGuard login, qBittorrent password (deliberately deferred until Vaultwarden rollout, #64), Immich API keys.**
 
 ## Where each key lives (the consumer map)
 | Key | Own config | Also stored in |
