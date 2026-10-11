@@ -49,3 +49,10 @@ Nonexistent pages return a 33 KB login-page fallback with HTTP 200 — a `200` i
 - **Verify by re-reading the table ~30 s later**, not from the DELETE's "ok". Rules named `ssh`/`http`/`https` -> 192.168.0.23 were
   deleted and **reappeared within a minute with new ids (449, 501)**: the NAS itself re-creates them (UPnP / its remote-access
   feature). Deleting them on the router is futile until that is turned off on the NAS.
+
+## UPnP view of the same table (the useful one for "who made this rule")
+`upnpc -u http://192.168.0.1:49152/IGDdevicedesc_brlan0.xml -l` (package `miniupnpc`, no auth, read-only) lists every
+UPnP-created mapping with its description and lease. Gateway's own UI does not say which rules are UPnP vs manual and its log is empty.
+2026-10-11: `https 9443`, `http 9999`, `ssh 22` -> 192.168.0.23 are **UPnP mappings, lease 604800 s (7 d)**, renewed/re-added
+within ~1 min of deletion. UGREEN Remote Access and DDNS are OFF in UGOS, so the source is something else on the NAS (or a
+container on it). Router has no UPnP on/off page on this firmware.
