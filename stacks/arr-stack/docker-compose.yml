@@ -20,6 +20,20 @@ services:
       - /srv/docker/prowlarr:/config
       - /mnt/media:/data
 
+  # Headless-browser solver for Cloudflare "Just a moment" challenges.
+  # Prowlarr reaches it at http://flaresolverr:8191 via an indexer proxy
+  # tagged "flaresolverr" (only tagged indexers are routed through it).
+  # No published port: internal network only (published ports bypass UFW).
+  flaresolverr:
+    image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
+    container_name: flaresolverr
+    restart: unless-stopped
+    networks: [mediahub_internal]
+    environment:
+      - TZ=America/Chicago
+      - LOG_LEVEL=info
+    mem_limit: 1g
+
   radarr:
     # Docker Hub mirror, not lscr.io -- see prowlarr's comment above.
     image: linuxserver/radarr:latest
