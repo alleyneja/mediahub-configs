@@ -42,3 +42,10 @@ Nonexistent pages return a 33 KB login-page fallback with HTTP 200 — a `200` i
   `ssh 22 -> .23`, `http 9999 -> .23`, `https 9443 -> .23` (the UGREEN NAS), `MinecraftBedrockPublic 25500-25502 -> .22`,
   `Plex 32400 -> .22`, `tailscaleMediahubStatic 41641 -> .21`.
 - The NAS SSH + web UI forwards are the real exposure; see the issue filed from #22.
+
+## Deleting / changing a port forward (learned 2026-10-11)
+- Delete: `DELETE /actionHandler/ajax_port_forwarding.php` with JSON `{"id": N}` (N from the row's `port_forwarding_edit.php?id=N`).
+  Toggle active: `POST` same URL `{"id": N, "active": true|false}`. Delete from the highest id down and re-read the table after each.
+- **Verify by re-reading the table ~30 s later**, not from the DELETE's "ok". Rules named `ssh`/`http`/`https` -> 192.168.0.23 were
+  deleted and **reappeared within a minute with new ids (449, 501)**: the NAS itself re-creates them (UPnP / its remote-access
+  feature). Deleting them on the router is futile until that is turned off on the NAS.
