@@ -23,6 +23,7 @@ INDEX = int(os.environ.get('ARCADE_PAD_INDEX', '0'))
 
 # (Dolphin device, RPCS3 device, Ryujinx id, Ryujinx name) per identity.
 # Ryujinx ids are "<index>-<SDL GUID with the name CRC zeroed>", read from its own config/log.
+# The WIRED Ryujinx id is only the fallback: wired_ryujinx_id() rebuilds it from the pad actually plugged in.
 SUNSHINE = ('SDL/0/Xbox One S Controller', 'Xbox One S Controller 1',
             '0-00000003-045e-0000-ea02-000008040000', 'Xbox One S Controller')
 WIRED = (f'SDL/{INDEX}/Xbox Series X Controller', f'Xbox Series X Controller {INDEX + 1}',
@@ -43,6 +44,25 @@ def connected():
     return sunshine, wired
 
 
+def wired_ryujinx_id(index):
+    """Ryujinx id of the Nth wired pad, built from the kernel's own bus/vendor/product/version.
+
+    The version field differs between pads (0x0514 vs 0x0517 seen on 2026-10-10) and Ryujinx matches the whole
+    SDL GUID, so a hardcoded version silently stops matching when a different physical pad is plugged in.
+    GUID layout: bus (LE int32), vendor (LE), 0000, product bytes, 0000, version bytes, 0000.
+    Returns None when no wired pad is found, so the caller keeps the committed fallback."""
+    pads = []
+    for d in open('/proc/bus/input/devices').read().split('\n\n'):
+        m = re.search(r'Bus=0006 Vendor=([0-9a-f]{4}) Product=([0-9a-f]{4}) Version=([0-9a-f]{4})', d)
+        if m and m.group(1) == '045e' and 'Xbox' in d:
+            pads.append(tuple(int(x, 16) for x in m.groups()))
+    if index >= len(pads):
+        return None
+    ven, prod, ver = pads[index]
+    return (f'{index}-00000006-{ven:04x}-0000-{prod & 0xff:02x}{prod >> 8:02x}-'
+            f'0000{ver & 0xff:02x}{ver >> 8:02x}0000')
+
+
 def rewrite(path, pattern, repl):
     if not os.path.exists(path):
         return False
@@ -55,7 +75,10 @@ def rewrite(path, pattern, repl):
 
 def main(emu):
     sunshine, wired = connected()
-    ident = SUNSHINE if sunshine or not wired else WIRED
+    wired_ident = WIRED
+    if wired and not sunshine and wired_ryujinx_id(INDEX):
+        wired_ident = WIRED[:2] + (wired_ryujinx_id(INDEX), WIRED[3])
+    ident = SUNSHINE if sunshine or not wired else wired_ident
     mode = 'sunshine' if ident is SUNSHINE else 'wired'
     if emu == 'dolphin':
         rewrite(DOLPHIN, r'(\[GCPad1\]\nDevice = ).*$', r'\g<1>' + ident[0])
