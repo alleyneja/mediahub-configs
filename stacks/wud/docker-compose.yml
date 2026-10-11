@@ -248,6 +248,11 @@ services:
       WUD_TRIGGER_DOCKERCOMPOSE_QBITTORRENT_AUTO: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_QBITTORRENT_INCLUDEBYDEFAULT: "false"
       WUD_TRIGGER_DOCKERCOMPOSE_QBITTORRENT_BACKUP: "true"
+      # flaresolverr: pinned semver tag in arr-stack's shared compose file (added 2026-10-10).
+      WUD_TRIGGER_DOCKERCOMPOSE_FLARESOLVERR_FILE: /home/jay/mediahub-configs/stacks/arr-stack/docker-compose.yml
+      WUD_TRIGGER_DOCKERCOMPOSE_FLARESOLVERR_AUTO: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_FLARESOLVERR_INCLUDEBYDEFAULT: "false"
+      WUD_TRIGGER_DOCKERCOMPOSE_FLARESOLVERR_BACKUP: "true"
     volumes:
       # Read-write as of 2026-09-05: required for the manual update triggers
       # below to actually pull/recreate containers, not just read tags.

@@ -28,6 +28,9 @@ services:
     image: ghcr.io/flaresolverr/flaresolverr:v3.5.2
     container_name: flaresolverr
     restart: unless-stopped
+    labels:
+      - wud.trigger.include=dockercompose.flaresolverr
+      - wud.tag.include=^v\d+\.\d+\.\d+$$
     networks: [mediahub_internal]
     environment:
       - TZ=America/Chicago
