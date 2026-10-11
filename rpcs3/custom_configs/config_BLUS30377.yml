@@ -1,0 +1,8 @@
+# MW2 only. 2026-09-25: reset to the "gold standard" = RPCS3 wiki defaults plus the one setting the
+# MW2 wiki page recommends (Disable Vertex Cache: On, "fixes a bug in split-screen multiplayer rendering").
+# Earlier experiments (Relaxed ZCULL, Async Texture Streaming, Resolution Scale 300, SPU loop detection,
+# Max SPURS 4, SPU Block Size Mega) are in the .bak-20260925* files next to this one.
+Video:
+  Disable Vertex Cache: true
+  Resolution Scale: 200
+  Anisotropic Filter Override: 16
