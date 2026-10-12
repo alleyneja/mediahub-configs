@@ -1,16 +1,17 @@
-# Boot-time mount guard for r9 (scripts/media-mounts-ensure.sh): retries the NAS/media mounts for up to 20 min and
-# keeps Plex stopped until they exist. Runs before fleet-healthcheck so the health check sees the settled state.
-# SCRIPT_PATH is substituted at install time (r9: /home/jay/mediahub-configs/scripts/media-mounts-ensure.sh).
+# Mount guard (scripts/media-mounts-ensure.sh), r9 and production: after boot, if the NAS/media mounts are missing it
+# stops the containers that bind them, retries the mounts until they are real, then starts those containers.
+# Type=simple on purpose: it may wait indefinitely and must not block boot or fleet-healthcheck.
+# SCRIPT_PATH is substituted at install time (/home/jay/mediahub-configs/scripts/media-mounts-ensure.sh).
 [Unit]
-Description=Ensure NAS and media mounts at boot; hold Plex until they exist
+Description=Ensure NAS and media mounts; hold dependent containers until they exist
 Wants=network-online.target
 After=network-online.target docker.service
-Before=fleet-healthcheck.service
 
 [Service]
-Type=oneshot
+Type=simple
 ExecStart=SCRIPT_PATH
-TimeoutStartSec=1400
+Restart=on-failure
+RestartSec=60
 
 [Install]
 WantedBy=multi-user.target

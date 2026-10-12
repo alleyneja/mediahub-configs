@@ -25,6 +25,17 @@ bad(){ problems+=("$1"); }
 fixed(){ fixes+=("$1"); }
 http_ok(){ curl -s -o /dev/null -m 8 -w '%{http_code}' "$1" 2>/dev/null | grep -qE '^(200|204|301|302|401)$'; }
 
+needs_missing_mount(){   # true if container $1 binds a path under one of $MOUNTS that is not mounted
+  local src m
+  while read -r src; do
+    for m in "${MOUNTS[@]}"; do
+      mountpoint -q "$m" && continue
+      case "$src" in "$m"|"$m"/*) return 0 ;; esac
+    done
+  done < <(docker inspect -f '{{range .Mounts}}{{println .Source}}{{end}}' "$1" 2>/dev/null)
+  return 1
+}
+
 # ---- per-host configuration -------------------------------------------------------------------------------------
 case "$HOST" in
   mediahub-production|mediahub-i7)
@@ -66,6 +77,8 @@ if [ -f "$SNAP" ] && [ "$snap_epoch" -lt "$boot_epoch" ]; then
   while IFS= read -r c; do
     [ -z "$c" ] && continue
     printf '%s\n' "${running[@]}" | grep -qx "$c" && continue
+    # Never start a container onto a missing mount: media-mounts-ensure.service holds it and starts it once mounted.
+    if needs_missing_mount "$c"; then bad "$c not started: it binds a mount that is missing (held by media-mounts-ensure)"; continue; fi
     if docker start "$c" >/dev/null 2>&1; then fixed "started $c (was running before the reboot, didn't come back)"
     else bad "$c was running before the reboot and could not be started"; fi
   done < "$SNAP"
