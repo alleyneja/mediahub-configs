@@ -32,6 +32,29 @@ The residual "cutoff unmet" entries are files below the profile's *allowed*
 range rather than merely below cutoff. They show in the report as a manual
 to-do list but are not acted on.
 
+## 2026-10-15 — Lidarr brought into line
+
+The Aug 3 change covered Sonarr and Radarr only. Lidarr's `Default` profile
+(id 1, all 568 artists) still had `upgradeAllowed = true` and was churning.
+
+History audit, Mar 2 – Oct 14 (deleted-for-"Upgrade" matched to the replacing import):
+
+| App | Replacements | Real quality gain | Same tier | Downgrade |
+|---|---|---|---|---|
+| Sonarr | 1,263 | 490 | 525 | 78 |
+| Radarr | 31 | ~14 | ~13 | few |
+| Lidarr | 346 | 45 | 271 (237 were MP3-320 → MP3-320) | 6 |
+
+No revision bump on the same-tier swaps, so they were different release
+groups/editions, not repacks. That is the likely source of deluxe → regular
+album swaps. Quality label only; audio language was not checked.
+
+**Applied:** Lidarr `Default` `upgradeAllowed = false`. Bookshelf ebooks (`eBook`)
+and audiobooks (`Spoken`) profiles were already off. All apps now consistent.
+
+Note: "MissingFromDisk" deletions (Sonarr 7,866, Radarr 713) are mount/permission
+incidents, not upgrades, and are unaffected by this setting.
+
 ## Important limitation
 
 `upgradeAllowed = false` governs **grabbing**, not **importing**. A release that
