@@ -35,7 +35,7 @@ services:
     environment:
       - TZ=America/Chicago
       - LOG_LEVEL=info
-    mem_limit: 1g
+    mem_limit: 2g  # 1g OOM-killed Chromium ~36x in 6 days (Oct 2026)
 
   radarr:
     # Docker Hub mirror, not lscr.io -- see prowlarr's comment above.
