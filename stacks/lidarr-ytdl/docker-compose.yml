@@ -11,7 +11,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - UMASK=002
+      - UMASK=022
       - TZ=America/Chicago
       - LIDARR_URL=http://lidarr:8686
       # Staging only. Direct mode: finished albums are copied into /music and
@@ -22,6 +22,7 @@ services:
       - DOWNLOAD_PATH=/data/downloads/complete/lidarr-ytdl
       - LIDARR_PATH=/music
       - YT_POT_PROVIDER_URL=http://bgutil-provider:4416
+      - XML_METADATA_ENABLED=false   # per-track .xml sidecars are clutter for Plex/Lidarr
     volumes:
       # SQLite lives here: must be local disk, never the mergerfs pool (no mmap).
       - /srv/docker/lidarr-ytdl/config:/config
