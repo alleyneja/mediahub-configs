@@ -94,15 +94,24 @@ VERIFIED_SCORE = 0.90   # AcoustID score that counts as "this is the right song"
 GROSS_FRACTION = 0.25   # deviation from MusicBrainz big enough to mean a different song
 
 
-def decide(actual, mb, yt, ac, tol=10.0, identity_ok=True):
+def decide(actual, mb, yt, ac, tol=10.0, identity_ok=True, last_resort=False):
     """Judge one file. Returns (verdict, reason); verdict is ok|delete|review|unverifiable.
 
     Only two things justify a delete: a file shorter than the YouTube source it came
     from (truncated download; AcoustID only fingerprints the start so it cannot see
     this), or a file grossly off MusicBrainz that AcoustID did not verify (wrong song).
     Everything else that merely differs from MusicBrainz is an alternate edition or
-    padding, so it is reported but kept.
+    padding, so it is reported but kept. A file the downloader deliberately kept as a
+    documented last resort (a shorter cut or another recording of the same song) is
+    never deleted here: that would only ban it and have it fetched again.
     """
+    verdict, why = _decide(actual, mb, yt, ac, tol, identity_ok)
+    if last_resort and verdict == "delete":
+        return "review", f"downloader kept this as a last resort ({why})"
+    return verdict, why
+
+
+def _decide(actual, mb, yt, ac, tol, identity_ok):
     if not identity_ok:
         return "unverifiable", "linked file is not the one the downloader wrote"
     if abs(actual - mb) <= tol:
@@ -197,6 +206,9 @@ def main():
     for r in rows:
         latest[(r["album_id"], r["track_number"])] = r
 
+    last_resort_ids = {x[0] for x in db.execute(
+        "SELECT DISTINCT track_download_id FROM candidate_attempts "
+        "WHERE outcome='accepted_unverified_fallback' AND error_message LIKE 'last resort:%'")}
     lh = {"X-Api-Key": lidarr_key()}
     for aid in sorted({k[0] for k in latest}):
         folder = next(r["lidarr_album_path"] for k, r in latest.items() if k[0] == aid)
@@ -238,7 +250,7 @@ def main():
         expected = t["duration"] / 1000.0
         verdict, why = decide(actual, expected, float(r["duration_seconds"] or 0),
                               float(r["acoustid_score"] or 0), a.tolerance,
-                              is_downloaders_file(path, r))
+                              is_downloaders_file(path, r), r["id"] in last_resort_ids)
         if verdict == "unverifiable":
             print(f"unverifiable {r['artist_name']} - {r['track_title']}: {why} ({os.path.basename(path)})")
             pending += 1  # may be a rescan still settling; retried until PENDING_EXPIRY

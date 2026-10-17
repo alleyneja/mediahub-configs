@@ -34,6 +34,15 @@ class Decide(unittest.TestCase):
             with self.subTest(name):
                 self.assertEqual(audit.decide(*args)[0], want)
 
+    def test_last_resort_is_never_deleted(self):
+        # a 200s cut of a source listed at 249s would be "truncated"...
+        self.assertEqual(audit.decide(200, 248, 249, 0.0)[0], "delete")
+        # ...unless the downloader documented it as a deliberate last resort
+        self.assertEqual(audit.decide(200, 248, 249, 0.0, last_resort=True)[0], "review")
+        # last resort never turns a good or review verdict into something else
+        self.assertEqual(audit.decide(312, 311, 312, 0.96, last_resort=True)[0], "ok")
+        self.assertEqual(audit.decide(194, 173, 173, 0.99, last_resort=True)[0], "review")
+
     def test_identity_failure_never_deletes(self):
         self.assertEqual(audit.decide(63, 189, 0, 0.0, identity_ok=False)[0], "unverifiable")
 
