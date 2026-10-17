@@ -22,6 +22,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -156,16 +157,25 @@ def main():
     for aid in sorted({k[0] for k in latest}):
         folder = next(r["lidarr_album_path"] for k, r in latest.items() if k[0] == aid)
         if folder:
-            link_unlinked(aid, folder.replace("/music", PATH_MAP[0], 1), lh, a.apply)
+            try:
+                link_unlinked(aid, folder.replace("/music", PATH_MAP[0], 1), lh, a.apply)
+            except urllib.error.HTTPError as e:  # album re-keyed/removed by a Lidarr refresh
+                print(f"link step skipped for album {aid}: HTTP {e.code}", file=sys.stderr)
     by_album = {}
     checked = bad = pending = 0
     reports, pending_ts = [], []
     for (album_id, tno), r in sorted(latest.items()):
         if album_id not in by_album:
-            tracks = http("GET", f"{LIDARR}/track?albumId={album_id}", lh)
-            files = {f["id"]: f for f in http("GET", f"{LIDARR}/trackfile?albumId={album_id}", lh)}
+            try:
+                tracks = http("GET", f"{LIDARR}/track?albumId={album_id}", lh)
+                files = {f["id"]: f for f in http("GET", f"{LIDARR}/trackfile?albumId={album_id}", lh)}
+            except urllib.error.HTTPError as e:
+                print(f"album {album_id} not in Lidarr (HTTP {e.code}); skipped", file=sys.stderr)
+                tracks, files = [], {}
             by_album[album_id] = (tracks, files)
         tracks, files = by_album[album_id]
+        if not tracks:
+            continue
         t = next((x for x in tracks if x["absoluteTrackNumber"] == tno and x.get("trackFileId")), None)
         f = files.get(t["trackFileId"]) if t else None
         if not f:
