@@ -1,0 +1,95 @@
+--- processing.py.orig	2026-10-15 12:13:50.000000000 -0500
++++ processing.py	2026-10-17 12:21:56.546698855 -0500
+@@ -11,6 +11,7 @@
+ import os
+ import re
+ import shutil
++import subprocess
+ import threading
+ import time
+ import uuid
+@@ -1345,6 +1346,38 @@
+     return dl_result, actual_file
+ 
+ 
++def _probe_duration_seconds(path):
++    """Real length of a downloaded file in seconds (0.0 if it cannot be read)."""
++    try:
++        out = subprocess.run(
++            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
++             "-of", "default=nw=1:nk=1", path],
++            capture_output=True, text=True, timeout=60,
++        )
++        return float(out.stdout.strip())
++    except (OSError, ValueError, subprocess.SubprocessError):
++        return 0.0
++
++
++def _too_short(real_sec, expected_sec, listed_sec, tolerance):
++    """Reason a downloaded file is too short, or "" if it is acceptable.
++
++    Search results and album playlists only carry a *listed* length; the stream
++    actually served can be a shorter cut or a truncated download, and nothing
++    else measures the file. Only shortness is judged here: a longer file may be a
++    legitimate alternate edition, and AcoustID covers wrong songs.
++    """
++    if real_sec <= 0:
++        return ""
++    if expected_sec > 0 and real_sec < expected_sec - tolerance:
++        return (f"file is {real_sec:.0f}s, shorter than the expected"
++                f" {expected_sec:.0f}s")
++    if listed_sec and real_sec < listed_sec - tolerance:
++        return (f"file is {real_sec:.0f}s but the source was listed at"
++                f" {listed_sec:.0f}s (truncated or shorter cut)")
++    return ""
++
++
+ def _build_candidate_attempt(
+     candidate, outcome, expected_recording_id,
+     fp_data=None, error_message="",
+@@ -1837,6 +1870,45 @@
+             dl_result, actual_file = dl_out
+ 
+             any_downloaded = True
++            short_reason = _too_short(
++                _probe_duration_seconds(actual_file),
++                (track_duration_ms or 0) / 1000.0,
++                candidate.get("duration") or 0,
++                float(load_config().get("duration_tolerance", 10)),
++            )
++            if short_reason:
++                candidate_attempts_buf.append(
++                    _build_candidate_attempt(
++                        candidate,
++                        CandidateOutcome.REJECTED_LOW_SCORE,
++                        expected_recording_id,
++                        error_message=f"length: {short_reason}",
++                    )
++                )
++                logger.info(
++                    "   Rejected '%s' for '%s': %s. Trying another"
++                    " candidate.",
++                    candidate.get("title", ""), track_title, short_reason,
++                )
++                _cleanup_temp_files(attempt_temp)
++                try:
++                    models.add_banned_url(
++                        youtube_url=candidate["url"],
++                        youtube_title=candidate["title"],
++                        album_id=album_id,
++                        album_title=album_title,
++                        artist_name=artist_name,
++                        track_title=track_title,
++                        track_number=track_num,
++                    )
++                except Exception:
++                    logger.warning(
++                        "Failed to ban URL %s", candidate["url"],
++                        exc_info=True,
++                    )
++                track_state["youtube_url"] = ""
++                track_state["youtube_title"] = ""
++                continue
+             track_state["status"] = "tagging"
+             track_state["youtube_url"] = dl_result.get(
+                 "youtube_url", "",
