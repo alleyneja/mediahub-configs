@@ -9,6 +9,9 @@ through Lidarr's trackfile API (the track returns to Wanted) and the
 downloader's own endpoint (which bans that YouTube URL for the track so it is
 not re-grabbed), and a note goes to #media-alerts. Lidarr is never rescanned.
 
+What counts as bad is decided by decide(): see its docstring. Reviewed-and-kept tracks
+are reported but never touched.
+
 Scope: only rows in the downloader's track_downloads table (success=1,
 deleted=0). Nothing else in the library is ever examined or touched.
 
@@ -85,6 +88,45 @@ def link_unlinked(album_id, folder, lh, apply):
              {"name": "ManualImport", "files": files, "importMode": "move"})
         time.sleep(15)
     return len(files)
+
+
+VERIFIED_SCORE = 0.90   # AcoustID score that counts as "this is the right song"
+GROSS_FRACTION = 0.25   # deviation from MusicBrainz big enough to mean a different song
+
+
+def decide(actual, mb, yt, ac, tol=10.0, identity_ok=True):
+    """Judge one file. Returns (verdict, reason); verdict is ok|delete|review|unverifiable.
+
+    Only two things justify a delete: a file shorter than the YouTube source it came
+    from (truncated download; AcoustID only fingerprints the start so it cannot see
+    this), or a file grossly off MusicBrainz that AcoustID did not verify (wrong song).
+    Everything else that merely differs from MusicBrainz is an alternate edition or
+    padding, so it is reported but kept.
+    """
+    if not identity_ok:
+        return "unverifiable", "linked file is not the one the downloader wrote"
+    if abs(actual - mb) <= tol:
+        return "ok", ""
+    if yt > 0 and actual < yt - tol:
+        return "delete", f"truncated: file is {actual:.0f}s but its YouTube source was {yt:.0f}s"
+    rel = abs(actual - mb) / mb if mb else 1.0
+    if rel > GROSS_FRACTION and ac < VERIFIED_SCORE:
+        return "delete", f"{rel:.0%} off MusicBrainz and AcoustID did not verify it"
+    if ac >= VERIFIED_SCORE:
+        return "review", f"AcoustID verified the song; length differs from MusicBrainz ({rel:.0%})"
+    return "review", f"length differs from MusicBrainz by {rel:.0%}, unverified"
+
+
+def is_downloaders_file(path, row):
+    """The Lidarr-linked file must be the one this row's download produced: right track
+    number in its name, and written after the download (not an older file)."""
+    base = os.path.basename(path)
+    if not base.startswith(f"{row['track_number']:02d} - "):
+        return False
+    try:
+        return os.path.getmtime(path) >= row["timestamp"] - 120
+    except OSError:
+        return False
 
 
 def probe_seconds(path):
@@ -165,7 +207,7 @@ def main():
                 print(f"link step skipped for album {aid}: HTTP {e.code}", file=sys.stderr)
     by_album = {}
     checked = bad = pending = 0
-    reports, pending_ts = [], []
+    reports, reviews, pending_ts = [], [], []
     for (album_id, tno), r in sorted(latest.items()):
         if album_id not in by_album:
             try:
@@ -194,13 +236,25 @@ def main():
             pending_ts.append(r["timestamp"])
             continue
         expected = t["duration"] / 1000.0
+        verdict, why = decide(actual, expected, float(r["duration_seconds"] or 0),
+                              float(r["acoustid_score"] or 0), a.tolerance,
+                              is_downloaders_file(path, r))
+        if verdict == "unverifiable":
+            print(f"unverifiable {r['artist_name']} - {r['track_title']}: {why} ({os.path.basename(path)})")
+            pending += 1  # may be a rescan still settling; retried until PENDING_EXPIRY
+            pending_ts.append(r["timestamp"])
+            continue
         checked += 1
-        diff = actual - expected
-        if abs(diff) <= a.tolerance:
+        if verdict == "ok":
+            continue
+        line = (f"{r['artist_name']} - {r['album_title']} #{tno} {r['track_title']}: "
+                f"{actual:.0f}s vs MB {expected:.0f}s, YT {r['duration_seconds']}s, "
+                f"AcoustID {float(r['acoustid_score'] or 0):.2f} -> {why}")
+        if verdict == "review":
+            reviews.append(line)
+            print("REVIEW " + line)
             continue
         bad += 1
-        line = (f"{r['artist_name']} - {r['album_title']} #{tno} {r['track_title']}: "
-                f"{actual:.0f}s vs expected {expected:.0f}s ({diff:+.0f}s)")
         reports.append(line)
         deleting = a.apply and not a.no_delete
         print(("DELETE " if deleting else "WOULD DELETE ") + line)
@@ -213,7 +267,7 @@ def main():
             except Exception as e:
                 print(f"downloader ban failed: {e}", file=sys.stderr)
 
-    print(f"checked {checked}, bad {bad}, pending {pending}, tolerance {a.tolerance}s")
+    print(f"checked {checked}, bad {bad}, review {len(reviews)}, pending {pending}, tolerance {a.tolerance}s")
     if a.apply:
         # Never advance past a row we could not judge yet.
         # A row that never shows up in Lidarr stops holding the cursor after an hour.
@@ -227,6 +281,10 @@ def main():
                 discord("lidarr-ytdl audit removed %d wrong-length track(s); they stay on Wanted "
                         "and the YouTube URL is banned for that track:\n%s"
                         % (bad, "\n".join("- " + x for x in reports)))
+        if reviews:
+            discord("lidarr-ytdl audit kept %d track(s) that differ from MusicBrainz "
+                    "(alternate edition or unverified, nothing deleted):\n%s"
+                    % (len(reviews), "\n".join("- " + x for x in reviews)))
     return 0
 
 
