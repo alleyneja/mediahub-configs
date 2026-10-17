@@ -45,6 +45,11 @@ or rotate each one:
   `sonarr` containers at `/config/discord.env`; `notify-audio-mismatch.sh`
   sources it at run time, so no container restart is needed after editing.
   See `discord.env.example` for the expected format.
+  Same `#media-alerts` webhook as `scripts/lidarr-ytdl-audit.env`, so Sonarr,
+  Radarr and Lidarr alerts share one channel. The old arr-stack webhook was
+  dead (404) from 2026-09-15 to 2026-10-17 and alerts failed silently. Edit
+  the file in place (`cat > file`), not by rename: single-file bind mounts
+  keep serving the old inode.
 
 ## The bot
 
