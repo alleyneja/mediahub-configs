@@ -22,6 +22,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import urllib.parse
 import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -51,6 +52,38 @@ def http(method, url, headers=None, body=None):
 def lidarr_key():
     with open(LIDARR_CFG) as f:
         return re.search(r"<ApiKey>([^<]+)</ApiKey>", f.read()).group(1)
+
+
+def link_unlinked(album_id, folder, lh, apply):
+    """Import files Lidarr left on disk but unlinked ("Has Missing Tracks").
+
+    The downloader copies an album into the library and calls RefreshArtist; Lidarr
+    then rejects partial albums, so the files sit unlinked. ManualImport with explicit
+    trackIds bypasses that gate. Only files Lidarr matched to exactly one track of
+    this album are imported; anything else is left alone.
+    """
+    qs = urllib.parse.urlencode({"folder": folder, "filterExistingFiles": "true",
+                                 "replaceExistingFiles": "false"})
+    items = http("GET", f"{LIDARR}/manualimport?{qs}", lh) or []
+    linked = {f["path"] for f in http("GET", f"{LIDARR}/trackfile?albumId={album_id}", lh)}
+    files = []
+    for it in items:
+        if it["path"] in linked:  # the endpoint's own filterExistingFiles does not exclude these
+            continue
+        alb, trk = it.get("album"), it.get("tracks") or []
+        if not alb or alb["id"] != album_id or len(trk) != 1:
+            continue
+        files.append({"path": it["path"], "artistId": it["artist"]["id"], "albumId": album_id,
+                      "albumReleaseId": it["albumReleaseId"], "trackIds": [trk[0]["id"]],
+                      "quality": it["quality"], "indexerFlags": it.get("indexerFlags", 0),
+                      "disableReleaseSwitching": True})
+    for f in files:
+        print(("LINK " if apply else "WOULD LINK ") + f["path"])
+    if files and apply:
+        http("POST", f"{LIDARR}/command", lh,
+             {"name": "ManualImport", "files": files, "importMode": "move"})
+        time.sleep(15)
+    return len(files)
 
 
 def probe_seconds(path):
@@ -120,6 +153,10 @@ def main():
         latest[(r["album_id"], r["track_number"])] = r
 
     lh = {"X-Api-Key": lidarr_key()}
+    for aid in sorted({k[0] for k in latest}):
+        folder = next(r["lidarr_album_path"] for k, r in latest.items() if k[0] == aid)
+        if folder:
+            link_unlinked(aid, folder.replace("/music", PATH_MAP[0], 1), lh, a.apply)
     by_album = {}
     checked = bad = pending = 0
     reports, pending_ts = [], []
