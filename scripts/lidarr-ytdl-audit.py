@@ -127,6 +127,8 @@ def save_cursor(ts):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--no-delete", action="store_true",
+                    help="with --apply: still link files and advance the cursor, but only report bad tracks")
     ap.add_argument("--tolerance", type=float, default=10.0)
     ap.add_argument("--since", type=float, help="epoch override for the cursor")
     ap.add_argument("--album-id", type=int)
@@ -200,8 +202,9 @@ def main():
         line = (f"{r['artist_name']} - {r['album_title']} #{tno} {r['track_title']}: "
                 f"{actual:.0f}s vs expected {expected:.0f}s ({diff:+.0f}s)")
         reports.append(line)
-        print(("DELETE " if a.apply else "WOULD DELETE ") + line)
-        if a.apply:
+        deleting = a.apply and not a.no_delete
+        print(("DELETE " if deleting else "WOULD DELETE ") + line)
+        if deleting:
             # Lidarr first: drops the record and the file, track returns to Wanted.
             # Never RescanFolders: it un-links the downloader's other, thinly tagged files.
             http("DELETE", f"{LIDARR}/trackfile/{f['id']}", lh)
@@ -217,9 +220,13 @@ def main():
         recent = [t for t in pending_ts if t > time.time() - PENDING_EXPIRY]
         save_cursor(min(recent) - 1 if recent else cutoff)
         if reports:
-            discord("lidarr-ytdl audit removed %d wrong-length track(s); they stay on Wanted "
-                    "and the YouTube URL is banned for that track:\n%s"
-                    % (bad, "\n".join("- " + x for x in reports)))
+            if a.no_delete:
+                discord("lidarr-ytdl audit flagged %d wrong-length track(s) (NOT deleted, "
+                        "review mode):\n%s" % (bad, "\n".join("- " + x for x in reports)))
+            else:
+                discord("lidarr-ytdl audit removed %d wrong-length track(s); they stay on Wanted "
+                        "and the YouTube URL is banned for that track:\n%s"
+                        % (bad, "\n".join("- " + x for x in reports)))
     return 0
 
 
