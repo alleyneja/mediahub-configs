@@ -13,6 +13,7 @@ Backups of the old configs (now-dead keys): `~/key-rotation-backup-20261008/` (m
 | sonarr / radarr | `/srv/docker/<app>/config.xml` `<ApiKey>` | Prowlarr Applications, Bazarr `config.yaml`, Seer `settings.json` (+ `settings.old.json`, stale `/srv/docker/overseerr/`), `stacks/arr-stack/.env` (Unpackerr `UN_*_API_KEY`), `stacks/uptime-kuma/.env` (Homepage `HOMEPAGE_VAR_*`) |
 | lidarr, bookshelf-ebooks/-audiobooks | same pattern | Prowlarr Applications, `arr-stack/.env`, `uptime-kuma/.env`; lidarr also **Aurral** (see below) |
 | aurral (consumer of lidarr's key) | `/srv/docker/aurral/data/aurral.db`, table `settings`, key `integrations` JSON field `lidarr.apiKey` (stored encrypted, `AURRAL_ENC:`) | not in env or any file: update it by hand in Aurral **Settings > Lidarr**. Missed in the 2026-10-08 rotation, fixed by hand 2026-10-09 (issue #74) |
+| lidarr-downloader (consumer of lidarr's key) | `stacks/lidarr-ytdl/stack.env` (`LIDARR_API_KEY`, gitignored) | env_file, but the app also copies it into `/srv/docker/lidarr-ytdl/config/lidarr-downloader.db` on first run. After rotation: update `stack.env`, recreate the container, and confirm in its Settings page |
 | prowlarr | `config.xml` | every *arr's synced indexers (`(Prowlarr)` entries, field `apiKey`), `uptime-kuma/.env` |
 | sabnzbd | `sabnzbd.ini` `api_key` | the SABnzbd download client in all 6 apps, Kuma monitor 7 (URL contains it), `uptime-kuma/.env` |
 | bazarr | `config/config.yaml` `apikey` | `uptime-kuma/.env` |
