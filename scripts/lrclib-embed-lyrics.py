@@ -54,20 +54,33 @@ def get(url):
         time.sleep(5 * 2 ** attempt)
 
 
+def _norm(t):
+    return "".join(c for c in (t or "").lower().replace("\u2019", "'") if c.isalnum())
+
+
 def lookup(artist, title, album, duration):
+    """Best LRCLIB entry. If the exact match has no synced lyrics, other entries
+    for the same song (same title, length within tolerance) are checked for them."""
     q = urllib.parse.urlencode({"artist_name": artist, "track_name": title,
                                 "album_name": album, "duration": round(duration)})
     hit = get(f"{API}/get?{q}")
     time.sleep(PACE)
-    if hit:
-        return hit, "exact"
+    how = "exact" if hit else None
+    if hit and (hit.get("syncedLyrics") or hit.get("instrumental")):
+        return hit, how
     q = urllib.parse.urlencode({"artist_name": artist, "track_name": title})
-    for cand in get(f"{API}/search?{q}") or []:
-        if cand.get("duration") and abs(cand["duration"] - duration) <= DURATION_TOL \
-                and (cand.get("syncedLyrics") or cand.get("plainLyrics") or cand.get("instrumental")):
-            time.sleep(PACE)
-            return cand, "search"
+    cands = [c for c in (get(f"{API}/search?{q}") or [])
+             if c.get("duration") and abs(c["duration"] - duration) <= DURATION_TOL
+             and _norm(c.get("trackName")) == _norm(title)]
     time.sleep(PACE)
+    for c in cands:
+        if c.get("syncedLyrics"):
+            return c, "search" if not hit else "search-synced"
+    if hit:
+        return hit, how
+    for c in cands:
+        if c.get("plainLyrics") or c.get("instrumental"):
+            return c, "search"
     return None, None
 
 
@@ -109,6 +122,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("dirs", nargs="+")
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--upgrade", action="store_true",
+                    help="retry tracks that only have a .txt sidecar; replace it if timed lyrics now exist")
     ap.add_argument("--embed", action="store_true", help="write into tags instead of sidecar files")
     ap.add_argument("--min-age", type=int, default=3600, help="skip files modified more recently than this (s)")
     ap.add_argument("--backup-dir", help="copy each file here before writing")
@@ -128,7 +143,8 @@ def main():
                 artist, title, album, dur, has = tags_of(p)
                 base = os.path.splitext(p)[0]
                 if not a.embed:
-                    has = os.path.exists(base + ".lrc") or os.path.exists(base + ".txt")
+                    has = os.path.exists(base + ".lrc") or (
+                        os.path.exists(base + ".txt") and not a.upgrade)
                 if has:
                     stats["skipped_has"] += 1
                     continue
@@ -158,10 +174,14 @@ def main():
                 if not a.apply:
                     continue
                 if not a.embed:
+                    if a.upgrade and kind != "synced":
+                        continue  # nothing better than the .txt we already have
                     side = base + (".lrc" if kind == "synced" else ".txt")
                     with open(side + ".tmp", "w", encoding="utf-8") as fh:
                         fh.write(text.replace("\r\n", "\n"))
                     os.replace(side + ".tmp", side)
+                    if kind == "synced" and os.path.exists(base + ".txt"):
+                        os.remove(base + ".txt")
                     stats["written"] += 1
                     continue
                 before = audio_md5(p)
