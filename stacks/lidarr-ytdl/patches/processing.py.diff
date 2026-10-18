@@ -1,5 +1,5 @@
---- processing.py.orig	2026-10-15 12:13:50.000000000 -0500
-+++ processing.py	2026-10-17 12:54:47.222604985 -0500
+--- stacks/lidarr-ytdl/patches/processing.py.orig	2026-10-15 12:13:50.000000000 -0500
++++ stacks/lidarr-ytdl/patches/processing.py	2026-10-17 20:31:31.015671649 -0500
 @@ -11,8 +11,10 @@
  import os
  import re
@@ -11,10 +11,79 @@
  import uuid
  
  import logutil
-@@ -1345,6 +1347,61 @@
+@@ -1327,12 +1329,14 @@
+ 
+     if not dl_result.get("success"):
+         track_state["last_download_error"] = dl_result.get("error_message", "")
++        _note_download_result(False, track_state["last_download_error"])
+         if dl_result.get("postprocess_error"):
+             track_state["postprocess_error"] = True
+             track_state["error_message"] = dl_result.get("error_message", "")
+         _cleanup_temp_files(attempt_temp)
+         return None
+ 
++    _note_download_result(True)
+     audio_ext = load_config().get("audio_format", "mp3")
+     actual_file = attempt_temp + f".{audio_ext}"
+     if not os.path.exists(actual_file):
+@@ -1345,6 +1349,115 @@
      return dl_result, actual_file
  
  
++_BOT_BLOCK_LIMIT = 5  # consecutive "not a bot" download failures that pause the queue
++_bot_block_streak = 0
++_bot_block_lock = threading.Lock()
++
++
++def _trip_bot_block_breaker():
++    """YouTube is refusing us: stop hammering it and tell a human."""
++    from config import update_config
++
++    logger.error(
++        "YouTube is answering 'Sign in to confirm you're not a bot' to every"
++        " download. Pausing the queue and stopping the active job.",
++    )
++    update_config(lambda cfg: cfg.__setitem__("queue_paused", True))
++    stop_download()
++    try:
++        send_notifications(
++            "YouTube is blocking downloads (bot check). Queue paused.",
++            log_type="album_error",
++            embed_data={
++                "title": "YouTube bot check: downloads paused",
++                "description": (
++                    f"{_BOT_BLOCK_LIMIT} downloads in a row were refused with"
++                    " 'Sign in to confirm you're not a bot'. The queue is paused"
++                    " and the active job stopped (the queue was cleared). Wait"
++                    " for the block to lift (it took ~6h on Oct 17), then resume"
++                    " with POST /api/download/queue/pause."
++                ),
++                "color": 0xE74C3C,
++            },
++        )
++    except Exception:
++        logger.warning("bot-block notification failed", exc_info=True)
++
++
++def _note_download_result(ok, error_text=""):
++    """Circuit breaker. A success resets the streak; only "not a bot" failures
++    extend it (other failures, such as a deleted video, neither count nor reset)."""
++    global _bot_block_streak
++    with _bot_block_lock:
++        if ok:
++            _bot_block_streak = 0
++            return False
++        if "not a bot" not in (error_text or "").lower():
++            return False
++        _bot_block_streak += 1
++        trip = _bot_block_streak >= _BOT_BLOCK_LIMIT
++        if trip:
++            _bot_block_streak = 0
++    if trip:
++        _trip_bot_block_breaker()
++    return trip
++
++
 +def _probe_duration_seconds(path):
 +    """Real length of a downloaded file in seconds (0.0 if it cannot be read)."""
 +    try:
@@ -73,7 +142,7 @@
  def _build_candidate_attempt(
      candidate, outcome, expected_recording_id,
      fp_data=None, error_message="",
-@@ -1770,6 +1827,31 @@
+@@ -1770,6 +1883,31 @@
                  _cleanup_temp_files(held_unverified[2])
              held_unverified = None
  
@@ -105,7 +174,7 @@
          for ci, candidate in _iter_candidates():
              if _skip_check():
                  _drop_held_unverified()
-@@ -1837,6 +1919,54 @@
+@@ -1837,6 +1975,54 @@
              dl_result, actual_file = dl_out
  
              any_downloaded = True
@@ -160,7 +229,7 @@
              track_state["status"] = "tagging"
              track_state["youtube_url"] = dl_result.get(
                  "youtube_url", "",
-@@ -1910,6 +2040,30 @@
+@@ -1910,6 +2096,30 @@
                      )
                  elif vresult["status"] == "mismatch":
                      mismatch_fp = vresult["fp_data"]
@@ -191,7 +260,7 @@
                      with _results_lock:
                          verify_stats["mismatch_count"] += 1
                          mismatch_score = float(
-@@ -2031,6 +2185,14 @@
+@@ -2031,6 +2241,14 @@
                      )
                  )
  
@@ -206,7 +275,7 @@
              _drop_held_unverified()
              file_size, td_id = _accept_track_file(
                  actual_file, track_num, sanitized_track,
-@@ -2056,6 +2218,60 @@
+@@ -2056,6 +2274,60 @@
              accepted = True
              break
  

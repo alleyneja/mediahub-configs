@@ -19,3 +19,11 @@ nothing measured it until the audit did.
 **On an image bump:** `diff processing.py.orig <new /app/processing.py>`; if
 unchanged, keep the patch, otherwise re-apply `processing.py.diff` by hand.
 **Rollback:** delete the `./patches/processing.py` volume line and `docker compose up -d`.
+
+**YouTube bot-wall circuit breaker:** if 5 downloads in a row fail with "Sign in to
+confirm you're not a bot" (a success resets the count; other errors neither count
+nor reset), the downloader sets `queue_paused`, stops the active job (which also
+clears the queue) and posts "YouTube bot check: downloads paused" to #media-alerts
+(`album_error`). Resume by hand with `POST /api/download/queue/pause` once the block
+lifts (Oct 17's took ~6h). Motivation: the scheduler would otherwise keep retrying
+through a block, probably prolonging it.

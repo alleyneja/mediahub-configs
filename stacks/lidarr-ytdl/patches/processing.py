@@ -1329,12 +1329,14 @@ def _download_candidate_threaded(
 
     if not dl_result.get("success"):
         track_state["last_download_error"] = dl_result.get("error_message", "")
+        _note_download_result(False, track_state["last_download_error"])
         if dl_result.get("postprocess_error"):
             track_state["postprocess_error"] = True
             track_state["error_message"] = dl_result.get("error_message", "")
         _cleanup_temp_files(attempt_temp)
         return None
 
+    _note_download_result(True)
     audio_ext = load_config().get("audio_format", "mp3")
     actual_file = attempt_temp + f".{audio_ext}"
     if not os.path.exists(actual_file):
@@ -1345,6 +1347,60 @@ def _download_candidate_threaded(
         return None
 
     return dl_result, actual_file
+
+
+_BOT_BLOCK_LIMIT = 5  # consecutive "not a bot" download failures that pause the queue
+_bot_block_streak = 0
+_bot_block_lock = threading.Lock()
+
+
+def _trip_bot_block_breaker():
+    """YouTube is refusing us: stop hammering it and tell a human."""
+    from config import update_config
+
+    logger.error(
+        "YouTube is answering 'Sign in to confirm you're not a bot' to every"
+        " download. Pausing the queue and stopping the active job.",
+    )
+    update_config(lambda cfg: cfg.__setitem__("queue_paused", True))
+    stop_download()
+    try:
+        send_notifications(
+            "YouTube is blocking downloads (bot check). Queue paused.",
+            log_type="album_error",
+            embed_data={
+                "title": "YouTube bot check: downloads paused",
+                "description": (
+                    f"{_BOT_BLOCK_LIMIT} downloads in a row were refused with"
+                    " 'Sign in to confirm you're not a bot'. The queue is paused"
+                    " and the active job stopped (the queue was cleared). Wait"
+                    " for the block to lift (it took ~6h on Oct 17), then resume"
+                    " with POST /api/download/queue/pause."
+                ),
+                "color": 0xE74C3C,
+            },
+        )
+    except Exception:
+        logger.warning("bot-block notification failed", exc_info=True)
+
+
+def _note_download_result(ok, error_text=""):
+    """Circuit breaker. A success resets the streak; only "not a bot" failures
+    extend it (other failures, such as a deleted video, neither count nor reset)."""
+    global _bot_block_streak
+    with _bot_block_lock:
+        if ok:
+            _bot_block_streak = 0
+            return False
+        if "not a bot" not in (error_text or "").lower():
+            return False
+        _bot_block_streak += 1
+        trip = _bot_block_streak >= _BOT_BLOCK_LIMIT
+        if trip:
+            _bot_block_streak = 0
+    if trip:
+        _trip_bot_block_breaker()
+    return trip
 
 
 def _probe_duration_seconds(path):
