@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
-"""Look tracks up on LRCLIB and embed lyrics into FLAC/MP3 tags.
+"""Look tracks up on LRCLIB and write lyrics next to FLAC/MP3 files.
 
-Dry run by default; --apply writes. Tags only: the audio stream is never
-touched, and each write is verified by comparing an audio-stream md5 before and
-after (the file is restored from a copy if it differs). Tracks that already have
-lyrics are skipped. Prefers synced (LRC) lyrics, falls back to plain.
+Default mode writes sidecar files: <track>.lrc (timed) or <track>.txt (plain),
+which is the only form Plex reads (embedded tags are not supported by Plex, see
+support.plex.tv/articles/215916117). --embed writes the lyrics into the tags
+instead (for players that read them); it verifies an audio-stream md5 before and
+after and restores the file from a copy on any difference.
 
-usage: lrclib-embed-lyrics.py [--apply] [--min-age 3600] DIR [DIR ...]
+Dry run unless --apply. Tracks that already have the target (sidecar present, or
+embedded lyrics in --embed mode) are skipped. Prefers synced lyrics.
+
+usage: lrclib-embed-lyrics.py [--apply] [--embed] [--min-age 3600] DIR [DIR ...]
 """
 import argparse
 import hashlib
@@ -105,6 +109,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("dirs", nargs="+")
     ap.add_argument("--apply", action="store_true")
+    ap.add_argument("--embed", action="store_true", help="write into tags instead of sidecar files")
     ap.add_argument("--min-age", type=int, default=3600, help="skip files modified more recently than this (s)")
     ap.add_argument("--backup-dir", help="copy each file here before writing")
     a = ap.parse_args()
@@ -121,6 +126,9 @@ def main():
                     stats["skipped_new"] += 1
                     continue
                 artist, title, album, dur, has = tags_of(p)
+                base = os.path.splitext(p)[0]
+                if not a.embed:
+                    has = os.path.exists(base + ".lrc") or os.path.exists(base + ".txt")
                 if has:
                     stats["skipped_has"] += 1
                     continue
@@ -148,6 +156,13 @@ def main():
                 stats["found_" + kind] += 1
                 print(f"{kind.upper():9} {fn}  [{how}, lrclib '{hit.get('trackName')}' {hit.get('duration')}s vs {dur:.0f}s]")
                 if not a.apply:
+                    continue
+                if not a.embed:
+                    side = base + (".lrc" if kind == "synced" else ".txt")
+                    with open(side + ".tmp", "w", encoding="utf-8") as fh:
+                        fh.write(text.replace("\r\n", "\n"))
+                    os.replace(side + ".tmp", side)
+                    stats["written"] += 1
                     continue
                 before = audio_md5(p)
                 tmp = p + ".lyrics-bak"
