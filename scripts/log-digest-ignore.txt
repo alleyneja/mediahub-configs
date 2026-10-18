@@ -8,3 +8,19 @@
 ^[^:]+: (at |---> |--- End of)
 # Loki's own complaints during the one-off 2026-10-07 history backfill.
 ^loki: .*write operation failed
+# Triaged 2026-10-18 (week-ending-Oct-18 digest): harmless, one line per source.
+# Loki rejecting old-timestamp pushes left over from the Oct 7 history backfill.
+^loki: .*Pusher/Push.*entry with timestamp
+# Plex scanning/analysing a track whose file was removed (stale entry; clears on next scan). Only the "No such file" case, so permission errors still show.
+^plex: (\[in#N @ <hex>\] )?Error opening input( files?)?: No such file or directory
+^plex: Error opening input file /data/media/music/
+# Quad9 DoH upstream timeouts; AdGuard falls back to another upstream and the query still answers.
+^adguardhome: \[error\] dnsproxy: exchange failed upstream=https://dns10\.quad9\.net
+# Audiobookshelf client left a session open / player disconnected mid-stream.
+^audiobookshelf: ERROR: \[SessionController\] Unable to find playback session
+^caddy: .*aborting with incomplete response.*"upstream":"audiobookshelf
+# Mealie client asked for a recipe that no longer exists.
+^mealie: ERROR .*No Entry Found on recipe controller action
+# Prowlarr: captured error-page padding, and kickasstorrents.ws (flaky indexer behind FlareSolverr; retried automatically).
+^prowlarr: <!-- a padding to disable MSIE
+^prowlarr: \[Warn\] Cardigann: Request for kickasstorrents\.ws failed
