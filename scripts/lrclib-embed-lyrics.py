@@ -33,6 +33,10 @@ API = "https://lrclib.net/api"
 UA = "mediahub-lyrics-embed/1.0 (https://github.com/alleyneja/mediahub-configs)"
 DURATION_TOL = 3.0  # seconds between our file and the LRCLIB entry
 PACE = 1.0  # seconds between requests
+FAIL_STREAK = 5  # consecutive failed lookups before cooling down
+COOLDOWN = 300  # seconds to wait when LRCLIB looks unhealthy
+MAX_COOLDOWNS = 3  # stop the run after this many cooldowns in a row with no success
+MISS_TTL = 30 * 86400  # don't re-ask about a track LRCLIB had nothing for within this long
 EXTS = (".flac", ".mp3")
 
 
@@ -127,7 +131,18 @@ def main():
     ap.add_argument("--embed", action="store_true", help="write into tags instead of sidecar files")
     ap.add_argument("--min-age", type=int, default=3600, help="skip files modified more recently than this (s)")
     ap.add_argument("--backup-dir", help="copy each file here before writing")
+    ap.add_argument("--state", default=os.path.expanduser("~/logs/lrclib-misses.json"),
+                    help="remembers tracks with no lyrics so they are not re-asked for 30 days")
+    ap.add_argument("--plex", help="Plex base URL; folders that got new files are rescanned at the end")
     a = ap.parse_args()
+
+    try:
+        with open(a.state) as fh:
+            misses = json.load(fh)
+    except (OSError, ValueError):
+        misses = {}
+    streak = cooldowns = 0
+    touched = set()
 
     stats = dict(checked=0, skipped_has=0, skipped_new=0, found_synced=0, found_plain=0,
                  instrumental=0, missing=0, written=0, failed=0)
@@ -148,25 +163,41 @@ def main():
                 if has:
                     stats["skipped_has"] += 1
                     continue
+                if time.time() - misses.get(p, 0) < MISS_TTL and not a.upgrade:
+                    stats["skipped_known_miss"] = stats.get("skipped_known_miss", 0) + 1
+                    continue
                 stats["checked"] += 1
                 try:
                     hit, how = lookup(artist, title, album, dur)
                 except Exception as e:
                     stats["failed"] += 1
                     print(f"ERROR     {fn}: lookup failed ({e}); will retry next run")
+                    streak += 1
+                    if streak >= FAIL_STREAK:
+                        cooldowns += 1
+                        if cooldowns >= MAX_COOLDOWNS:
+                            print(f"STOPPING  LRCLIB unhealthy ({cooldowns} cooldowns in a row); rerun later")
+                            return finish(a, stats, misses, touched, 3)
+                        print(f"COOLDOWN  {streak} failures in a row, waiting {COOLDOWN}s ({cooldowns}/{MAX_COOLDOWNS})")
+                        time.sleep(COOLDOWN)
+                        streak = 0
                     continue
+                streak = cooldowns = 0
                 if not hit:
                     stats["missing"] += 1
+                    misses[p] = time.time()
                     print(f"MISSING   {fn}")
                     continue
                 if hit.get("instrumental"):
                     stats["instrumental"] += 1
+                    misses[p] = time.time()
                     print(f"INSTRUMENTAL {fn}")
                     continue
                 text, kind = (hit.get("syncedLyrics"), "synced") if hit.get("syncedLyrics") \
                     else (hit.get("plainLyrics"), "plain")
                 if not text:
                     stats["missing"] += 1
+                    misses[p] = time.time()
                     print(f"MISSING   {fn}")
                     continue
                 stats["found_" + kind] += 1
@@ -183,6 +214,7 @@ def main():
                     if kind == "synced" and os.path.exists(base + ".txt"):
                         os.remove(base + ".txt")
                     stats["written"] += 1
+                    touched.add(root)
                     continue
                 before = audio_md5(p)
                 tmp = p + ".lyrics-bak"
@@ -196,12 +228,35 @@ def main():
                         shutil.copy2(tmp, os.path.join(a.backup_dir, fn))
                     os.remove(tmp)
                     stats["written"] += 1
+                    touched.add(root)
                 except Exception as e:  # restore on any problem
                     shutil.copy2(tmp, p)
                     os.remove(tmp)
                     stats["failed"] += 1
                     print(f"FAILED    {fn}: {e} (restored)")
+    return finish(a, stats, misses, touched, 0)
+
+
+def finish(a, stats, misses, touched, code):
+    if a.apply:
+        try:
+            os.makedirs(os.path.dirname(a.state), exist_ok=True)
+            with open(a.state + ".tmp", "w") as fh:
+                json.dump(misses, fh)
+            os.replace(a.state + ".tmp", a.state)
+        except OSError as e:
+            print(f"could not save {a.state}: {e}")
+        if a.plex:
+            for d in sorted(touched):
+                path = d.replace("/mnt/media", "/data/media", 1)
+                try:
+                    urllib.request.urlopen(f"{a.plex}/library/sections/3/refresh?force=1&path="
+                                           + urllib.parse.quote(path), timeout=30).read()
+                except Exception as e:
+                    print(f"plex refresh failed for {d}: {e}")
+                time.sleep(2)
     print(json.dumps(stats))
+    return code
 
 
 if __name__ == "__main__":
