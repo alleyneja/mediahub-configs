@@ -27,3 +27,12 @@ clears the queue) and posts "YouTube bot check: downloads paused" to #media-aler
 (`album_error`). Resume by hand with `POST /api/download/queue/pause` once the block
 lifts (Oct 17's took ~6h). Motivation: the scheduler would otherwise keep retrying
 through a block, probably prolonging it.
+
+**Live-stream guard (Oct 19):** before each download, `_is_live_stream()` does a
+metadata-only yt-dlp lookup (`process=False`, ~1-2s) and rejects the candidate
+(outcome "live stream", URL banned) if `live_status` is `is_live`/`is_upcoming`.
+Why: "24/7 lofi radio" streams match generic track titles ("Sad Lofi"); the length
+check only runs *after* a download finishes, and a live stream never does, so
+ffmpeg recorded one for 40+ min and wedged the whole album job. Note
+`is_live` is None under `process=False`; only `live_status` is reliable. The check
+fails open (any lookup error -> normal download).

@@ -24,6 +24,7 @@ from config import (
 )
 from models import CandidateOutcome
 from downloader import (
+    _build_common_opts,
     _extract_video_id,
     download_youtube_candidate,
     album_from_ytmusic_hint,
@@ -1416,6 +1417,30 @@ def _probe_duration_seconds(path):
         return 0.0
 
 
+def _is_live_stream(url):
+    """True if the URL is a live stream (never finishes downloading).
+
+    Metadata-only lookup. Fails open: any error returns False so the normal
+    download path (and its own error handling) still runs.
+    """
+    try:
+        import yt_dlp
+        opts = {
+            **_build_common_opts(),
+            "skip_download": True,
+            "ignore_no_formats_error": True,
+            "extract_flat": False,
+        }
+        opts.pop("format_sort", None)
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False, process=False) or {}
+        return bool(info.get("is_live")) or info.get("live_status") in (
+            "is_live", "is_upcoming",
+        )
+    except Exception:
+        return False
+
+
 def _too_short(real_sec, expected_sec, listed_sec, tolerance):
     """Reason a downloaded file is too short, or "" if it is acceptable.
 
@@ -1944,6 +1969,37 @@ def _download_tracks(
                 album_path,
                 f"temp_{track_num:02d}_{uuid.uuid4().hex[:8]}",
             )
+
+            if _is_live_stream(candidate["url"]):
+                candidate_attempts_buf.append(
+                    _build_candidate_attempt(
+                        candidate,
+                        CandidateOutcome.REJECTED_LOW_SCORE,
+                        expected_recording_id,
+                        error_message="live stream",
+                    )
+                )
+                logger.info(
+                    "   Rejected '%s' for '%s': live stream. Trying another"
+                    " candidate.",
+                    candidate.get("title", ""), track_title,
+                )
+                try:
+                    models.add_banned_url(
+                        youtube_url=candidate["url"],
+                        youtube_title=candidate["title"],
+                        album_id=album_id,
+                        album_title=album_title,
+                        artist_name=artist_name,
+                        track_title=track_title,
+                        track_number=track_num,
+                    )
+                except Exception:
+                    logger.warning(
+                        "Failed to ban URL %s", candidate["url"],
+                        exc_info=True,
+                    )
+                continue
 
             dl_out = _download_candidate_threaded(
                 candidate, attempt_temp, progress_hook,
