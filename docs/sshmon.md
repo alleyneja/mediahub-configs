@@ -25,6 +25,13 @@ A sample is "slow" if the Tailscale path is not direct, or any column crosses it
 Reading it: path fine + probes fine + a freeze = the problem is on the client (terminal/Wi-Fi). Path not direct or
 ping spikes = path. Probe spikes or io_full high = this host.
 
+## lossmon (added 2026-10-18)
+`scripts/lossmon.py`, cron every minute: ~5 pings/s for 58 s to the gaming PC (Wi-Fi) and to r9 (wired control), one row
+per target per minute in `~/logs/sshmon/lossmon.csv` (sent, lost, longest run of missed pings, max rtt) and every run of
+>=3 missed pings in `bursts.csv`. sshmon's single ping per 10 s missed the bursts entirely (a 30 s test showed 0 %
+minutes before a 31-47 % one). `scripts/lossmon.py --report --hours 24` or `--around HH:MM`. The control matters: on
+2026-10-18 r9 lost packets at the same moments as the PC, so loss to the PC alone does not mean Wi-Fi.
+
 ## Files / cost
 Log `~/logs/sshmon/sshmon.csv` (outside the repo: holds LAN/tailnet addresses), ~1.3 MB/day, rotated to `.old` at 25 MB
 (about 3 weeks). A run is ~1 minute of sleeping with ~1% CPU in bursts. No sudo, no packages, stdlib only.
