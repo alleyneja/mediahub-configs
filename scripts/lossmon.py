@@ -4,7 +4,7 @@
 Cron runs it every minute; each run pings for ~58 s. See docs/sshmon.md. Log: ~/logs/sshmon/lossmon.csv, bursts.csv."""
 import argparse, csv, datetime, fcntl, os, re, statistics, subprocess, sys, threading
 
-TARGETS = {'pc': '192.168.0.206', 'ctrl-r9': '192.168.0.22'}
+TARGETS = {'pc': '192.168.0.81', 'ctrl-r9': '192.168.0.22'}
 LOG_DIR = os.path.expanduser('~/logs/sshmon')
 CSV_PATH, BURST_PATH, LOCK_PATH = (f'{LOG_DIR}/{n}' for n in ('lossmon.csv', 'bursts.csv', '.lossmon.lock'))
 RUN_S, INTERVAL, BURST_MIN = 58, 0.2, 3         # a "burst" is this many replies missing in a row (~0.6 s)

@@ -32,6 +32,10 @@ per target per minute in `~/logs/sshmon/lossmon.csv` (sent, lost, longest run of
 minutes before a 31-47 % one). `scripts/lossmon.py --report --hours 24` or `--around HH:MM`. The control matters: on
 2026-10-18 r9 lost packets at the same moments as the PC, so loss to the PC alone does not mean Wi-Fi.
 
+**PC address (2026-10-18 23:07):** the PC moved from Wi-Fi (`192.168.0.206`) to Ethernet (`192.168.0.81`) for the Wi-Fi-vs-wired test, so
+`lossmon.py` and `sshmon.py` now ping `.81`. Rows before 23:07 are Wi-Fi, after are Ethernet. Change both back (or to the PC's
+DHCP reservation) if it returns to Wi-Fi.
+
 ## Files / cost
 Log `~/logs/sshmon/sshmon.csv` (outside the repo: holds LAN/tailnet addresses), ~1.3 MB/day, rotated to `.old` at 25 MB
 (about 3 weeks). A run is ~1 minute of sleeping with ~1% CPU in bursts. No sudo, no packages, stdlib only.

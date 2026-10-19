@@ -14,7 +14,7 @@ Logs hold LAN/tailnet addresses, so they live outside the repo (the repo is publ
 """
 import argparse, csv, datetime, fcntl, json, os, re, statistics, subprocess, sys, time
 
-PC_TS, PC_LAN = 'gaming-pc', '192.168.0.206'
+PC_TS, PC_LAN = 'gaming-pc', '192.168.0.81'
 LOG_DIR = os.path.expanduser('~/logs/sshmon')
 CSV_PATH, STATE_PATH, LOCK_PATH, PROBE_PATH = (f'{LOG_DIR}/{n}' for n in ('sshmon.csv', 'state.json', '.lock', '.probe'))
 SAMPLES, INTERVAL, ROTATE_BYTES = 6, 10, 25 * 1024 * 1024
