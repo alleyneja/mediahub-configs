@@ -20,7 +20,7 @@ CSV_PATH, STATE_PATH, LOCK_PATH, PROBE_PATH = (f'{LOG_DIR}/{n}' for n in ('sshmo
 SAMPLES, INTERVAL, ROTATE_BYTES = 6, 10, 25 * 1024 * 1024
 COLUMNS = ['ts_local', 'ts_ping_ms', 'ts_path', 'lan_ping_ms', 'lan_sessions', 'tsssh_sessions', 'ssh_max_rtt_ms',
            'ssh_unacked', 'ssh_retrans_delta', 'ssh_max_sendq', 'io_some', 'io_full', 'mem_some', 'mem_full', 'cpu_some',
-           'load1', 'swap_in_ps', 'swap_out_ps', 'sleep_over_ms', 'fork_ms', 'fsync_ms']
+           'load1', 'swap_in_ps', 'swap_out_ps', 'sleep_over_ms', 'fork_ms', 'fsync_ms', 'ts_endpoint']
 # --report thresholds: a row is "slow" if any column crosses its line
 THRESH = {'ts_ping_ms': 50, 'lan_ping_ms': 20, 'ssh_max_rtt_ms': 150, 'io_full': 10, 'mem_some': 10, 'sleep_over_ms': 100,
           'fork_ms': 50, 'fsync_ms': 100, 'ssh_retrans_delta': 3}
@@ -33,12 +33,19 @@ def run(cmd, timeout):
         return ''
 
 
+def endpoint_kind(via):
+    """Which address family the ping used: v6, lan4 (RFC1918), wan4, or the DERP relay name."""
+    if 'DERP' in via: return via
+    if via.startswith('['): return 'v6'
+    return 'lan4' if re.match(r'(192\.168|10\.|172\.(1[6-9]|2\d|3[01]))\.', via) else 'wan4'
+
+
 def ts_ping():
     out = run(['tailscale', 'ping', '-c', '1', '--timeout=3s', PC_TS], 6)
     m = re.search(r'pong from \S+ \([^)]*\) via (\S+) in ([\d.]+)ms', out)
     if not m:
-        return '', 'timeout'
-    return float(m.group(2)), ('direct' if 'DERP' not in m.group(1) else m.group(1))
+        return '', 'timeout', ''
+    return float(m.group(2)), ('direct' if 'DERP' not in m.group(1) else m.group(1)), endpoint_kind(m.group(1))
 
 
 def lan_ping():
@@ -93,7 +100,7 @@ def probes():
 
 def sample(state):
     now = time.time()
-    tsms, tspath = ts_ping()
+    tsms, tspath, tsep = ts_ping()
     n, rtt, unacked, retrans, sendq = lan_sessions()
     retrans, state['retrans'] = max(0, retrans - state.get('retrans', retrans)), retrans    # per-session counters are cumulative; a closed session makes the sum drop
     tsssh = len(run(['pgrep', '-f', 'be-child ssh'], 3).split())
@@ -105,7 +112,7 @@ def sample(state):
     state.update(t=now, vm=vm)
     over, fork, fsync = probes()
     return [datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), tsms, tspath, lan_ping(), n, tsssh, rtt, unacked, retrans,
-            sendq, io_s, io_f, mem_s, mem_f, cpu_s, os.getloadavg()[0], sin, sout, over, fork, fsync]
+            sendq, io_s, io_f, mem_s, mem_f, cpu_s, os.getloadavg()[0], sin, sout, over, fork, fsync, tsep]
 
 
 def collect(count):
@@ -121,6 +128,8 @@ def collect(count):
         state = {}
     if os.path.exists(CSV_PATH) and os.path.getsize(CSV_PATH) > ROTATE_BYTES:
         os.replace(CSV_PATH, CSV_PATH + '.old')
+    if os.path.exists(CSV_PATH) and open(CSV_PATH).readline().strip() != ','.join(COLUMNS):
+        os.replace(CSV_PATH, CSV_PATH + '.old')  # columns changed: report reads each file with its own header
     new = not os.path.exists(CSV_PATH)
     with open(CSV_PATH, 'a', newline='') as f:
         w = csv.writer(f)
@@ -151,10 +160,14 @@ def report(hours, around):
         if vals: print(f'  {k:18} p50={statistics.median(vals):>7.1f}  p95={vals[int(len(vals) * .95) - 1]:>7.1f}  max={vals[-1]:>8.1f}')
     miss = sum(1 for r in rows if r['ts_path'] != 'direct')
     print(f'  tailscale path not direct/timeout: {miss} of {len(rows)} ({", ".join(sorted({r["ts_path"] for r in rows if r["ts_path"] != "direct"})) or "-"})')
+    kinds = [k for r in rows if (k := r.get('ts_endpoint'))]
+    if kinds:
+        switches = sum(1 for a, b in zip(kinds, kinds[1:]) if a != b)
+        print(f'  endpoint used: {", ".join(f"{k}={kinds.count(k)}" for k in sorted(set(kinds)))}; {switches} switches')
     flagged = [r for r in rows if r['ts_path'] != 'direct' or any((v := num(r, k)) is not None and v >= t for k, t in THRESH.items())]
     print(f'\n{len(flagged)} slow samples (any column over its line: {", ".join(f"{k}>={t}" for k, t in THRESH.items())})')
     for r in flagged[:40]:
-        print('  ' + r['ts_local'], ' '.join(f'{k}={r[k]}' for k in ('ts_path', 'ts_ping_ms', 'lan_ping_ms', 'ssh_max_rtt_ms', 'io_full', 'sleep_over_ms', 'fsync_ms') if r[k] != ''))
+        print('  ' + r['ts_local'], ' '.join(f'{k}={r[k]}' for k in ('ts_path', 'ts_endpoint', 'ts_ping_ms', 'lan_ping_ms', 'ssh_max_rtt_ms', 'io_full', 'sleep_over_ms', 'fsync_ms') if r.get(k) not in ('', None)))
     if len(flagged) > 40: print(f'  ... {len(flagged) - 40} more')
 
 

@@ -6,6 +6,8 @@ path continuously, to line a slow moment up against.
 
 ## What it records (`scripts/sshmon.py`, cron every minute on production, 6 samples 10 s apart)
 - Tailscale ping and plain LAN ping to the gaming PC: ms, and whether the Tailscale path is `direct` or a DERP relay.
+- `ts_endpoint` (added 2026-10-18): the address family the Tailscale ping used: `v6`, `lan4`, `wan4`, or the DERP relay name. Tailscale switches
+  between these on its own; `--report` prints the counts and how many times it switched, to test whether freezes line up with a switch.
 - LAN OpenSSH sessions (`:22`): max TCP rtt, unacked, retransmits since the previous sample, queued bytes.
 - Count of Tailscale SSH sessions (`tailscaled be-child ssh`). These never appear in `ss` on :22.
 - PSI avg10 for io / memory / cpu, load, swap in/out per second.
