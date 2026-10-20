@@ -1,0 +1,13 @@
+[Unit]
+Description=Placement review metrics collector (mediahub-issues#83)
+After=docker.service
+
+[Service]
+ExecStart=/home/jay/mediahub-configs/scripts/placement-metrics.py
+Restart=on-failure
+RestartSec=10
+Nice=10
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target
