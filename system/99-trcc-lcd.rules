@@ -1,0 +1,3 @@
+# Thermalright PA120 Digital (Winbond LED controller) - minimal rule for trcc; replaces generated 99-trcc-lcd.rules
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="0416", ATTRS{idProduct}=="8001", MODE="0666"
+SUBSYSTEM=="usb", ATTR{idVendor}=="0416", ATTR{idProduct}=="8001", MODE="0666"

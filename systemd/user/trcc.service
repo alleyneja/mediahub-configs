@@ -1,0 +1,12 @@
+[Unit]
+Description=TRCC daemon - Thermalright PA120 Digital cooler display
+
+[Service]
+ExecStart=%h/.local/bin/trcc daemon
+ExecStartPost=/bin/sleep 4
+ExecStartPost=%h/.local/bin/trcc led initialize 0416:8001
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
