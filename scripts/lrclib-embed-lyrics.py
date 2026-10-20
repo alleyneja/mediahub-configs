@@ -155,7 +155,12 @@ def main():
                 if time.time() - os.path.getmtime(p) < a.min_age:
                     stats["skipped_new"] += 1
                     continue
-                artist, title, album, dur, has = tags_of(p)
+                try:
+                    artist, title, album, dur, has = tags_of(p)
+                except Exception as e:  # truncated/corrupt file: skip, don't end the run
+                    stats["unreadable"] = stats.get("unreadable", 0) + 1
+                    print(f"UNREADABLE {p}: {e}")
+                    continue
                 base = os.path.splitext(p)[0]
                 if not a.embed:
                     has = os.path.exists(base + ".lrc") or (
