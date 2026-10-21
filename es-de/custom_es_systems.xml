@@ -62,4 +62,14 @@
         <platform>switch</platform>
         <theme>switch</theme>
     </system>
+    <system>
+        <!-- shadPS4 via scripts/ps4-launch: ROMs are .ps4 text files holding the game serial; pad quit (hold or double-tap Xbox button) -->
+        <name>ps4</name>
+        <fullname>Sony PlayStation 4</fullname>
+        <path>%ROMPATH%/ps4</path>
+        <extension>.ps4 .PS4</extension>
+        <command label="shadPS4 (Standalone)">/home/jay/.local/bin/ps4-launch %ROM%</command>
+        <platform>ps4</platform>
+        <theme>ps4</theme>
+    </system>
 </systemList>
