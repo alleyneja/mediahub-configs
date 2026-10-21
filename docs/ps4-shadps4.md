@@ -27,8 +27,10 @@ Install PKG menu either. Unpack with the extractor instead:
 The tool names the output folder after the serial. Dark Souls (7.3 GB PKG) took about 2 minutes.
 
 Updates: unpack the update PKG the same way, then put it in a folder named `CUSAxxxxx-UPDATE` (or
-`-patch`) next to the game folder; shadPS4 layers it on automatically (shadps4.net/quickstart). Not yet
-tested here. DLC goes in `~/.local/share/shadPS4/addcont/<CUSAxxxxx>/`. Also untested.
+`-patch`) next to the game folder; shadPS4 layers it on automatically (shadps4.net/quickstart). Verified
+Oct 21 with Bloodborne: base `CUSA00900` (01.00) + `CUSA00900-UPDATE` (01.09) made the window title read
+`<01.09>` and the game reached its title menu. The extractor names both outputs `CUSAxxxxx`, so unpack the
+update into its own temp dir and rename it. DLC goes in `~/.local/share/shadPS4/addcont/<CUSAxxxxx>/`. Untested.
 
 Keep the unpacked games on `/mnt/internal`, not `/mnt/media`: the pool runs `cache.files=off`, which
 blocks mmap (see gotcha in mediahub-issues notes), and games read thousands of small files.
