@@ -72,4 +72,14 @@
         <platform>ps4</platform>
         <theme>ps4</theme>
     </system>
+    <system>
+        <!-- KytyPS5 via scripts/kyty-launch: ROMs are .ps5 text files holding the game serial; pad quit (hold or double-tap Xbox button) -->
+        <name>ps5</name>
+        <fullname>Sony PlayStation 5</fullname>
+        <path>%ROMPATH%/ps5</path>
+        <extension>.ps5 .PS5</extension>
+        <command label="KytyPS5 (Standalone)">/home/jay/.local/bin/kyty-launch %ROM%</command>
+        <platform>ps5</platform>
+        <theme>ps5</theme>
+    </system>
 </systemList>

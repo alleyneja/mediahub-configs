@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Launch KytyPS5 for ES-DE and quit it from the pad: hold the Xbox (Guide) button ~1s, or double-tap it.
+# ES-DE ROMs for the ps5 system are small text files ("Astro Bot.ps5") whose first line is the game serial;
+# the game itself is the dumped folder /mnt/internal/arcade/roms/ps5/<serial>/ (see docs/ps5-kyty.md).
+# Kyty has no pad-reachable quit, so this watches the pad evdev node and sends SIGTERM, same approach as
+# ps4-launch / ryujinx-launch. Kyty runs from ~/Applications/kyty/current, a symlink PINNED to the
+# 2026-10-01-4479808 build: Astro Bot crashes on the 2026-10-22 builds (null copy in guest code, same spot
+# with --amd-cpu) but reaches its title screen on this one. That build predates --perf-overlay and
+# --hide-cursor, so do not pass them. Re-point the symlink only after testing the game on the new build.
+[ $# -ge 1 ] || { echo "usage: $0 <file.ps5>"; exit 2; }
+
+serial=$(head -n1 "$1" | tr -d "[:space:]")
+game="/mnt/internal/arcade/roms/ps5/$serial"
+[ -d "$game" ] || { echo "kyty-launch: no game at $game"; exit 1; }
+
+mkdir -p "$HOME/.local/share/kyty"
+cd "$HOME/.local/share/kyty" || exit 1
+"$HOME/Applications/kyty/current/kyty_emulator" --game "$game" --fullscreen &
+launcher=$!
+
+python3 - <<'EOF' &
+import glob, os, select, signal, struct, subprocess, time
+
+BTN_MODE, EV_KEY = 0x13c, 0x01
+HOLD, DOUBLE = 1.0, 0.6            # seconds
+
+def has_guide(ev):
+    # capabilities/key is a hex bitmask, most significant word first
+    try:
+        words = open(f"/sys/class/input/{ev}/device/capabilities/key").read().split()
+    except OSError:
+        return False
+    bits = int("".join(w.zfill(16) for w in words), 16)
+    return bool(bits >> BTN_MODE & 1)
+
+def quit_kyty(why):
+    pids = subprocess.run(["pgrep", "-x", "kyty_emulator"], capture_output=True, text=True).stdout.split()
+    for p in pids:
+        os.kill(int(p), signal.SIGTERM)
+    print(f"kyty-launch: {why}, sent SIGTERM to {pids}", flush=True)
+
+fds, last_scan = {}, 0.0
+down_at, last_tap = None, 0.0
+while True:                        # the bash wrapper kills this once Kyty exits
+    now = time.time()
+    if now - last_scan > 2:
+        last_scan = now
+        present = {os.path.basename(p) for p in glob.glob("/sys/class/input/event*")}
+        for fd, ev in list(fds.items()):
+            if ev not in present:
+                os.close(fd); del fds[fd]
+        for ev in present - set(fds.values()):
+            if has_guide(ev):
+                try:
+                    fds[os.open(f"/dev/input/{ev}", os.O_RDONLY | os.O_NONBLOCK)] = ev
+                except OSError:
+                    pass
+    r, _, _ = select.select(list(fds), [], [], 0.1)
+    for fd in r:
+        while True:
+            try:
+                data = os.read(fd, 24)
+            except (BlockingIOError, OSError):
+                break
+            if len(data) < 24:
+                break
+            _, _, etype, code, value = struct.unpack("llHHi", data)
+            if etype != EV_KEY or code != BTN_MODE:
+                continue
+            t = time.time()
+            if value == 1:
+                down_at = t
+                if t - last_tap < DOUBLE:
+                    quit_kyty("Guide double-tap")
+                    raise SystemExit
+                last_tap = t
+            elif value == 0:
+                down_at = None
+    if down_at and time.time() - down_at >= HOLD:
+        quit_kyty("Guide held")
+        raise SystemExit
+EOF
+watcher=$!
+
+wait $launcher
+kill $watcher 2>/dev/null
