@@ -1,7 +1,9 @@
 # PS5 on r9 (KytyPS5)
 
-Set up 2026-10-22. First game: Astro Bot (PPSA21564, v01.007.000). It reaches its title screen on the pinned
-build below. Not yet verified by Jay: controls, gameplay, FPS, quitting from ES-DE.
+Set up 2026-10-22. First game: Astro Bot (PPSA21564, v01.007.000), playable with the community patch below:
+about 45 FPS (44-46, Kyty's own title-bar counter) on the Oct 1 build, world renders, pad works. CPU-bound
+(Kyty ~280% CPU, GPU ~45%). Without the patch the world does not draw (dull brown/grey gradient only) and
+it ran about 35 FPS.
 
 ## Pieces
 
@@ -27,6 +29,19 @@ Old tags stay downloadable from the GitHub releases page. Newer builds take extr
 `--hide-cursor`) that the Oct 1 build rejects, so `kyty-launch` passes only `--fullscreen`. Add those back
 if the pin moves to a build that supports them. `kyty_updater` ships in the tarball; do not run it.
 
+## Community patches (Astro Bot)
+
+Patches come from the Kyty site repo `KytyPS5/kytyps5.github.io` under `patches/<PPSA>/`. Astro Bot 01.007.000
+uses "Rendering and timing - 1.007 experimental" (`PPSA21564.json`, 28 KB of byte patches to `eboot.bin`).
+Its `source_sha256` (3b510079...debd) matches our `eboot.bin`, so it was made for this exact binary. It
+selects the non-tiled lighting renderer (the fix for the missing world), decouples gameplay timers from FPS,
+fixes 1080p render size, caps the delta step at 1/30 s and loads 4K textures at 2K; everything else is off.
+
+Install: copy the JSON to `~/.local/share/kyty/_Patches/<PPSA>.json`. `kyty-launch` passes
+`--game-patch` automatically when that file exists. The JSON is NOT in this repo (public repo, licence
+unknown). The patch is a list of `mods` with `enabled` flags; edit those to change options. Read any patch
+before installing: it rewrites game memory.
+
 ## Adding a game
 
 PS5 dumps are plain folders (`eboot.bin`, `sce_module/`, `sce_sys/`, `data/`). Astro Bot arrived as a 40 GB
@@ -44,4 +59,6 @@ Check the Kyty compatibility list (kytyps5.github.io) for the title and platform
 
 - Games run native guest code as the logged-in user. Run unfamiliar dumps with care (sandbox idea pending).
 - ClamAV is installed (`clamscan`); it knows almost nothing about PlayStation code.
+- ES-DE has no PS5 system (upstream list stops at ps4), so the scraper says "no platform set" and the theme has
+  no PS5 logo. The `ps5` platform name in `custom_es_systems.xml` is unrecognised. Scraping cannot work.
 - Compatibility "In game" means controllable gameplay, with bugs and performance problems possible.

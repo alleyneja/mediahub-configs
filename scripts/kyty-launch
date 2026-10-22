@@ -15,7 +15,11 @@ game="/mnt/internal/arcade/roms/ps5/$serial"
 
 mkdir -p "$HOME/.local/share/kyty"
 cd "$HOME/.local/share/kyty" || exit 1
-"$HOME/Applications/kyty/current/kyty_emulator" --game "$game" --fullscreen &
+# A community patch for this serial, if one is installed, is passed with --game-patch (see docs/ps5-kyty.md).
+patch="$HOME/.local/share/kyty/_Patches/$serial.json"
+args=(--game "$game" --fullscreen)
+[ -f "$patch" ] && args+=(--game-patch "$patch")
+"$HOME/Applications/kyty/current/kyty_emulator" "${args[@]}" &
 launcher=$!
 
 python3 - <<'EOF' &
