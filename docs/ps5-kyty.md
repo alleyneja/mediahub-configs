@@ -42,6 +42,22 @@ Install: copy the JSON to `~/.local/share/kyty/_Patches/<PPSA>.json`. `kyty-laun
 unknown). The patch is a list of `mods` with `enabled` flags; edit those to change options. Read any patch
 before installing: it rewrites game memory.
 
+## Build search (Oct 22, Astro Bot 01.007 + patch)
+
+Tested with the community patch, 85 s each, title-bar FPS. Order is by release time.
+
+| Build | Result |
+|---|---|
+| 2026-10-01-4479808 | works; **steady 44-46 FPS in gameplay** (pinned) |
+| 2026-10-10-f3836bb, 2026-10-12-dad900c | boot fine (title screen only) |
+| 2026-10-16-3ff6606 | boots, but gameplay FPS swings 0-41 with repeated pauses; worse than the pin |
+| 2026-10-16-717b501 and later tested | stall at start (FPS 0, ~27 shaders compiled) |
+| 2026-10-22-f5f4e7d | without the patch: null-pointer crash; with it: Vulkan `ErrorDeviceLost` after about a minute |
+
+A stalled build ignores SIGTERM, so `kyty-launch`'s pad quit does not work on one; use `kill -9`. Only
+`4479808`, `3ff6606` and `f5f4e7d` are kept in `~/Applications/kyty/`. The title screen is not a reliable
+test: pick a build by playing a level, not by whether it boots.
+
 ## Adding a game
 
 PS5 dumps are plain folders (`eboot.bin`, `sce_module/`, `sce_sys/`, `data/`). Astro Bot arrived as a 40 GB
