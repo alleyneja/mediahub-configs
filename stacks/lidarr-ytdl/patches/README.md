@@ -36,3 +36,12 @@ check only runs *after* a download finishes, and a live stream never does, so
 ffmpeg recorded one for 40+ min and wedged the whole album job. Note
 `is_live` is None under `process=False`; only `live_status` is reliable. The check
 fails open (any lookup error -> normal download).
+
+**One pass first (Oct 23, `scheduler.py`):** upstream's scheduler only skips albums
+attempted within `scheduler_retry_after_hours`, so a partly-failed album re-entered the
+pool after 72h alongside untouched ones (Chillhop lofi albums with no YouTube source
+kept taking slots, ~1h each). The patch queues only albums with no history at all
+(`get_attempted_album_ids_since(0)`: download_logs or track_downloads) while any exist;
+retries resume once every missing album has had a first attempt. Clearing history makes
+those albums count as never-attempted again. A per-album retry cap is a possible follow-up.
+Diff: `scheduler.py.diff`; original: `scheduler.py.orig`.

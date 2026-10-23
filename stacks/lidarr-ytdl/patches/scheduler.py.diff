@@ -1,0 +1,21 @@
+--- scheduler.py.orig	2026-10-15 09:29:12.000000000 -0500
++++ scheduler.py	2026-10-23 02:02:18.906540891 -0500
+@@ -74,6 +74,18 @@
+     if not new_albums:
+         return
+ 
++    # One pass first: while any album has never been attempted, only those
++    # are queued. Albums that are still partly missing after an attempt wait
++    # until the whole library has had its first try, then retry as before.
++    ever_attempted = models.get_attempted_album_ids_since(0)
++    fresh_albums = [a for a in new_albums if a["id"] not in ever_attempted]
++    if fresh_albums:
++        logger.info(
++            f"Scheduler: {len(fresh_albums)} never-attempted albums remain;"
++            f" deferring {len(new_albums) - len(fresh_albums)} retries"
++        )
++        new_albums = fresh_albums
++
+     max_albums = int(config.get("scheduler_max_albums", 0))
+     if max_albums > 0:
+         new_albums = new_albums[:max_albums]

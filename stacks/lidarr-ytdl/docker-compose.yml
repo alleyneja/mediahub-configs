@@ -32,6 +32,9 @@ services:
       # Length check after every download (patches/README.md). Based on the pinned
       # image's processing.py: re-diff against patches/processing.py.orig on any bump.
       - ./patches/processing.py:/app/processing.py:ro
+      # One pass first: scheduler queues never-attempted albums before any retry
+      # (patches/README.md). Re-diff against patches/scheduler.py.orig on any bump.
+      - ./patches/scheduler.py:/app/scheduler.py:ro
     # No login on the web UI: LAN only, never port-forward.
     ports:
       - "5005:5000"
