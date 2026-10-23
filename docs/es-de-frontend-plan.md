@@ -6,7 +6,7 @@
 
 **Architecture:** ES-DE runs as an unsandboxed AppImage on the headless `:1` display, launches the existing emulator Flatpaks with the ROM as an argument, and is added as a *fourth* Sunshine tile alongside the three existing ones. No emulator, ROM, or RomM configuration is modified.
 
-**Tech Stack:** ES-DE 3.4.1 (AppImage), Flatpak emulators (RetroArch 1.22.2, Dolphin 2606, PCSX2 v2.6.3), Sunshine + NvFBC on Xorg `:1`, ScreenScraper for metadata.
+**Tech Stack:** ES-DE 3.4.1 (AppImage; upgraded to 3.5.0 on 2026-10-22 via in-app updater, see emulators README), Flatpak emulators (RetroArch 1.22.2, Dolphin 2606, PCSX2 v2.6.3), Sunshine + NvFBC on Xorg `:1`, ScreenScraper for metadata.
 
 **Spec:** `mediahub-configs/docs/es-de-frontend-design.md`
 
