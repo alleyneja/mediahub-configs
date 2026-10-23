@@ -7,6 +7,7 @@
 # Official AppImage preferred: the Flathub build shows a blocking "unofficial build" popup that a
 # controller can't dismiss, gets no project support, and reports itself as local_build.
 "$HOME/.local/bin/arcade-pad-select" rpcs3   # Player 1 -> Sunshine pad or wired pad
+"$HOME/.local/bin/rpcs3-layout" "$1"          # shooters: triggers act as L1/R1 (Xbox feel); others: positional
 APP="$HOME/Applications/rpcs3.AppImage"
 if [ -x "$APP" ]; then
   "$APP" --no-gui --fullscreen "$1" &

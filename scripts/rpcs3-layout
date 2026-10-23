@@ -1,0 +1,59 @@
+#!/usr/bin/env python3
+"""Pick the Xbox-pad shoulder/trigger layout in RPCS3 for the game about to start.
+
+    rpcs3-layout <game path>
+
+RPCS3 maps Xbox LB/RB -> PS3 L1/R1 and LT/RT -> L2/R2 (positional). Many PS3 shooters put aim/fire on
+L1/R1 and grenades on L2/R2, so an Xbox player pressing the triggers throws a grenade instead of firing.
+For games listed in SHOOTERS the four are swapped (LT->L1, RT->R1, LB->L2, RB->R2) for Players 1-4, so
+the triggers aim and fire as they do on an Xbox. Every other game gets the positional layout back, so
+the config never stays swapped after a shooter. Only the four lines per player change; devices and
+every other binding are left alone (see arcade-pad-select, which owns the Player 1 device line).
+
+Add a game by adding a substring of its folder or file name to SHOOTERS.
+"""
+import os, re, sys
+
+HOME = os.path.expanduser('~')
+RPCS3 = [f'{HOME}/.config/rpcs3/input_configs/global/Default.yml',
+         f'{HOME}/.var/app/net.rpcs3.RPCS3/config/rpcs3/input_configs/global/Default.yml']
+
+SHOOTERS = ['Call of Duty - Modern Warfare 2']
+
+POSITIONAL = {'L1': 'LB', 'L2': 'LT', 'R1': 'RB', 'R2': 'RT'}
+SWAPPED = {'L1': 'LT', 'L2': 'LB', 'R1': 'RT', 'R2': 'RB'}
+
+
+def apply(path, layout):
+    """Set the four button lines in the Player 1-4 blocks; returns how many lines changed."""
+    if not os.path.exists(path):
+        return None
+    text = open(path).read()
+    changed = 0
+    out = []
+    for block in re.split(r'(?m)^(?=Player \d Input:)', text):
+        m = re.match(r'Player (\d) Input:', block)
+        if m and 1 <= int(m.group(1)) <= 4:
+            for button, source in layout.items():
+                block, n = re.subn(rf'(?m)^(    {button}: ).*$', rf'\g<1>{source}', block, count=1)
+                changed += n
+        out.append(block)
+    new = ''.join(out)
+    if new != text:
+        open(path, 'w').write(new)
+    return changed
+
+
+def main(game):
+    shooter = any(s.lower() in game.lower() for s in SHOOTERS)
+    layout = SWAPPED if shooter else POSITIONAL
+    for p in RPCS3:
+        apply(p, layout)
+    print(f'rpcs3-layout: {"swapped (triggers=L1/R1)" if shooter else "positional"} for {os.path.basename(game.rstrip("/"))}',
+          flush=True)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        sys.exit('usage: rpcs3-layout <game path>')
+    main(sys.argv[1])

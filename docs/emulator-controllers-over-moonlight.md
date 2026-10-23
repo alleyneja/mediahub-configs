@@ -307,3 +307,21 @@ Wii games launch but do not respond to the pad. This is the long-standing
 "Wii Remote + MotionPlus configured separately" Phase 3 item, never done. Note
 Wii Sports Resort cannot be solved this way regardless (needs real MotionPlus);
 titles with Classic Controller support are the ones worth mapping.
+
+## 2026-10-22 — RPCS3: triggers act as L1/R1 for shooters (Xbox feel)
+
+RPCS3's committed layout maps the Xbox pad by position: LB/RB -> L1/R1 and LT/RT -> L2/R2. PS3 shooters put
+aim/fire on L1/R1 and grenades on L2/R2, so an Xbox player's trigger finger throws grenades. `scripts/rpcs3-layout`
+(called by `rpcs3-fullscreen` right after `arcade-pad-select`) rewrites only the L1/L2/R1/R2 lines of Players 1-4
+in `Default.yml` before each launch:
+
+| Game | LB | RB | LT | RT |
+|---|---|---|---|---|
+| in `SHOOTERS` (now: Call of Duty - Modern Warfare 2) | L2 | R2 | L1 | R1 |
+| everything else | L1 | R1 | L2 | R2 |
+
+Because every launch sets the layout, the config never stays swapped after a shooter. Add a shooter by adding a
+substring of its folder name to `SHOOTERS` in the script. Racing games must stay positional (gas is R2).
+The committed `es-de/rpcs3-input-Default.yml` stays the positional default. Tested on a config copy (swap,
+idempotent re-run, byte-identical restore, Players 5-7 untouched) and on the live file; a real MW2 launch is
+confirmed by playing it.
