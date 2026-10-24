@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Blocks a commit whose staged changes contain secrets (API keys, tokens, passwords). This repo is
+# PUBLIC, see docs/key-rotation.md and issue #64. Enable once per clone:
+#   git config core.hooksPath scripts/git-hooks
+# Needs the gitleaks binary (~/.local/bin/gitleaks). If it is missing the commit is allowed with a
+# warning, so a fresh clone is never wedged. Intentional false positives: add to .gitleaksignore.
+export PATH="$HOME/.local/bin:$PATH"
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks not installed, skipping secret scan" >&2
+  exit 0
+fi
+exec gitleaks git --pre-commit --staged --redact --no-banner --exit-code 1
