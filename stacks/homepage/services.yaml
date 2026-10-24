@@ -7,11 +7,6 @@
         href: https://threadfin.lan/web
         description: IPTV proxy & channel manager
         icon: mdi-television-play
-    # RETIRED 2026-09-21 (fleet-architecture D9); to restore, uncomment this block
-#    - Jellyfin:
-#        href: https://jellyfin.lan
-#        description: Open source media server
-#        icon: jellyfin.png
     - Audiobookshelf:
         href: https://audiobookshelf.lan
         description: Audiobook & podcast server
@@ -20,15 +15,6 @@
         href: https://calibre-web.lan
         description: Ebook library
         icon: calibre-web.png
-    # RETIRED 2026-09-21 (fleet-architecture D9); to restore, uncomment this block
-#    - RomM:
-#        href: https://romm.lan
-#        description: Game library & ROM manager
-#        icon: romm.png
-#        widget:
-#          type: romm
-#          url: http://romm:8080
-#          fields: ["platforms", "totalRoms", "totalfilesize"]
 - Management:
     - Sonarr:
         href: https://sonarr.lan

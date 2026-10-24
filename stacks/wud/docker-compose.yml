@@ -23,14 +23,6 @@ services:
       # to every one of the ~50 containers WUD watches.
       # BACKUP=true keeps a local .back copy of the compose file as a second
       # safety net alongside git.
-      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_FILE: /home/jay/mediahub-configs/stacks/stirling-pdf/docker-compose.yml
-      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_AUTO: "false"
-      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_INCLUDEBYDEFAULT: "false"
-      WUD_TRIGGER_DOCKERCOMPOSE_STIRLINGPDF_BACKUP: "true"
-      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_FILE: /home/jay/mediahub-configs/stacks/jellyfin/docker-compose.yml
-      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_AUTO: "false"
-      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_INCLUDEBYDEFAULT: "false"
-      WUD_TRIGGER_DOCKERCOMPOSE_JELLYFIN_BACKUP: "true"
       # Third pilot (2026-09-05): added specifically to get a second real
       # trial of the missing-backup/permission-reset quirks found on
       # jellyfin, since a container with no pending update can't be
@@ -271,8 +263,6 @@ services:
       # layer, invisible on the host and wiped on WUD's next redeploy. See
       # the 2026-09-05 pilot conversation: confirmed .back files were being
       # created, just never surfacing here, because of this exact mistake.
-      - /home/jay/mediahub-configs/stacks/stirling-pdf:/home/jay/mediahub-configs/stacks/stirling-pdf
-      - /home/jay/mediahub-configs/stacks/jellyfin:/home/jay/mediahub-configs/stacks/jellyfin
       - /home/jay/mediahub-configs/stacks/audiobookshelf:/home/jay/mediahub-configs/stacks/audiobookshelf
       - /home/jay/mediahub-configs/stacks/uptime-kuma:/home/jay/mediahub-configs/stacks/uptime-kuma
       # NOTE: this directory also holds .env and discord.env with real

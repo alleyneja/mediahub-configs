@@ -366,13 +366,7 @@ filtering:
     - domain: pterodactyl.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
-    - domain: jellyfin.lan
-      answer: SERVER_IP_PLACEHOLDER
-      enabled: true
     - domain: threadfin.lan
-      answer: SERVER_IP_PLACEHOLDER
-      enabled: true
-    - domain: romm.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
     - domain: mealie.lan

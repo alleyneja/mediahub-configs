@@ -98,8 +98,6 @@ dirs=(
   /srv/docker/rreading-glasses
   /srv/docker/sabnzbd
   /srv/docker/seer
-  /srv/docker/stirling-pdf/config
-  /srv/docker/stirling-pdf/logs
   /srv/docker/threadfin/conf/iptvorg-epg
   /srv/docker/vaultwarden
   /srv/docker/visibility/netdata
@@ -137,22 +135,6 @@ echo "✓ openGym source ready"
 sudo cp "$REPO_DIR/stacks/iptvorg-epg/channels.xml" /srv/docker/iptvorg-epg/channels.xml
 echo "✓ iptvorg-epg channel list staged"
 
-# ── Stirling PDF OCR languages ─────────────────────────────────────────────────
-# Bind-mounting tessdata masks the image's built-in language packs, so seed the
-# host dir from the image first via a disposable container. Adds Spanish, which
-# isn't in the base image. See docs/fresh-machine-bring-up.md.
-if [ -z "$(sudo ls -A /srv/docker/stirling-pdf/tessdata 2>/dev/null)" ]; then
-  sudo mkdir -p /srv/docker/stirling-pdf/tessdata
-  docker run --rm --entrypoint sh -v /srv/docker/stirling-pdf/tessdata:/dest \
-    stirlingtools/stirling-pdf:2.14.3-fat \
-    -c "cp -r /usr/share/tesseract-ocr/5/tessdata/. /dest/"
-  sudo curl -fsSL -o /srv/docker/stirling-pdf/tessdata/spa.traineddata \
-    https://github.com/tesseract-ocr/tessdata/raw/main/spa.traineddata
-  echo "✓ Stirling PDF tessdata seeded (eng/deu/fra/por/chi_sim/osd/spa)"
-else
-  echo "✓ Stirling PDF tessdata already seeded"
-fi
-
 # ── Docker network ─────────────────────────────────────────────────────────────
 docker network inspect mediahub_internal >/dev/null 2>&1 || \
   docker network create --driver bridge --subnet 172.18.0.0/16 mediahub_internal
@@ -182,11 +164,8 @@ fi
 # ── Start stacks in dependency order ──────────────────────────────────────────
 # adguard first (DNS), caddy second (TLS), authentik third (several stacks do
 # OIDC against it), then everything else.
-# Jellyfin and RomM are RETIRED (stopped on production, deletion tracked in
-# mediahub-issues#27). Their stacks/ dirs are kept in the repo but deliberately not
-# deployed here. To bring one back: add it to this list, its .env to env_files, its
-# dirs to the mkdir list; RomM also needs external volumes 33_mysql-data,
-# 33_romm-redis-data, 33_romm-resources (docker volume create).
+# Jellyfin, RomM and production's Stirling PDF were retired and deleted 2026-10-24
+# (mediahub-issues#27, #25). Stirling PDF now runs on r9 only (stacks/stirling-pdf-r9).
 stacks=(
   adguard
   caddy
@@ -207,7 +186,6 @@ stacks=(
   opengym
   iptvorg-epg
   threadfin
-  stirling-pdf
   uptime-kuma
   wud
 )

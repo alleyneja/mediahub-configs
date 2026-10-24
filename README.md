@@ -31,7 +31,7 @@ Internet
                  │
                  ├── Caddy (reverse proxy) — handles all *.lan HTTPS with internal TLS certs
                  │
-                 ├── Authentik — SSO login provider (Jellyfin, RomM)
+                 ├── Authentik — SSO login provider
                  │
                  └── ~47 Docker containers, deployed straight from this repo (Portainer is a UI only — see below)
 ```
@@ -81,7 +81,6 @@ Docker containers cannot route to `100.104.43.6` — it's a host-local Tailscale
 | Stack | What it does | Domain |
 |-------|-------------|--------|
 | Plex | Media server + Live TV/DVR (hardware-transcoded via the P400) | plex.lan |
-| Jellyfin | Media server (SSO via Authentik) | jellyfin.lan |
 | Sonarr / Radarr / Lidarr / Prowlarr / Bazarr | TV / movie / music management + indexer aggregation + subtitles (one combined stack, `arr-stack`) | sonarr.lan / radarr.lan / lidarr.lan / prowlarr.lan / bazarr.lan |
 | Seer | Request management (Overseerr fork) | seer.lan |
 | Aurral | Music discovery/request frontend → feeds Lidarr → SAB/qBittorrent (not a downloader itself) | aurral.lan |
@@ -117,8 +116,7 @@ Docker containers cannot route to `100.104.43.6` — it's a host-local Tailscale
 | Obsidian-sync | CouchDB + LiveSync backend for Obsidian vault syncing | obsidian-sync.lan |
 | Mealie | Recipe manager | mealie.lan |
 | openGym | Gym/workout tracker (passkey-only auth, no password/recovery) | gym.lan |
-| Stirling PDF | PDF toolkit | stirling.lan |
-| RomM | Game ROM library (SSO via Authentik) | romm.lan |
+| Stirling PDF | PDF toolkit (runs on r9) | stirling.lan |
 | Pterodactyl | Minecraft server panel — **the only service exposed to the open internet** | pterodactyl.lan |
 
 ### Infrastructure & Monitoring
@@ -196,7 +194,7 @@ sudo tailscale up --advertise-routes=192.168.0.0/24 --accept-dns=false
 
 ### After setup.sh completes
 
-setup.sh automatically installs Caddy's CA cert into the system trust store and Jellyfin.
+setup.sh automatically installs Caddy's CA cert into the system trust store.
 
 1. **Point your router's DNS** at `SERVER_IP`
 2. **Tailscale admin console:** approve the subnet route and set Split DNS for `.lan` → `SERVER_IP`
