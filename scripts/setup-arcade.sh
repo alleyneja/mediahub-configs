@@ -3,7 +3,7 @@
 #
 # setup.sh (repo root) builds the Docker service stacks. It does NOT touch emulators,
 # ES-DE or Sunshine; this script does. Written 2026-09-20 while migrating that half from
-# mediahub-i7 (today mediahub-production) to mediahub-r9. Run one step at a time:
+# mediahub-i7 (formerly mediahub-production) to mediahub-r9. Run one step at a time:
 #
 #   ./setup-arcade.sh flatpaks        # emulators, pinned to the builds i7 ran
 #   ./setup-arcade.sh sunshine        # Sunshine, from the .deb archived with the emulators

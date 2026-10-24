@@ -1,6 +1,6 @@
 # mediahub-configs
 
-Configuration backup for **mediahub-production** — a self-hosted personal cloud, media server, and household app platform running on a Dell OptiPlex 3050.
+Configuration backup for **mediahub-i7** (formerly mediahub-production) — a self-hosted personal cloud, media server, and household app platform running on a Dell OptiPlex 3050.
 
 What started as "Plex + the arr stack" has grown into ~47 containers covering media, photos, cloud storage, password management, recipes, a gym tracker, book/audiobook reading, IPTV Live TV, LAN monitoring, and a retro-gaming/streaming setup. This README tracks the current state; `docs/` holds the incident writeups and design decisions behind it.
 
@@ -25,7 +25,7 @@ Internet
    │
    └── Tailscale VPN (subnet router — exposes 192.168.0.0/24)
           │
-          └── mediahub-production (192.168.0.21 / Tailscale 100.104.43.6)
+          └── mediahub-i7 (192.168.0.21 / Tailscale 100.104.43.6)
                  │
                  ├── AdGuard Home (port 53) — LAN DNS, blocks ads, rewrites *.lan → 100.104.43.6
                  │

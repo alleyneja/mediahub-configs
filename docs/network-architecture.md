@@ -20,7 +20,7 @@ Requirements first, then network needs, then design, then hardware. In that orde
 |---|---|---|
 | R1 | Exactly one internet-facing service: **Pterodactyl** (strangers connect inbound) | stated |
 | R2 | **Amended 2026-08-22.** RomM / arcade downloads and remote admin are tailnet-only. **Plex is not** — it is shared with people outside the tailnet (e.g. Ed), so it must work without Tailscale. Relay is an accepted fallback. | stated |
-| R3 | Household internet must survive mediahub-production being down | stated |
+| R3 | Household internet must survive mediahub-i7 being down | stated |
 | R4 | Trust set is closed and known: Jay, Mafe, brother, household devices. No public wifi guests, no strangers on the LAN | stated |
 | R5 | Local Moonlight: ceiling-mounted Dangbei projector, wifi, ~40 ft, one interior wall | stated |
 | R6 | Storage traffic and client traffic share one 1 Gb NIC — but see §5, the penalty is far smaller than first assumed | measured |
@@ -182,7 +182,7 @@ fix it. Options, none yet chosen:
 
 ### 4.4 DNS
 
-AdGuard remains on mediahub-production, on host networking, listening on `*:53`, and it
+AdGuard remains on mediahub-i7, on host networking, listening on `*:53`, and it
 does filter correctly. The server's own `resolv.conf` should point at it rather than
 bypassing to `1.1.1.1`.
 
@@ -308,7 +308,7 @@ Worth a second look only if remote clients actually report the server offline.
 
 ## 6. Known and accepted
 
-**DNS is a single point of failure.** AdGuard runs only on mediahub-production. When that
+**DNS is a single point of failure.** AdGuard runs only on mediahub-i7. When that
 host reboots, LAN clients lose DNS and the internet appears down even though routing is
 unaffected — a partial violation of R3.
 

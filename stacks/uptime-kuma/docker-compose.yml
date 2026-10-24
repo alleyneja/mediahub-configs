@@ -70,8 +70,8 @@ services:
     container_name: netdata
     # Explicit hostname (2026-09-12) -- without it Docker assigns the
     # container ID as hostname, so Discord alerts read as a meaningless
-    # hex string instead of "mediahub-production".
-    hostname: mediahub-production
+    # hex string instead of "mediahub-i7" (renamed from mediahub-production 2026-10-07).
+    hostname: mediahub-i7
     restart: unless-stopped
     labels:
       - wud.trigger.include=dockercompose.netdata

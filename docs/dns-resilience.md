@@ -2,7 +2,7 @@
 
 **Status:** decided 2026-09-20
 **Relates to:** `network-architecture.md` requirement **R3** (household internet must survive
-mediahub-production being down), `discord-alerts.md`
+mediahub-i7 being down), `discord-alerts.md`
 
 ## What happened
 
@@ -12,7 +12,7 @@ overlapped:
 1. AdGuard's only upstream was Quad9 over HTTPS, and its "fallback" was also DoH
    (Cloudflare, Google). Those HTTPS lookups stalled, so AdGuard had no working path.
    The cause of the stall is **unconfirmed** (gateway SBG8300 or ISP path suspected).
-2. Tailscale on mediahub-production was stopped (`tailscale down`, logged 18:14:49). Every
+2. Tailscale on mediahub-i7 (then named mediahub-production) was stopped (`tailscale down`, logged 18:14:49). Every
    tailnet device used `100.104.43.6` as its only DNS server, so they lost all DNS.
 
 No Discord alert went out: Uptime Kuma's `dns:` override listed only AdGuard, so it could

@@ -1,4 +1,4 @@
-# Log collector for mediahub-production / i7 (issue #71). Read-only: reads container logs via the Docker socket and
+# Log collector for mediahub-i7 (issue #71). Read-only: reads container logs via the Docker socket and
 # ships them to the central Loki on r9 over Tailscale. It never restarts or touches containers.
 services:
   alloy:
