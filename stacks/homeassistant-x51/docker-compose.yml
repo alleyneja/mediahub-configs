@@ -1,4 +1,4 @@
-# Home Assistant on mediahub-staging (x51), Phase 6 (docs/fleet-architecture.md F4): home-security
+# Home Assistant on mediahub-x51 (staging role), Phase 6 (docs/fleet-architecture.md F4): home-security
 # system on its own machine, isolated from GPU/game workloads so a game crash can't take security
 # down. Reachable only on x51's Tailscale address -- no port published to the LAN or internet.
 # No cameras wired up yet; see stacks/frigate-x51 for the NVR/detection half.

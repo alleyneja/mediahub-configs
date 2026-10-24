@@ -120,9 +120,11 @@ def sync(args, env):
     finally:
         os.unlink(t.name)
     run(SSH + [
-        f"cd {X51_DIR} && docker compose stop -t 20 && "
-        f"sudo -n install -m 600 -o root -g root /tmp/AdGuardHome.yaml.new conf/AdGuardHome.yaml && "
-        f"rm -f /tmp/AdGuardHome.yaml.new && docker compose start"
+        # By container name, not `docker compose`: the container is owned by the repo-deployed
+        # adguard-x51 project, so a compose project rooted in X51_DIR finds nothing to stop/start.
+        f"docker stop -t 20 adguardhome && "
+        f"sudo -n install -m 600 -o root -g root /tmp/AdGuardHome.yaml.new {X51_DIR}/conf/AdGuardHome.yaml && "
+        f"rm -f /tmp/AdGuardHome.yaml.new && docker start adguardhome"
     ])
     check_answers(prod)
     left = diff_keys(replica, yaml.safe_load(run(SSH + ["sudo", "-n", "cat", f"{X51_DIR}/conf/AdGuardHome.yaml"])))

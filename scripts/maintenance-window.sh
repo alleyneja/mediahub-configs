@@ -75,7 +75,7 @@ deferred_waiting(){ command -v needrestart >/dev/null 2>&1 || return 0
   needrestart -b -r l 2>/dev/null | sed -n 's/^NEEDRESTART-SVC: //p' | grep -E "$DEFERRED_RE"; }
 
 if [ "$DRY" = 1 ]; then
-  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] deferred_restarts=[$(deferred_waiting | tr '\n' ' ')] plex_streams=$( [ "$HOST" = mediahub-staging ] && echo n/a || plex_streams)"; exit 0
+  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] deferred_restarts=[$(deferred_waiting | tr '\n' ' ')] plex_streams=$( { [ "$HOST" = mediahub-staging ] || [ "$HOST" = mediahub-x51 ]; } && echo n/a || plex_streams)"; exit 0
 fi
 
 # --- apply updates (only packages that don't need a restart are handled here when no reboot is due) ---------------

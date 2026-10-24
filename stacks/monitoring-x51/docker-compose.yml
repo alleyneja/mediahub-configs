@@ -6,7 +6,7 @@ services:
   netdata:
     image: netdata/netdata:latest
     container_name: netdata
-    hostname: mediahub-staging
+    hostname: mediahub-x51
     restart: unless-stopped
     pid: host
     cap_add:

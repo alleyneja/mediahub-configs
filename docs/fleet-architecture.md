@@ -52,7 +52,7 @@ Recorded so they are not re-litigated:
 |---|---|---|---|---|
 | `mediahub-production` | Intel i7-7700, 32 GB DDR4, Quadro P400, 2 TB NVMe (OS/Docker), 12 TB HDD (media) | 192.168.0.21 | Everything: media, apps, Plex, Live TV, game streaming | Storage and library host (it holds the 8.8 TB) and backup target; services move off it in phases (proposed, see Q7) |
 | `mediahub-r9` | Ryzen 9 9900X, 64 GB DDR5-6000, RTX 5070 Ti 16 GB, 2 × 2 TB NVMe | 192.168.0.22 (reserved in the router; was `.149` until 2026-09-21) | Bring-up and burn-in | Primary host: successor to production, running the full service set once phases 2–4 are done |
-| `mediahub-staging` | Alienware X51 R2, i7-4790, 16 GB, GTX 1650 | 192.168.0.20 | Rehearsal/practice machine | Candidate for the security system (F4) |
+| `mediahub-x51` (staging role) | Alienware X51 R2, i7-4790, 16 GB, GTX 1650 | 192.168.0.20 | Rehearsal/practice machine | Candidate for the security system (F4) |
 | NAS | UGREEN NASync DH4300 Plus | 192.168.0.23 | Network storage, NFS | Unchanged |
 | `gaming-pc` (Tailscale name `gaming-desktop`) | Windows 11 workstation; never headless | 192.168.0.206 | Jay's daily machine and the usual origin of SSH sessions to the servers; holds the installed PC games | Unchanged. Part of the fleet as a client/workstation, not a server |
 
@@ -61,7 +61,7 @@ Recorded so they are not re-litigated:
 | Address | Host | Notes |
 |---|---|---|
 | `192.168.0.1` | Router (Arris SBG8300) | Hands out DHCP; DNS list it gives clients: AdGuard `.21`, then `1.1.1.1` |
-| `192.168.0.20` | `mediahub-staging` (future `mediahub-x51`) | Being retired |
+| `192.168.0.20` | `mediahub-x51` (was `mediahub-staging` until 2026-10-24) | Being retired |
 | `192.168.0.21` | `mediahub-production` (future `mediahub-i7`) | AdGuard DNS for the whole network. Do not change without changing the router's DNS setting first |
 | `192.168.0.22` | `mediahub-r9` | Moved here from `.149` on 2026-09-21 |
 | `192.168.0.23` | UGREEN NAS | Mounted BY ADDRESS in production's `fstab`. Reservation added 2026-09-21 (had none before) |
@@ -157,9 +157,9 @@ must respect F6. It is tracked in the private backlog until designed.
   - `mediahub-i7` — the i7-7700 machine. **Renamed from `mediahub-production` on 2026-10-07** (OS hostname,
     `/etc/hosts`; Tailscale already used this name). Fleet scripts that branch on `hostname` accept both names
     until every machine is renamed (`maintenance-window.sh`, `update-restart-report.sh`, `fleet-healthcheck.sh`).
-  - `mediahub-x51` — the Alienware X51 R2, **OS hostname still `mediahub-staging`** (Tailscale already says x51).
-    Rename pending: the machine was powered off (UPS, issue #67) on 2026-10-07. Do `sudo hostnamectl set-hostname
-    mediahub-x51`, fix the `127.0.1.1` line in `/etc/hosts`, then drop the old names from the three scripts.
+  - `mediahub-x51` — the Alienware X51 R2, **OS hostname renamed from `mediahub-staging` on 2026-10-24** (issue #51; `hostnamectl` and
+    `/etc/hosts` done, Netdata node name changed). `fleet-healthcheck.sh` and `maintenance-window.sh` still accept
+    the old name too; drop it once nothing else references it.
   - `mediahub-production` and `mediahub-staging` then become **role names** (DNS aliases) that point
     at whichever machine holds the role.
   - The gaming PC keeps its own name; it is a client, not a server.
@@ -185,7 +185,7 @@ must respect F6. It is tracked in the private backlog until designed.
 | `mediahub-r9` | **Compute and experiments:** Plex and transcoding (done), game streaming/emulation, Immich (+ML), Jellyfin, Minecraft/Pterodactyl, future local LLM, other heavy or non-critical apps | Only machine with real CPU/RAM/GPU headroom; the most likely to reboot or crash (games, drivers) | Expected to be on most of the time |
 | `mediahub-production` (i7) | **Core and storage:** the "always-on essentials" (AdGuard DNS, Caddy, Vaultwarden, Authentik, Nextcloud), the library disk, the *arr and download pipeline (must share a device with the library), Threadfin | Stable, always on, no gaming, holds the 8.8 TB | Its memory pressure (see below) is relieved by moving heavy apps to r9 |
 | NAS | Bulk storage and backup target; also the store for security footage | 22 TB, always on | Unchanged otherwise |
-| `mediahub-staging` (x51) | **Security system** (Home Assistant, cameras); footage stored on the NAS | Separate failure domain from games (F4) | A second AdGuard here was considered, not decided (see Q9) |
+| `mediahub-x51` (staging role) | **Security system** (Home Assistant, cameras); footage stored on the NAS | Separate failure domain from games (F4) | A second AdGuard here was considered, not decided (see Q9) |
 | gaming PC | Client only | F11 | Unchanged |
 
 **Requirements captured for Phase 4 (2026-09-21):**
