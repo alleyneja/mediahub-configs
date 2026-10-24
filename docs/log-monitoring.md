@@ -12,7 +12,7 @@ Issue: mediahub-issues #71 (Seerr→Plex failed silently for 4+ weeks; container
 Example query: `{container="seer"} |= "Scan interrupted"` (Explore → Loki).
 
 Deploy: i7 `cd stacks/alloy && docker compose up -d`; r9 `cd stacks/loki-r9 && docker compose up -d`.
-Not done yet: error-pattern digest, per-service "hasn't done its job" rules, x51 collector (powered off).
+Done since: weekly error digest, hourly synthetic service-link checks (below), x51 collector (`stacks/alloy-x51`, 2026-10-24).
 Note: r9's repo clone has diverged from origin (history rewrite, issue #64; 3 commits exist only on r9), so these two stack
 folders were copied to r9 by `tar` rather than `git pull`. Re-sync them when the clone is reset.
 
@@ -30,6 +30,20 @@ plain English to the muted Discord channel (webhook in `scripts/log-digest.env`,
 When something is **new** it also opens/comments on ONE rolling issue "Log digest: new repeating container errors" in mediahub-issues.
 INFO/DEBUG lines are ignored unless they contain a hard connectivity/crash word (ECONNREFUSED, Traceback, ...).
 - Mute harmless noise: add a regex to `scripts/log-digest-ignore.txt` (matched against `<container>: <normalized message>`).
-- `log-digest.py --dry-run` prints without sending; `--freshness` exits 1 if a host sent no logs for an hour (not scheduled yet).
+- `log-digest.py --dry-run` prints without sending; `--freshness` exits 1 if a host sent no logs for an hour (run hourly by `integration-check.py`).
 - If a run fails after Discord posted, rerun with `--no-discord` (state is saved before GitHub so nothing is double-posted).
 - Loki tip: plain `|= "a" or "b"` line filters are ~25x faster than one `(?i)` regex (1 s vs 30 s per day of logs).
+
+## Service-link checks (`scripts/integration-check.py`, issue #71)
+
+Hourly cron (:20) on production. Catches "container is up but the integration is dead", the Seerr->Plex class.
+Checks: *arr/Prowlarr/Bazarr health errors, each *arr's own Plex connection test, Seerr's Plex/Radarr/Sonarr targets
+tested **from inside the seer container**, and log freshness for i7/r9/x51. Discord only when the set of problems
+changes; Kuma push monitor 49 ("Integration checks (service links)") goes down with the reason and also alerts if the
+checker itself goes silent for 90 min. Config `scripts/integration-check.env` (gitignored). `--dry-run` prints only.
+Verified with negative controls 2026-10-24: Seerr pointed at the old Plex host (192.168.0.21) and an *arr Plex
+connection with a wrong host both fail as intended.
+
+Known gap: Bazarr's own Plex entry still points at the old `172.18.0.10` Docker address. It is inert (its
+update-library and set-added flags are off); re-pair via Bazarr's UI if those are ever enabled.
+Not covered: Unpackerr (no API; its failure mode is a log message, caught only by the weekly digest).
