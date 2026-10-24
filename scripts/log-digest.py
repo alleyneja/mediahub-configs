@@ -25,7 +25,7 @@ STATE_DIR = os.path.expanduser("~/logs/log-digest")
 STATE_FILE = os.path.join(STATE_DIR, "state.json")
 ISSUES_REPO = "alleyneja/mediahub-issues"
 ISSUE_TITLE = "Log digest: new repeating container errors"
-HOSTS = ["i7", "r9"]          # x51 joins when it has a collector
+HOSTS = ["i7", "r9", "x51"]
 WINDOW_DAYS = 7
 MIN_COUNT = 20                # a message is "repeating" at >= this many in the window ...
 MIN_DAYS = 3                  # ... or on >= this many different days (with >= 5 occurrences)
