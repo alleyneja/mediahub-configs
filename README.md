@@ -45,6 +45,8 @@ Internet
 **Docker containers and *.lan domains:**
 Docker containers cannot route to `100.104.43.6` — it's a host-local Tailscale address unreachable from the Docker bridge network. Uptime Kuma works around this via `extra_hosts` entries in its docker-compose that map all `.lan` domains directly to Caddy's Docker IP (`172.18.0.200`). Caddy is pinned to that IP via `ipv4_address: 172.18.0.200` in its docker-compose. Any new `.lan` service added to the Caddyfile also needs an `extra_hosts` entry added to Uptime Kuma's compose file.
 
+**Never hardcode another container's IP in `extra_hosts` or config.** Docker hands out bridge addresses in container start order, and the machine reboots twice a week, so an address that is right today can belong to a different container after the next reboot (it broke Calibre-Web's `auth.lan` once; see `docs/calibre-web-ca-bundle.md`). Only Caddy (`172.18.0.200`) and `immich-redis` (`172.18.0.100`) are pinned; point at Caddy, never at the target. Last swept 2026-10-24 (issue #16): every hardcoded address in the repo is Caddy's `.200`, a subnet range, or network-creation config.
+
 **Portainer's role changed 2026-08-23:** every stack now deploys from `docker-compose.yml` in this repo — Portainer no longer holds the authoritative copy of anything. It's kept purely as a management UI (logs, console, Recreate button, phone access). **Never redeploy from Portainer's "pull and redeploy" button** — its copies are stale and deleting a stack entry there still stops/removes the live containers. Deploy with `docker compose up -d` from the stack's directory in this repo. See `docs/portainer-to-repo-migration.md`.
 
 **Tailscale is set up with:**
