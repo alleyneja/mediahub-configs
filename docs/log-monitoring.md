@@ -44,6 +44,10 @@ checker itself goes silent for 90 min. Config `scripts/integration-check.env` (g
 Verified with negative controls 2026-10-24: Seerr pointed at the old Plex host (192.168.0.21) and an *arr Plex
 connection with a wrong host both fail as intended.
 
+Immich pairing (#30, added 2026-10-24): the server (`release` tag on production) and r9's ML container (pinned
+`v<version>-cuda`) must run the same version. The check compares the version label of each *running* image (r9 over ssh)
+and reports a mismatch or an unreadable side. Negative controls: a faked older r9 version and an empty read both fail.
+
 Known gap: Bazarr's own Plex entry still points at the old `172.18.0.10` Docker address. It is inert (its
 update-library and set-added flags are off); re-pair via Bazarr's UI if those are ever enabled.
 Not covered: Unpackerr (no API; its failure mode is a log message, caught only by the weekly digest).

@@ -11,6 +11,8 @@ resolving to the old machine) while every container was healthy. These checks ex
                       settings.json; the same for Seerr's Radarr and Sonarr entries. This is the check that would
                       have caught the Sep 9 failure.
   4. Log pipeline     log-digest.py --freshness (a host that stopped sending logs to Loki).
+  5. Immich pairing   the server (production, moving `release` tag) and r9's machine-learning container (pinned
+                      `-cuda` tag) must run the same version (#30). Compares the version label of each RUNNING image.
 
 Posts to Discord only when the SET of problems changes (new problem, or all clear again), like fleet-healthcheck.sh.
 Always pings an Uptime Kuma push monitor (up when clean, down with the reason otherwise); Kuma also alerts if no
@@ -133,6 +135,24 @@ def check_logs(problems):
         problems.append("log pipeline: " + (r.stdout.strip() or r.stderr.strip() or "freshness check failed")[:200])
 
 
+R9_SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "HostKeyAlias=192.168.0.149", "jay@192.168.0.22"]
+VERSION_LABEL = '{{index .Config.Labels "org.opencontainers.image.version"}}'
+
+
+def check_immich(problems):
+    try:
+        srv = subprocess.run(["docker", "inspect", "immich-server", "--format", VERSION_LABEL],
+                             capture_output=True, text=True, timeout=30).stdout.strip()
+        ml = subprocess.run(R9_SSH + ["docker", "inspect", "immich-machine-learning", "--format", f"'{VERSION_LABEL}'"],
+                            capture_output=True, text=True, timeout=45).stdout.strip()
+        if not srv or not ml:
+            problems.append(f"immich: could not read versions (server='{srv}', r9 ML='{ml}')")
+        elif srv != ml:
+            problems.append(f"immich: server is {srv} but r9 machine-learning is {ml}; they must match (re-pin stacks/immich-ml-r9 to v{srv.lstrip('v')}-cuda)")
+    except Exception as e:
+        problems.append(f"immich: check could not run ({type(e).__name__}: {e})"[:220])
+
+
 def post_discord(webhook, text):
     req = urllib.request.Request(webhook, data=json.dumps({"content": text[:1900]}).encode(),
                                  headers={"Content-Type": "application/json", "User-Agent": "integration-check"})
@@ -157,7 +177,7 @@ def main():
     env = load_env()
 
     problems = []
-    check_arrs(problems); check_bazarr(problems); check_seerr(problems); check_logs(problems)
+    check_arrs(problems); check_bazarr(problems); check_seerr(problems); check_immich(problems); check_logs(problems)
     problems = sorted(set(problems))
     print("OK: all integration checks passed" if not problems else "PROBLEMS:\n- " + "\n- ".join(problems))
     if a.dry_run:
