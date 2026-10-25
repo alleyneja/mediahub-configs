@@ -45,3 +45,12 @@ kept taking slots, ~1h each). The patch queues only albums with no history at al
 retries resume once every missing album has had a first attempt. Clearing history makes
 those albums count as never-attempted again. A per-album retry cap is a possible follow-up.
 Diff: `scheduler.py.diff`; original: `scheduler.py.orig`.
+
+**Unverified-keep report (Oct 25, `processing.py`):** every track accepted without AcoustID
+confirmation (the no-verify branch and the unverified-fallback keep) is recorded with its
+YouTube channel via `_note_unverified_keep`; `_uploader_trusted` marks it trusted when it
+came from the official album playlist, a YT Music hit, or the artist's own/Topic channel.
+`_verify_summary_lines` adds e.g. "17 kept unverified (3 non-artist uploader: Mr. Success <-
+Rory Penland)" to the album's Discord AcoustID field. Report only: nothing is rejected on
+this signal yet (decide after a few days of reports). Also added to forbidden_words_custom
+(app config, not the repo): "covered by", "cover by", "cover version".

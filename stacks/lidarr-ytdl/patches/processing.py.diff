@@ -1,5 +1,5 @@
 --- processing.py.orig	2026-10-15 12:13:50.000000000 -0500
-+++ processing.py	2026-10-19 15:34:03.209348417 -0500
++++ processing.py	2026-10-24 23:34:00.923805816 -0500
 @@ -11,8 +11,10 @@
  import os
  import re
@@ -11,15 +11,18 @@
  import uuid
  
  import logutil
-@@ -22,6 +24,7 @@
+@@ -22,7 +24,10 @@
  )
  from models import CandidateOutcome
  from downloader import (
 +    _build_common_opts,
      _extract_video_id,
++    _is_official_channel,
++    _is_topic_channel,
      download_youtube_candidate,
      album_from_ytmusic_hint,
-@@ -1327,12 +1330,14 @@
+     find_album_on_ytmusic,
+@@ -1327,12 +1332,14 @@
  
      if not dl_result.get("success"):
          track_state["last_download_error"] = dl_result.get("error_message", "")
@@ -34,7 +37,7 @@
      audio_ext = load_config().get("audio_format", "mp3")
      actual_file = attempt_temp + f".{audio_ext}"
      if not os.path.exists(actual_file):
-@@ -1345,6 +1350,139 @@
+@@ -1345,6 +1352,139 @@
      return dl_result, actual_file
  
  
@@ -174,7 +177,7 @@
  def _build_candidate_attempt(
      candidate, outcome, expected_recording_id,
      fp_data=None, error_message="",
-@@ -1770,6 +1908,31 @@
+@@ -1770,6 +1910,31 @@
                  _cleanup_temp_files(held_unverified[2])
              held_unverified = None
  
@@ -206,7 +209,7 @@
          for ci, candidate in _iter_candidates():
              if _skip_check():
                  _drop_held_unverified()
-@@ -1807,6 +1970,37 @@
+@@ -1807,6 +1972,37 @@
                  f"temp_{track_num:02d}_{uuid.uuid4().hex[:8]}",
              )
  
@@ -244,7 +247,7 @@
              dl_out = _download_candidate_threaded(
                  candidate, attempt_temp, progress_hook,
                  _skip_check, track_state,
-@@ -1837,6 +2031,54 @@
+@@ -1837,6 +2033,54 @@
              dl_result, actual_file = dl_out
  
              any_downloaded = True
@@ -299,7 +302,7 @@
              track_state["status"] = "tagging"
              track_state["youtube_url"] = dl_result.get(
                  "youtube_url", "",
-@@ -1910,6 +2152,30 @@
+@@ -1910,6 +2154,30 @@
                      )
                  elif vresult["status"] == "mismatch":
                      mismatch_fp = vresult["fp_data"]
@@ -330,9 +333,13 @@
                      with _results_lock:
                          verify_stats["mismatch_count"] += 1
                          mismatch_score = float(
-@@ -2031,6 +2297,14 @@
+@@ -2030,7 +2298,18 @@
+                         fp_data=fp_data,
                      )
                  )
++                _note_unverified_keep(
++                    verify_stats, candidate, track_title, track_artist,
++                )
  
 +            if short_note:
 +                _hold_fallback(
@@ -345,7 +352,7 @@
              _drop_held_unverified()
              file_size, td_id = _accept_track_file(
                  actual_file, track_num, sanitized_track,
-@@ -2056,6 +2330,60 @@
+@@ -2056,6 +2335,60 @@
              accepted = True
              break
  
@@ -406,3 +413,75 @@
          low_score_fallback = False
          # Note: best_unverified_candidate is only ever assigned in the
          # AcoustID "unverified" branch (where no fingerprint match exists).
+@@ -2130,6 +2463,10 @@
+                             expected_recording_id,
+                         )
+                     )
++                    _note_unverified_keep(
++                        verify_stats, best_unverified_candidate,
++                        track_title, track_artist,
++                    )
+                     track_state["status"] = "tagging"
+                     track_state["youtube_url"] = fb_result.get(
+                         "youtube_url", "",
+@@ -2341,6 +2678,31 @@
+     return lines
+ 
+ 
++def _uploader_trusted(candidate, artist):
++    """True when a candidate comes from a source we can vouch for without
++    AcoustID: the official YT Music album, a YT Music search hit, or the
++    artist's own / auto-generated Topic channel."""
++    if candidate.get("from_official_album") or candidate.get("source") == "ytmusic":
++        return True
++    channel = candidate.get("channel") or ""
++    return bool(
++        channel
++        and (_is_topic_channel(channel, artist) or _is_official_channel(channel, artist))
++    )
++
++
++def _note_unverified_keep(verify_stats, candidate, track_title, artist):
++    """Record a track kept without AcoustID confirmation for the album report."""
++    if verify_stats is None:
++        return
++    verify_stats.setdefault("unverified_keeps", []).append({
++        "track": track_title,
++        "yt_title": candidate.get("title", ""),
++        "channel": candidate.get("channel", ""),
++        "trusted": _uploader_trusted(candidate, artist),
++    })
++
++
+ def _verify_summary_lines(verify_stats, verified_total):
+     """Build (plain_field_value, md2_lines) describing AcoustID stats.
+ 
+@@ -2354,7 +2716,9 @@
+     best_rejected = verify_stats.get("best_rejected_score", 0.0)
+     scores = verify_stats.get("accepted_acoustid_scores", [])
+ 
+-    if verified == 0 and mismatches == 0:
++    keeps = verify_stats.get("unverified_keeps", [])
++
++    if verified == 0 and mismatches == 0 and not keeps:
+         return None, []
+ 
+     parts = []
+@@ -2367,6 +2731,17 @@
+         parts.append(f"{mismatches} auto-banned")
+     if best_rejected > 0:
+         parts.append(f"best rejected {best_rejected:.2f}")
++    if keeps:
++        untrusted = [k for k in keeps if not k["trusted"]]
++        text = f"{len(keeps)} kept unverified"
++        if untrusted:
++            shown = "; ".join(
++                f"{k['track']} <- {k['channel'] or 'unknown'}"
++                for k in untrusted[:4]
++            )
++            more = f" +{len(untrusted) - 4} more" if len(untrusted) > 4 else ""
++            text += f" ({len(untrusted)} non-artist uploader: {shown}{more})"
++        parts.append(text)
+     field_value = ", ".join(parts) if parts else None
+     md2_lines = (
+         [f"*AcoustID:* {md2_escape(field_value)}"]
