@@ -1,5 +1,5 @@
 --- processing.py.orig	2026-10-15 12:13:50.000000000 -0500
-+++ processing.py	2026-10-24 23:34:00.923805816 -0500
++++ processing.py	2026-10-25 09:56:48.675229611 -0500
 @@ -11,8 +11,10 @@
  import os
  import re
@@ -424,15 +424,16 @@
                      track_state["status"] = "tagging"
                      track_state["youtube_url"] = fb_result.get(
                          "youtube_url", "",
-@@ -2341,6 +2678,31 @@
+@@ -2341,6 +2678,32 @@
      return lines
  
  
 +def _uploader_trusted(candidate, artist):
 +    """True when a candidate comes from a source we can vouch for without
-+    AcoustID: the official YT Music album, a YT Music search hit, or the
-+    artist's own / auto-generated Topic channel."""
-+    if candidate.get("from_official_album") or candidate.get("source") == "ytmusic":
++    AcoustID: the official YT Music album, or the artist's own /
++    auto-generated Topic channel. A YT Music *search* hit is not enough:
++    music.youtube.com surfaces random user uploads too."""
++    if candidate.get("from_official_album"):
 +        return True
 +    channel = candidate.get("channel") or ""
 +    return bool(
@@ -456,7 +457,7 @@
  def _verify_summary_lines(verify_stats, verified_total):
      """Build (plain_field_value, md2_lines) describing AcoustID stats.
  
-@@ -2354,7 +2716,9 @@
+@@ -2354,7 +2717,9 @@
      best_rejected = verify_stats.get("best_rejected_score", 0.0)
      scores = verify_stats.get("accepted_acoustid_scores", [])
  
@@ -467,7 +468,7 @@
          return None, []
  
      parts = []
-@@ -2367,6 +2731,17 @@
+@@ -2367,6 +2732,17 @@
          parts.append(f"{mismatches} auto-banned")
      if best_rejected > 0:
          parts.append(f"best rejected {best_rejected:.2f}")

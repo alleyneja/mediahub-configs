@@ -2680,9 +2680,10 @@ def _format_youtube_links_md2(succeeded_tracks):
 
 def _uploader_trusted(candidate, artist):
     """True when a candidate comes from a source we can vouch for without
-    AcoustID: the official YT Music album, a YT Music search hit, or the
-    artist's own / auto-generated Topic channel."""
-    if candidate.get("from_official_album") or candidate.get("source") == "ytmusic":
+    AcoustID: the official YT Music album, or the artist's own /
+    auto-generated Topic channel. A YT Music *search* hit is not enough:
+    music.youtube.com surfaces random user uploads too."""
+    if candidate.get("from_official_album"):
         return True
     channel = candidate.get("channel") or ""
     return bool(
