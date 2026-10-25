@@ -47,7 +47,8 @@ Disks (last sample): i7 `/mnt/internal` 86.8% (8.8 TB of 10.9 TB used); pool `/m
    Figures are CPU package plus GPU board only, excluding the rest of the system. The UPS is an APC BE600M1, 330 W.
    Most peak minutes show a GPU at 99-100% with the CPU nearly idle, which matches Whisper (SubGen) inference;
    a few evenings show GPU 15-70% with CPU 15-30% busy for hours, which looks like interactive use or gaming.
-   Attribution is by signature only (see "Not established").
+   Attribution is by signature only (see "Not established"). Jay recalls testing the PS4 and PS5 emulators around
+   the interactive evenings (10-22), which fits those hours; the exact times were not recorded.
 5. **r9 swap episode (10-21 15:33-15:36 and 19:33-19:37):** swap-out of 1.7-2 GB per minute while 50+ GB of RAM
    stayed available. The pages swapped belonged to idle container memory (Plex resident 5.6 to 3.4 GB, then 3.0 to
    1.2 GB; SubGen 696 to 276 MB). Each time, GPU idle power stepped up (16 W to 25-26 W) as if a graphical session had
@@ -64,10 +65,18 @@ Disks (last sample): i7 `/mnt/internal` 86.8% (8.8 TB of 10.9 TB used); pool `/m
 - Which exact minutes were gaming versus SubGen versus Plex. Container CPU is a once-a-minute snapshot, and
   SubGen's own log shows 135 "Transcribing" lines in the window but timestamps do not line up cleanly with the
   hot minutes. Sunshine's log restarts at each boot and holds no client history, so game times need to come from Jay.
-- Whether r9 and i7 share the same UPS, and what else is on it.
 - Wall-socket watts. RAPL and GPU board power exclude PSU losses and other components.
 - The cause of the swap episodes (timing only).
 - Growth rate of the library on `/mnt/internal` (not measured here).
+
+## UPS (confirmed by Jay, 2026-10-24)
+
+The UPS (APC BE600M1, 600 VA / 330 W) carries a monitor, x51, i7, r9 and the NAS. None of them has a USB data
+link to it (no APC device in `lsusb` on i7, r9 or x51; no apcupsd or NUT installed), so its own load reading is
+not available. Rough idle sum, **estimates except where noted**: r9 about 100 W (CPU+GPU 68 W measured at idle,
+plus board, fans, drives and PSU loss), i7 about 80 W, x51 40-60 W, NAS 25-40 W, monitor 20-40 W: about 265-320 W
+before any burst, against a 330 W limit. A SubGen or gaming burst on r9 adds roughly 100-250 W, so overload is
+expected at the peaks listed above. Not measured: actual wall watts of x51, the NAS and the monitor.
 
 ## Headroom, for scaling decisions
 
