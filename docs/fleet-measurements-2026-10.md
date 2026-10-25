@@ -36,6 +36,14 @@ r9: plex about 2.1 GB.
 
 Disks (last sample): i7 `/mnt/internal` 86.8% (8.8 TB of 10.9 TB used); pool `/mnt/media` 66.2%; NAS 56.0%.
 
+## Addendum: x51 added (2026-10-25)
+
+The collector also runs on `mediahub-x51` (i7-4790, 16 GB, GTX 1650) from 2026-10-25 10:23 CDT, so all three servers are
+tracked from then on; the tables above cover only i7 and r9 for 2026-10-20 to 10-24. First sample: CPU busy 6.8%,
+CPU package about 6.5 W (peak 10.9 W), 13.8 GB RAM available, no swap use, load 0.28. Its power numbers are CPU package
+only (RAPL). The GTX 1650 and the i7's Quadro P400 report power draw as `[N/A]`, so the collector now records GPU
+utilization and memory with a null power value for those cards (same day, `num()` in the script).
+
 ## What the data says
 
 1. **The i7 is not CPU- or RAM-starved.** It is bursty: load spikes to about 15 for a minute or two when

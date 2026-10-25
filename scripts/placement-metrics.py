@@ -40,6 +40,11 @@ def rapl_paths():
     return [p for p in glob.glob("/sys/class/powercap/*/energy_uj")
             if ":" in p.split("/")[-2] and p.split("/")[-2].count(":") == 1]
 
+def num(x):
+    """float() that maps nvidia-smi's '[N/A]' (e.g. GTX 1650, Quadro P400 power) to None."""
+    x = x.strip()
+    return None if x.startswith("[") else float(x)
+
 class GpuSampler(threading.Thread):
     """Streams nvidia-smi once a second; keeps per-minute watts/util samples."""
     def __init__(self):
@@ -56,19 +61,21 @@ class GpuSampler(threading.Thread):
             return
         for line in p.stdout:
             try:
-                w, u, m = [float(x) for x in line.split(",")]
+                w, u, m = [num(x) for x in line.split(",")]
             except ValueError:
                 continue
             with self.lock:
-                self.samples.append((w, u, m))
+                self.samples.append((w, u, m))  # power is None on cards that report [N/A]
 
     def drain(self):
         with self.lock:
             s, self.samples = self.samples, []
         if not s:
             return None
-        return {"w_avg": round(sum(x[0] for x in s) / len(s), 1), "w_max": max(x[0] for x in s),
-                "util_avg": round(sum(x[1] for x in s) / len(s), 1), "util_max": max(x[1] for x in s),
+        w = [x[0] for x in s if x[0] is not None]
+        u = [x[1] for x in s if x[1] is not None]
+        return {"w_avg": round(sum(w) / len(w), 1) if w else None, "w_max": max(w) if w else None,
+                "util_avg": round(sum(u) / len(u), 1) if u else None, "util_max": max(u) if u else None,
                 "mem_mib": s[-1][2]}
 
 def containers():
