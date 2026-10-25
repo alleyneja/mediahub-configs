@@ -4,7 +4,8 @@
 #   0,30 2-4 * * <dow> /path/maintenance-window.sh
 # Each run: if this machine already rebooted in tonight's window, do nothing. Otherwise apply ALL pending updates
 # (including Docker and the NVIDIA driver, which the daily unattended-upgrades deliberately skips) and reboot ONLY if
-# a reboot is required - and only if nobody is streaming on Plex. If someone is watching, try again next half hour;
+# a reboot is required - and only if nobody is streaming on Plex, streaming a game over Sunshine/Moonlight, or playing
+# Minecraft on this machine (session-activity.py). If someone is, try again next half hour;
 # after the window closes, next week. apt-mark holds (e.g. sunshine on production) are respected by apt.
 # After the reboot, fleet-healthcheck.service verifies the machine and reports to Discord.
 set -u
@@ -34,6 +35,18 @@ plex_streams(){
   else echo unknown; fi
 }
 
+# --- anyone using THIS machine for something a reboot interrupts? Sunshine/Moonlight stream or Minecraft players on
+#     r9 (#42). Prints nothing when idle, else a reason ("... unknown" when a service answers but can't be read).
+session_extras(){ python3 -I "$SCRIPT_DIR/session-activity.py" 2>/dev/null || true; }
+# Plex streams plus the above, in one value: "0" when everyone is idle, otherwise what is going on.
+activity(){
+  local p x out=""
+  p=$(plex_streams); x=$(session_extras)
+  if [ "$p" = unknown ]; then out="Plex unknown"; elif [ "$p" != 0 ]; then out="Plex streams: $p"; fi
+  [ -n "$x" ] && out="${out:+$out; }$x"
+  echo "${out:-0}"
+}
+
 DRY=0; [ "${1:-}" = --dry-run ] && DRY=1
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -qq >/dev/null 2>&1
@@ -59,11 +72,11 @@ fi
 if [ "$reboot_needed" = 1 ]; then
   case "$HOST" in
     mediahub-production|mediahub-i7|mediahub-r9)
-      s=$(plex_streams)
+      s=$(activity)
       if [ "$s" != 0 ]; then
-        log "reboot needed ($why) but Plex streams=$s - deferring"
-        [ "$DRY" = 1 ] && { echo "DRY: would defer (Plex streams=$s)"; exit 0; }
-        [ "$(date +%H%M)" -ge 0430 ] && post "⏸️ **$HOST** needs a reboot ($why) but Plex was busy (${s} stream(s)) all window - deferred to next week. Reboot by hand if convenient."
+        log "reboot needed ($why) but machine is in use ($s) - deferring"
+        [ "$DRY" = 1 ] && { echo "DRY: would defer (in use: $s)"; exit 0; }
+        [ "$(date +%H%M)" -ge 0430 ] && post "⏸️ **$HOST** needs a reboot ($why) but was in use all window ($s) - deferred to next week. Reboot by hand if convenient."
         exit 0
       fi ;;
   esac
@@ -75,7 +88,7 @@ deferred_waiting(){ command -v needrestart >/dev/null 2>&1 || return 0
   needrestart -b -r l 2>/dev/null | sed -n 's/^NEEDRESTART-SVC: //p' | grep -E "$DEFERRED_RE"; }
 
 if [ "$DRY" = 1 ]; then
-  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] deferred_restarts=[$(deferred_waiting | tr '\n' ' ')] plex_streams=$( { [ "$HOST" = mediahub-staging ] || [ "$HOST" = mediahub-x51 ]; } && echo n/a || plex_streams)"; exit 0
+  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] deferred_restarts=[$(deferred_waiting | tr '\n' ' ')] activity=$( { [ "$HOST" = mediahub-staging ] || [ "$HOST" = mediahub-x51 ]; } && echo n/a || activity)"; exit 0
 fi
 
 # --- apply updates (only packages that don't need a restart are handled here when no reboot is due) ---------------
@@ -89,7 +102,7 @@ if [ "$reboot_needed" = 0 ] && [ -f /var/run/reboot-required ]; then
   # an ordinary update turned out to need a reboot: the Plex check hasn't run yet, so run it now
   reboot_needed=1; why="$(tr '\n' ' ' 2>/dev/null < /var/run/reboot-required.pkgs)"
   case "$HOST" in mediahub-production|mediahub-i7|mediahub-r9)
-    s=$(plex_streams); [ "$s" != 0 ] && { log "updates applied; reboot now required ($why) but Plex streams=$s - deferring"; exit 0; } ;;
+    s=$(activity); [ "$s" != 0 ] && { log "updates applied; reboot now required ($why) but machine is in use ($s) - deferring"; exit 0; } ;;
   esac
 fi
 if [ "$reboot_needed" = 0 ]; then
@@ -98,8 +111,8 @@ if [ "$reboot_needed" = 0 ]; then
   mapfile -t svc < <(deferred_waiting | sort -r)
   if [ "${#svc[@]}" -gt 0 ]; then
     # restarting tailscaled blips the tailnet path remote Plex viewers may be using: same "nobody watching" rule
-    s=$(plex_streams)
-    if [ "$s" != 0 ]; then log "deferred restarts waiting (${svc[*]}) but Plex streams=$s - retrying next run"; exit 0; fi
+    s=$(activity)
+    if [ "$s" != 0 ]; then log "deferred restarts waiting (${svc[*]}) but machine is in use ($s) - retrying next run"; exit 0; fi
     log "restarting services held back from daily updates: ${svc[*]}"
     if systemctl restart "${svc[@]}"; then
       post "🔁 **$HOST** maintenance window: restarted services held back from the daily updates: \`${svc[*]}\`"

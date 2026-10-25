@@ -17,7 +17,7 @@ What already worked: Ubuntu's `unattended-upgrades` installs **security** update
 4. Cover all three machines: production, r9 and staging. Staging is **not** being retired; it's the AdGuard replica and future cameras.
 
 **Must not**
-- Interrupt someone watching Plex. (Minecraft and Sunshine emulator sessions: nice-to-have, later.)
+- Interrupt someone watching Plex, streaming a game over Sunshine/Moonlight, or playing on a Minecraft server (r9).
 - Take two machines down the same night.
 - Break things silently.
 
@@ -95,4 +95,7 @@ What already worked: Ubuntu's `unattended-upgrades` installs **security** update
 - [x] E. Old `apt upgrade && reboot` cron removed from production (2026-09-25)
 - [x] F. needrestart hold (production) + daily restart report (all three), 2026-09-26, #53. Needs a real daily run to
       confirm end to end
-- [ ] Later: extend the "nobody is using it" check to Minecraft (Pterodactyl on r9) and Sunshine/Moonlight sessions
+- [x] G. "Nobody is using it" check extended to Sunshine/Moonlight (`/serverinfo` state) and Minecraft players (Java
+      Server List Ping + Bedrock RakNet ping), 2026-10-24, #42: `scripts/session-activity.py`, used by
+      `maintenance-window.sh` for every Plex-checked deferral. Untested against a real player/stream (parsers verified
+      against fake servers); the first time it defers for real will show in `~/logs/maintenance-window.log`.
