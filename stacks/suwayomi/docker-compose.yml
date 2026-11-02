@@ -1,0 +1,22 @@
+services:
+  suwayomi:
+    image: ghcr.io/suwayomi/tachidesk:stable
+    container_name: suwayomi
+    user: "1000:1000"
+    environment:
+      TZ: America/Chicago
+      DOWNLOAD_AS_CBZ: "true"
+      AUTO_DOWNLOAD_CHAPTERS: "false"
+      WEB_UI_ENABLED: "true"
+    volumes:
+      # SQLite/config on local ext4 (no DBs on the mergerfs/NFS pool)
+      - /srv/docker/suwayomi/data:/home/suwayomi/.local/share/Tachidesk
+      # CBZ downloads land directly in the Kavita library
+      - /mnt/media/manga:/home/suwayomi/.local/share/Tachidesk/downloads
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true

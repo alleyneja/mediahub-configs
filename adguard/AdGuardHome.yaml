@@ -303,6 +303,12 @@ filtering:
     - domain: audiobookshelf.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true
+    - domain: kavita.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
+    - domain: suwayomi.lan
+      answer: SERVER_IP_PLACEHOLDER
+      enabled: true
     - domain: aurral.lan
       answer: SERVER_IP_PLACEHOLDER
       enabled: true

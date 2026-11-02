@@ -11,6 +11,14 @@
         href: https://audiobookshelf.lan
         description: Audiobook & podcast server
         icon: audiobookshelf.png
+    - Kavita:
+        href: https://kavita.lan
+        description: Manga & comic reader
+        icon: kavita.png
+    - Suwayomi:
+        href: https://suwayomi.lan
+        description: Manga downloader
+        icon: mdi-download
     - Calibre-Web:
         href: https://calibre-web.lan
         description: Ebook library

@@ -103,6 +103,17 @@ audiobookshelf.lan {
     }
 }
 
+kavita.lan {
+    tls internal
+    import compress
+    reverse_proxy kavita:5000
+}
+
+suwayomi.lan {
+    tls internal
+    reverse_proxy suwayomi:4567
+}
+
 bookshelf-ebooks.lan {
     tls internal
     reverse_proxy bookshelf-ebooks:8787

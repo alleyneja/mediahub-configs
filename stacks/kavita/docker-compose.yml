@@ -1,0 +1,17 @@
+services:
+  kavita:
+    image: jvmilazz0/kavita:latest
+    container_name: kavita
+    user: "1000:1000"
+    environment:
+      TZ: America/Chicago
+    volumes:
+      - /mnt/media/manga:/manga
+      - /srv/docker/kavita/config:/kavita/config
+    restart: unless-stopped
+    networks:
+      - mediahub_internal
+
+networks:
+  mediahub_internal:
+    external: true
