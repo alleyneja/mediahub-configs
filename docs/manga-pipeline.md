@@ -19,7 +19,7 @@ Kavita "Send To" -> Gmail SMTP -> Kindle address
 | Kavita stack | `stacks/kavita/` (config/DB `/srv/docker/kavita/config`, ext4) |
 | Converter | `scripts/manga-convert.py`; log `~/logs/manga-convert.log` |
 | KCC | uv venv `~/tools/kcc-venv`, installed from github.com/ciromattia/kcc (not on PyPI) |
-| Kavita libraries | `Manga-test` -> `/manga/mangas/MangaDex (EN)` (read in browser); `Converted (Kindle)` (Book) -> `/manga/converted` |
+| Kavita libraries | `Manga` (color originals, read on phone/PC) -> one folder per source: `/manga/mangas/MangaDex (EN)`, `/manga/mangas/TCB Scans (EN)`; `Converted (Kindle)` (Book, grayscale EPUBs) -> `/manga/converted` |
 
 ## Why each piece exists / gotchas
 - **Webtoon vs standard**: the script samples page shapes per chapter (median height/width > 2 = webtoon) and only uses KCC `-w` for strips; page-by-page manga (e.g. One Piece) converts without it, right-to-left (`-m`). Needs Pillow, so cron runs the venv python.
@@ -35,6 +35,12 @@ Kavita "Send To" -> Gmail SMTP -> Kindle address
 - **Kavita folder watching is disabled at the server level** (`enableFolderWatching: false`), so the per-library toggle does nothing; new EPUBs only appeared after a manual scan. Fixed Nov 3 by setting the scheduled scan (Admin -> Tasks, `taskScan`) to `*/15 * * * *`. Worst-case lag for a new chapter is ~15 min convert + ~15 min scan.
 - Kavita email = same Gmail SMTP as Calibre-Web-Automated (settings live in Kavita's DB, not this repo).
   Kindle device added under Kavita Settings -> Devices.
+- **A new Suwayomi source needs its folder added to the Kavita `Manga` library** (Admin -> Libraries -> Manga ->
+  folders). Kavita treats the first folder under a library root as a series, so the root cannot be
+  `/manga/mangas` itself (the source name would become a "series"). Nothing adds new source folders automatically.
+- **Grayscale on purpose**: KCC converts Kindle copies to grayscale (Paperwhite is B&W). Measured Nov 4: color would
+  cost ~0 MB on manga and ~0.6 MB (~8%) per webtoon chapter, so size is not the reason; the originals in `Manga`
+  keep full color for phone/PC. `--forcecolor` is the switch if that ever changes (e.g. a Colorsoft Kindle).
 - **Source in the output folder** (`<series> [<source>]`): the same series from two sources (e.g. TCB Scans and
   MangaDex) would otherwise collide on `<series> - <chapter>.epub` and the second would be silently skipped.
 - **Suwayomi sources kept (Nov 4 2026):** TCB Scans, MangaDex, MangaFox, MangaFire, MangaKatana, Asura Scans,
