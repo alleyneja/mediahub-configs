@@ -6,7 +6,7 @@ Set up Nov 2-4 2026. Everything runs on mediahub-i7 (production).
 Suwayomi (suwayomi.lan)  --CBZ-->  /mnt/media/manga/mangas/<source>/<series>/*.cbz
    |  scripts/manga-convert.py  (cron */15, flock, KCC webtoon mode, profile KPW6)
    v
-/mnt/media/manga/converted/<series>/<series> - <chapter>.epub
+/mnt/media/manga/converted/<series> [<source>]/<series> - <chapter>.epub
    |  Kavita library "Converted (Kindle)" (type Book)
    v
 Kavita "Send To" -> Gmail SMTP -> Kindle address
@@ -35,6 +35,13 @@ Kavita "Send To" -> Gmail SMTP -> Kindle address
 - **Kavita folder watching is disabled at the server level** (`enableFolderWatching: false`), so the per-library toggle does nothing; new EPUBs only appeared after a manual scan. Fixed Nov 3 by setting the scheduled scan (Admin -> Tasks, `taskScan`) to `*/15 * * * *`. Worst-case lag for a new chapter is ~15 min convert + ~15 min scan.
 - Kavita email = same Gmail SMTP as Calibre-Web-Automated (settings live in Kavita's DB, not this repo).
   Kindle device added under Kavita Settings -> Devices.
+- **Source in the output folder** (`<series> [<source>]`): the same series from two sources (e.g. TCB Scans and
+  MangaDex) would otherwise collide on `<series> - <chapter>.epub` and the second would be silently skipped.
+- **Suwayomi sources kept (Nov 4 2026):** TCB Scans, MangaDex, MangaFox, MangaFire, MangaKatana, Asura Scans,
+  Webtoons.com, MANGA Plus (official, latest chapters only), plus two mature sources: Hiperdex and Mangago.
+  Survey of 38 candidates: each tested with search + chapter list + first-page image fetch (3 series each).
+  Paid/login storefronts (Kodansha, Tappytoon, Tapas, Mangamo, Comikey, Honeytoon, BookWalker) list titles but
+  cannot serve pages; Manganato (Cloudflare) and a few others returned nothing. Sources break often; re-test.
 - Source CBZs are never modified; deleting `/mnt/media/manga/converted` is always safe (re-converts).
 - Profile `KPW6` is a best guess for a 16 GB Paperwhite; try `KPW5` if margins look wrong.
 

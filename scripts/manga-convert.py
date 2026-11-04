@@ -2,7 +2,7 @@
 """Convert Suwayomi webtoon/manga CBZ downloads into Kindle-ready EPUBs via KCC.
 
 Source:  /mnt/media/manga/mangas/<source>/<series>/<chapter>.cbz   (Suwayomi)
-Output:  /mnt/media/manga/converted/<series>/<series> - <chapter>.epub
+Output:  /mnt/media/manga/converted/<series> [<source>]/<series> - <chapter>.epub
          (Kavita "Converted (Kindle)" Book library; use its Send To button)
 
 Idempotent: a chapter is skipped when its EPUB already exists. Run from cron
@@ -116,8 +116,10 @@ def main() -> int:
         if time.time() - cbz.stat().st_mtime < SETTLE_SECONDS:
             continue
         series = safe(cbz.parent.name)
+        source = safe(re.sub(r"\s*\([A-Za-z-]{2,5}\)$", "", cbz.parent.parent.name))  # "TCB Scans (EN)" -> "TCB Scans"
         label = chapter_label(cbz.stem)
-        out = DST / series / f"{series} - {label}.epub"
+        # Source in the folder so the same series from two sources never collides.
+        out = DST / f"{series} [{source}]" / f"{series} - {label}.epub"
         if out.exists():
             continue
         if done >= MAX_PER_RUN:
