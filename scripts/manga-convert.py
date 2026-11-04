@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/home/jay/tools/kcc-venv/bin/python
 """Convert Suwayomi webtoon/manga CBZ downloads into Kindle-ready EPUBs via KCC.
 
 Source:  /mnt/media/manga/mangas/<source>/<series>/<chapter>.cbz   (Suwayomi)
@@ -13,6 +13,8 @@ github.com/ciromattia/kcc). Profile KPW6 = Paperwhite 6/2026 (Jay's Kindle).
 """
 import argparse
 import re
+import io
+import statistics
 import zipfile
 import shutil
 import subprocess
@@ -36,6 +38,19 @@ def safe(name: str) -> str:
 def chapter_label(stem: str) -> str:
     # Suwayomi names files "<scanlator>_<chapter>"; drop the scanlator prefix.
     return safe(stem.split("_", 1)[1] if "_" in stem else stem)
+
+
+def is_webtoon(cbz: Path) -> bool:
+    """Long vertical strips (height >> width) need KCC webtoon mode; normal
+    page-by-page manga must NOT use it (it would stitch pages together)."""
+    from PIL import Image
+    ratios = []
+    with zipfile.ZipFile(cbz) as z:
+        names = sorted(n for n in z.namelist() if n.lower().endswith((".png", ".jpg", ".jpeg", ".webp")))
+        for n in names[:: max(1, len(names) // 8)][:8]:
+            with Image.open(io.BytesIO(z.read(n))) as im:
+                ratios.append(im.height / im.width)
+    return bool(ratios) and statistics.median(ratios) > 2.0
 
 
 def add_cover(epub: Path) -> None:
@@ -68,8 +83,11 @@ def convert(cbz: Path, series: str, label: str, out: Path, dry: bool) -> bool:
         src = tmp / "in" / "chapter.cbz"
         src.parent.mkdir()
         shutil.copyfile(cbz, src)
+        webtoon = is_webtoon(cbz)
+        print(f"{title}: {'webtoon' if webtoon else 'standard manga'} mode")
         res = subprocess.run(
-            [str(KCC), "-p", PROFILE, "-f", "EPUB", "-w", "-m", "--nokepub",
+            [str(KCC), "-p", PROFILE, "-f", "EPUB", "-m", "--nokepub",
+             *(["-w"] if webtoon else []),
              "-t", title, "-a", series, "-o", str(tmp), str(src)],
             capture_output=True, text=True)
         epubs = list(tmp.glob("*.epub"))

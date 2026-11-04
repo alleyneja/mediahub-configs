@@ -19,4 +19,4 @@
 # Logs to ~/logs/netmon/ (outside the repo: contains the public IP). Report: scripts/netmon-report.py. docs/netmon.md
 */30 * * * * flock -n /tmp/netmon.lock /home/jay/mediahub-configs/scripts/netmon.py >> /home/jay/logs/netmon/cron.log 2>&1  # internet monitor, see docs/netmon.md
 * * * * * /home/jay/mediahub-configs/scripts/netmon.py --sample >> /home/jay/logs/netmon/cron.log 2>&1  # netmon 1-minute load+latency sampler, see docs/netmon.md
-*/15 * * * * flock -n /tmp/manga-convert.lock python3 -B /home/jay/mediahub-configs/scripts/manga-convert.py >> /home/jay/logs/manga-convert.log 2>&1
+*/15 * * * * flock -n /tmp/manga-convert.lock /home/jay/tools/kcc-venv/bin/python -B /home/jay/mediahub-configs/scripts/manga-convert.py >> /home/jay/logs/manga-convert.log 2>&1
