@@ -15,10 +15,6 @@
         href: https://kavita.lan
         description: Manga & comic reader
         icon: kavita.png
-    - Suwayomi:
-        href: https://suwayomi.lan
-        description: Manga downloader
-        icon: mdi-download
     - Calibre-Web:
         href: https://calibre-web.lan
         description: Ebook library
@@ -109,6 +105,10 @@
           type: readarr
           url: http://bookshelf-audiobooks:8787
           key: "{{HOMEPAGE_VAR_AUDIOBOOKS_BOOKSHELF_KEY}}"
+    - Suwayomi:
+        href: https://suwayomi.lan
+        description: Manga downloader
+        icon: mdi-download
 - Infrastructure:
     - Portainer:
         href: https://portainer.lan
