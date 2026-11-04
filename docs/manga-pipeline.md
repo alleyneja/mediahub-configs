@@ -32,6 +32,7 @@ Kavita "Send To" -> Gmail SMTP -> Kindle address
 - **Suwayomi keeps thumbnails inside its downloads dir** (`/mnt/media/manga/thumbnails`), so Kavita's Manga
   library points at the `mangas/<source>` subfolder, never `/manga`.
 - **Each converted chapter is its own Kavita "series"** (title comes from the EPUB, "<series> - Ch.N").
+- **Kavita folder watching is disabled at the server level** (`enableFolderWatching: false`), so the per-library toggle does nothing; new EPUBs only appeared after a manual scan. Fixed Nov 3 by setting the scheduled scan (Admin -> Tasks, `taskScan`) to `*/15 * * * *`. Worst-case lag for a new chapter is ~15 min convert + ~15 min scan.
 - Kavita email = same Gmail SMTP as Calibre-Web-Automated (settings live in Kavita's DB, not this repo).
   Kindle device added under Kavita Settings -> Devices.
 - Source CBZs are never modified; deleting `/mnt/media/manga/converted` is always safe (re-converts).
