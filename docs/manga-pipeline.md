@@ -4,7 +4,7 @@ Set up Nov 2-4 2026. Everything runs on mediahub-i7 (production).
 
 ```
 Suwayomi (suwayomi.lan)  --CBZ-->  /mnt/media/manga/mangas/<source>/<series>/*.cbz
-   |  scripts/manga-convert.py  (cron */15, flock, KCC webtoon mode, profile KPW6)
+   |  scripts/manga-convert.py  (cron */5, flock, KCC webtoon/standard auto-detect, profile KPW6)
    v
 /mnt/media/manga/converted/<series> [<source>]/<series> - <chapter>.epub
    |  Kavita library "Converted (Kindle)" (type Book)
@@ -22,6 +22,11 @@ Kavita "Send To" -> Gmail SMTP -> Kindle address
 | Kavita libraries | `Manga` (color originals, read on phone/PC) -> one folder per source: `/manga/mangas/MangaDex (EN)`, `/manga/mangas/TCB Scans (EN)`; `Converted (Kindle)` (Book, grayscale EPUBs) -> `/manga/converted` |
 
 ## Why each piece exists / gotchas
+- **Completeness check (replaced the old 120 s mtime wait):** a CBZ is only converted when it opens as a
+  complete zip (a partial zip has no index and fails) with a clean CRC pass, it is >=10 s old, and Suwayomi's
+  download queue (GraphQL `downloadStatus.queue`, via `curl --resolve` to Caddy) no longer lists it. If the API
+  is unreachable it falls back to a 120 s settle. Suwayomi has a single downloads path (no incomplete dir).
+  Verified Nov 4: while 3 chapters downloaded, none was offered until it left the queue.
 - **Webtoon vs standard**: the script samples page shapes per chapter (median height/width > 2 = webtoon) and only uses KCC `-w` for strips; page-by-page manga (e.g. One Piece) converts without it, right-to-left (`-m`). Needs Pillow, so cron runs the venv python.
 - **Webtoons**: MangaDex-style webtoons are ~690 px wide, 2000-9500 px tall strips. KCC `-w` cuts them into
   screen-sized pages; without it a Kindle shrinks a strip to an unreadable sliver.
@@ -32,7 +37,7 @@ Kavita "Send To" -> Gmail SMTP -> Kindle address
 - **Suwayomi keeps thumbnails inside its downloads dir** (`/mnt/media/manga/thumbnails`), so Kavita's Manga
   library points at the `mangas/<source>` subfolder, never `/manga`.
 - **Each converted chapter is its own Kavita "series"** (title comes from the EPUB, "<series> - Ch.N").
-- **Kavita folder watching is disabled at the server level** (`enableFolderWatching: false`), so the per-library toggle does nothing; new EPUBs only appeared after a manual scan. Fixed Nov 3 by setting the scheduled scan (Admin -> Tasks, `taskScan`) to `*/15 * * * *`. Worst-case lag for a new chapter is ~15 min convert + ~15 min scan.
+- **Kavita folder watching is disabled at the server level** (`enableFolderWatching: false`), so the per-library toggle does nothing; new EPUBs only appeared after a manual scan. Fixed Nov 3 by setting the scheduled scan (Admin -> Tasks, `taskScan`) to `*/15 * * * *`. Worst-case lag for a new chapter is ~5 min convert + ~15 min Kavita scan.
 - Kavita email = same Gmail SMTP as Calibre-Web-Automated (settings live in Kavita's DB, not this repo).
   Kindle device added under Kavita Settings -> Devices.
 - **A new Suwayomi source needs its folder added to the Kavita `Manga` library** (Admin -> Libraries -> Manga ->

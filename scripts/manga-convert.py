@@ -5,7 +5,9 @@ Source:  /mnt/media/manga/mangas/<source>/<series>/<chapter>.cbz   (Suwayomi)
 Output:  /mnt/media/manga/converted/<series> [<source>]/<series> - <chapter>.epub
          (Kavita "Converted (Kindle)" Book library; use its Send To button)
 
-Idempotent: a chapter is skipped when its EPUB already exists. Run from cron
+Idempotent: a chapter is skipped when its EPUB already exists. A CBZ is only
+converted once it opens as a complete zip (partial downloads fail that) and
+Suwayomi's queue no longer holds it. Run from cron
 under flock (see docs/manga-pipeline.md). Never touches the source CBZs.
 
 KCC lives in a uv venv outside the repo: ~/tools/kcc-venv (installed from
@@ -27,7 +29,9 @@ SRC = Path("/mnt/media/manga/mangas")
 DST = Path("/mnt/media/manga/converted")
 KCC = Path.home() / "tools/kcc-venv/bin/kcc-c2e"
 PROFILE = "KPW6"
-SETTLE_SECONDS = 120   # skip files still being written by Suwayomi
+SETTLE_SECONDS = 10         # small grace for the NFS/mergerfs view of a just-closed file
+FALLBACK_SETTLE_SECONDS = 120   # used only if Suwayomi's API cannot be queried
+SUWAYOMI_URL = "https://suwayomi.lan/api/graphql"   # via Caddy on this host (4567 is not published)
 MAX_PER_RUN = 6        # ~20 s each; keeps one cron run short
 
 
@@ -38,6 +42,37 @@ def safe(name: str) -> str:
 def chapter_label(stem: str) -> str:
     # Suwayomi names files "<scanlator>_<chapter>"; drop the scanlator prefix.
     return safe(stem.split("_", 1)[1] if "_" in stem else stem)
+
+
+def suwayomi_queue():
+    """(series, chapter) pairs Suwayomi is downloading or has queued, or None
+    if its API is unreachable (caller then falls back to a longer settle)."""
+    import json
+    query = json.dumps({"query": "{ downloadStatus { queue { chapter { name manga { title } } } } }"})
+    try:
+        # --resolve pins the Caddy vhost to this host (no DNS dependency); -k because
+        # Caddy's internal CA is not in the host trust store.
+        r = subprocess.run(
+            ["curl", "-sk", "--max-time", "10", "--resolve", "suwayomi.lan:443:127.0.0.1",
+             SUWAYOMI_URL, "-H", "Content-Type: application/json", "-d", query],
+            capture_output=True, text=True, timeout=15)
+        queue = json.loads(r.stdout)["data"]["downloadStatus"]["queue"]
+    except Exception as e:   # unreachable, bad JSON, schema change...
+        print(f"queue check unavailable ({type(e).__name__}); using {FALLBACK_SETTLE_SECONDS}s settle",
+              file=sys.stderr)
+        return None
+    return {(safe(i["chapter"]["manga"]["title"]), safe(i["chapter"]["name"])) for i in queue}
+
+
+def is_complete(cbz: Path) -> bool:
+    """A zip is unreadable until fully written (its index is at the end), so a
+    clean open + CRC pass means Suwayomi has finished the file."""
+    try:
+        with zipfile.ZipFile(cbz) as z:
+            return z.testzip() is None and any(
+                n.lower().endswith((".png", ".jpg", ".jpeg", ".webp")) for n in z.namelist())
+    except (zipfile.BadZipFile, OSError):
+        return False
 
 
 def is_webtoon(cbz: Path) -> bool:
@@ -111,11 +146,19 @@ def main() -> int:
         print(f"KCC not found at {KCC}", file=sys.stderr)
         return 2
 
+    queued = suwayomi_queue()
+    settle = SETTLE_SECONDS if queued is not None else FALLBACK_SETTLE_SECONDS
     done = failed = 0
     for cbz in sorted(SRC.glob("*/*/*.cbz")):
-        if time.time() - cbz.stat().st_mtime < SETTLE_SECONDS:
+        age = time.time() - cbz.stat().st_mtime
+        if age < settle:
             continue
         series = safe(cbz.parent.name)
+        if queued and any(series == qs and qc and qc in cbz.stem for qs, qc in queued):
+            continue   # Suwayomi still has this chapter queued/running
+        if not is_complete(cbz):
+            print(f"skip {cbz.name}: archive not complete yet")
+            continue
         source = safe(re.sub(r"\s*\([A-Za-z-]{2,5}\)$", "", cbz.parent.parent.name))  # "TCB Scans (EN)" -> "TCB Scans"
         label = chapter_label(cbz.stem)
         # Source in the folder so the same series from two sources never collides.
