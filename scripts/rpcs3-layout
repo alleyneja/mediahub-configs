@@ -18,7 +18,8 @@ HOME = os.path.expanduser('~')
 RPCS3 = [f'{HOME}/.config/rpcs3/input_configs/global/Default.yml',
          f'{HOME}/.var/app/net.rpcs3.RPCS3/config/rpcs3/input_configs/global/Default.yml']
 
-SHOOTERS = ['Call of Duty - Modern Warfare 2', 'Call of Duty - Black Ops']
+SHOOTERS = ['Call of Duty - Modern Warfare 2', 'Call of Duty - Black Ops',
+            'Call of Duty - Modern Warfare 3']
 
 POSITIONAL = {'L1': 'LB', 'L2': 'LT', 'R1': 'RB', 'R2': 'RT'}
 SWAPPED = {'L1': 'LT', 'L2': 'LB', 'R1': 'RT', 'R2': 'RB'}

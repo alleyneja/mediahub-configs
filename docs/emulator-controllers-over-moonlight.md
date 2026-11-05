@@ -317,7 +317,7 @@ in `Default.yml` before each launch:
 
 | Game | LB | RB | LT | RT |
 |---|---|---|---|---|
-| in `SHOOTERS` (now: Call of Duty - Modern Warfare 2, Call of Duty - Black Ops) | L2 | R2 | L1 | R1 |
+| in `SHOOTERS` (now: Call of Duty - Modern Warfare 2, Call of Duty - Black Ops, Call of Duty - Modern Warfare 3) | L2 | R2 | L1 | R1 |
 | everything else | L1 | R1 | L2 | R2 |
 
 Because every launch sets the layout, the config never stays swapped after a shooter. Add a shooter by adding a
