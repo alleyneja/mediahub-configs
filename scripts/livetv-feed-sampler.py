@@ -167,20 +167,22 @@ def sample():
             ts_url = "%s/%s/%s/%s.ts" % (host, user, pw, sid)
             cdn_state = os.path.join(DIR, "cdnhost")
             cdn_host = open(cdn_state).read().strip() if os.path.exists(cdn_state) else "ray.frontcdn.me"
-            o0, r0 = tcp_counters(); pg = start_ping(cdn_host, False)
-            m = run_measure(ts_url, False)
-            o1, r1 = tcp_counters(); row["ts_ping_loss"], row["ts_ping_max"] = finish_ping(pg)
-            if o1 > o0: row["ts_retrans_pct"] = round(100.0 * (r1 - r0) / (o1 - o0), 2)
-            if m.get("host"): open(cdn_state, "w").write(m["host"])
-            row.update(ts_kbps=m.get("kbps", ""), ts_ttfb=m.get("ttfb", ""), ts_maxgap=m.get("maxgap", ""), ts_cdn=m.get("cdn", ""))
-            if "error" in m: notes.append("ts:" + m["error"])
-            if busy(): row["skipped"] = "viewer_started_after_ts"
+            # HLS goes FIRST: after a TS pull the provider answers the .m3u8 request with a raw TS stream
+            # (http 200, video/mp2t) in every full cycle so far (0 of 8 on 2026-11-09), while a standalone request gets the playlist.
+            try:
+                h = measure_hls(host, user, pw, sid)
+                row.update(hls_kbps=h["kbps"], hls_worst_ratio=h["worst_ratio"], hls_cdn=h["cdn"])
+            except Exception as e: notes.append("hls:" + str(e)[:60])
+            if busy(): row["skipped"] = "viewer_started_after_hls"
             else:
-                try:
-                    h = measure_hls(host, user, pw, sid)
-                    row.update(hls_kbps=h["kbps"], hls_worst_ratio=h["worst_ratio"], hls_cdn=h["cdn"])
-                except Exception as e: notes.append("hls:" + str(e)[:60])
-                if busy(): row["skipped"] = "viewer_started_after_hls"
+                o0, r0 = tcp_counters(); pg = start_ping(cdn_host, False)
+                m = run_measure(ts_url, False)
+                o1, r1 = tcp_counters(); row["ts_ping_loss"], row["ts_ping_max"] = finish_ping(pg)
+                if o1 > o0: row["ts_retrans_pct"] = round(100.0 * (r1 - r0) / (o1 - o0), 2)
+                if m.get("host"): open(cdn_state, "w").write(m["host"])
+                row.update(ts_kbps=m.get("kbps", ""), ts_ttfb=m.get("ttfb", ""), ts_maxgap=m.get("maxgap", ""), ts_cdn=m.get("cdn", ""))
+                if "error" in m: notes.append("ts:" + m["error"])
+                if busy(): row["skipped"] = "viewer_started_after_ts"
                 else:
                     pg = start_ping(cdn_host, True)
                     v = run_measure(ts_url, True)
