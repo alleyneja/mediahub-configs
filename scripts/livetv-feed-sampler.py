@@ -87,9 +87,13 @@ def measure_hls(host, user, pw, sid):
     ratio = download seconds / media seconds; >= 1 means the player would fall behind real time."""
     import http.client, socket
     base = "%s/live/%s/%s/%s.m3u8" % (host, user, pw, sid)
-    r = urllib.request.urlopen(base, timeout=15)
-    final = r.geturl(); cdn = final.split("/")[2].split(".")[0]; chost = final.split("/")[2]
-    pl = r.read().decode().split("\n")
+    # Playlist via curl with a hard wall-clock cap: Python's urllib read of this response hung for minutes (2026-11-08)
+    # while curl returns in ~2 s every time.
+    out = subprocess.run(["curl", "-sL", "-m", "15", "-w", "\n@@%{url_effective}", base], capture_output=True, text=True, timeout=25).stdout
+    body, _, final = out.rpartition("\n@@")
+    if "#EXTINF" not in body: raise RuntimeError("no playlist")
+    cdn = final.split("/")[2].split(".")[0]; chost = final.split("/")[2]
+    pl = body.split("\n")
     segs = [(float(l[8:].split(",")[0]), pl[i + 1].strip()) for i, l in enumerate(pl) if l.startswith("#EXTINF")][-3:-1]
     tot = nbytes = 0; worst = 0.0
     for dur, p in segs:
