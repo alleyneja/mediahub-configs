@@ -29,7 +29,9 @@ RUN_DAYS = 7
 SAMPLE_SECS = 15                 # data-reading window per route
 STARVED_KBPS = 1000              # the stream needs ~1000 KB/s; below this the player drains
 COLS = ["ts", "skipped", "ts_kbps", "ts_ttfb", "ts_maxgap", "ts_cdn",
-        "hls_kbps", "hls_worst_ratio", "hls_cdn", "vpn_kbps", "vpn_ttfb", "vpn_maxgap", "vpn_cdn", "notes"]
+        "hls_kbps", "hls_worst_ratio", "hls_cdn", "vpn_kbps", "vpn_ttfb", "vpn_maxgap", "vpn_cdn", "notes",
+        # loss-vs-throttling evidence (added 2026-11-08): ping to the CDN server during the pull + host TCP retransmits
+        "ts_ping_loss", "ts_ping_max", "ts_retrans_pct", "vpn_ping_loss", "vpn_ping_max"]
 
 # Identical measuring code runs on the host and inside gluetun's namespace (docker exec into qbittorrent).
 MEASURE = r'''
@@ -38,7 +40,7 @@ url, secs = os.environ["SAMPLER_URL"], float(os.environ["SAMPLER_SECS"])
 out = {}
 try:
     t0 = time.time(); r = urllib.request.urlopen(url, timeout=15); out["ttfb"] = round(time.time() - t0, 2)
-    out["cdn"] = r.geturl().split("/")[2].split(".")[0]
+    out["host"] = r.geturl().split("/")[2]; out["cdn"] = out["host"].split(".")[0]
     n = 0; last = time.time(); maxgap = 0.0; start = time.time()
     while time.time() - start < secs:
         d = r.read(65536)
@@ -81,6 +83,29 @@ def run_measure(url, via_vpn):
     except Exception:
         return {"error": "no output: " + r.stderr.strip()[-60:]}
 
+def tcp_counters():
+    """Host-namespace TCP OutSegs/RetransSegs from /proc/net/snmp."""
+    rows = [l.split() for l in open("/proc/net/snmp") if l.startswith("Tcp:")]
+    d = dict(zip(rows[0][1:], map(int, rows[1][1:])))
+    return d["OutSegs"], d["RetransSegs"]
+
+def start_ping(host, via_vpn):
+    cmd = ["ping", "-c", str(SAMPLE_SECS), "-i", "1", "-q", host]
+    if via_vpn: cmd = ["docker", "exec", "gluetun"] + cmd
+    return subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+
+def finish_ping(p):
+    """-> (loss_pct, max_rtt_ms) or ('', '') if it could not be parsed."""
+    try:
+        out = p.communicate(timeout=SAMPLE_SECS + 20)[0]
+        loss = re.search(r"([\d.]+)% packet loss", out).group(1)
+        mx = re.search(r"= [\d.]+/[\d.]+/([\d.]+)", out).group(1)
+        return loss, mx
+    except Exception:
+        try: p.kill()
+        except Exception: pass
+        return "", ""
+
 def measure_hls(host, user, pw, sid):
     """Download 2 recent HLS segments and time them to the LAST BYTE. The CDN does not always close the connection
     after a segment (curl showed an extra ~15 s wait), so a short idle gap after data counts as 'finished'.
@@ -89,9 +114,13 @@ def measure_hls(host, user, pw, sid):
     base = "%s/live/%s/%s/%s.m3u8" % (host, user, pw, sid)
     # Playlist via curl with a hard wall-clock cap: Python's urllib read of this response hung for minutes (2026-11-08)
     # while curl returns in ~2 s every time.
-    out = subprocess.run(["curl", "-sL", "-m", "15", "-w", "\n@@%{url_effective}", base], capture_output=True, text=True, timeout=25).stdout
-    body, _, final = out.rpartition("\n@@")
-    if "#EXTINF" not in body: raise RuntimeError("no playlist")
+    res = subprocess.run(["curl", "-sL", "-m", "15", "--max-filesize", "200000", "-w", "\n@@%{url_effective}@@%{content_type}@@%{http_code}", base],
+                         capture_output=True, timeout=25)
+    raw = res.stdout.decode("utf-8", "replace")
+    body, _, tail = raw.rpartition("\n@@")
+    final, _, rest = tail.partition("@@"); ctype, _, code = rest.partition("@@")
+    if "#EXTINF" not in body:
+        raise RuntimeError("m3u8 request gave no playlist (http %s, type %s, %d bytes, curl rc %d)" % (code or "?", ctype or "?", len(res.stdout), res.returncode))
     cdn = final.split("/")[2].split(".")[0]; chost = final.split("/")[2]
     pl = body.split("\n")
     segs = [(float(l[8:].split(",")[0]), pl[i + 1].strip()) for i, l in enumerate(pl) if l.startswith("#EXTINF")][-3:-1]
@@ -136,7 +165,13 @@ def sample():
             row["skipped"] = "viewer_active"
         else:
             ts_url = "%s/%s/%s/%s.ts" % (host, user, pw, sid)
+            cdn_state = os.path.join(DIR, "cdnhost")
+            cdn_host = open(cdn_state).read().strip() if os.path.exists(cdn_state) else "ray.frontcdn.me"
+            o0, r0 = tcp_counters(); pg = start_ping(cdn_host, False)
             m = run_measure(ts_url, False)
+            o1, r1 = tcp_counters(); row["ts_ping_loss"], row["ts_ping_max"] = finish_ping(pg)
+            if o1 > o0: row["ts_retrans_pct"] = round(100.0 * (r1 - r0) / (o1 - o0), 2)
+            if m.get("host"): open(cdn_state, "w").write(m["host"])
             row.update(ts_kbps=m.get("kbps", ""), ts_ttfb=m.get("ttfb", ""), ts_maxgap=m.get("maxgap", ""), ts_cdn=m.get("cdn", ""))
             if "error" in m: notes.append("ts:" + m["error"])
             if busy(): row["skipped"] = "viewer_started_after_ts"
@@ -147,12 +182,19 @@ def sample():
                 except Exception as e: notes.append("hls:" + str(e)[:60])
                 if busy(): row["skipped"] = "viewer_started_after_hls"
                 else:
+                    pg = start_ping(cdn_host, True)
                     v = run_measure(ts_url, True)
+                    row["vpn_ping_loss"], row["vpn_ping_max"] = finish_ping(pg)
                     row.update(vpn_kbps=v.get("kbps", ""), vpn_ttfb=v.get("ttfb", ""), vpn_maxgap=v.get("maxgap", ""), vpn_cdn=v.get("cdn", ""))
                     if "error" in v: notes.append("vpn:" + v["error"])
     except Exception as e:
         notes.append("fatal:" + str(e)[:80])
     row["notes"] = ";".join(notes)
+    if os.path.exists(CSV):
+        old = list(csv.DictReader(open(CSV)))
+        if open(CSV).readline().strip().split(",") != COLS:      # schema grew: rewrite old rows with blanks
+            with open(CSV, "w", newline="") as f:
+                w = csv.DictWriter(f, COLS, extrasaction="ignore", restval=""); w.writeheader(); w.writerows(old)
     new = not os.path.exists(CSV)
     with open(CSV, "a", newline="") as f:
         w = csv.DictWriter(f, COLS)
@@ -180,6 +222,11 @@ def summary():
     for r in bad[-25:]:
         print("  %s  TS %5s KB/s (gap %ss, cdn %s) | HLS %s KB/s ratio %s | VPN %s KB/s (gap %ss)" % (
             r["ts"], r["ts_kbps"], r["ts_maxgap"], r["ts_cdn"], r["hls_kbps"] or "-", r["hls_worst_ratio"] or "-", r["vpn_kbps"] or "-", r["vpn_maxgap"] or "-"))
+        if r.get("ts_ping_loss", "") != "" or r.get("ts_retrans_pct", "") != "":
+            lossy = (f(r, "ts_ping_loss") or 0) > 0 or (f(r, "ts_retrans_pct") or 0) > 1.0
+            print("      network during pull: ping-to-CDN loss %s%% max %s ms, TCP retransmits %s%%  -> %s" % (
+                r.get("ts_ping_loss") or "?", r.get("ts_ping_max") or "?", r.get("ts_retrans_pct") or "?",
+                "LOSS/RETRANSMITS present (network)" if lossy else "clean network (provider slow/throttled?)"))
     if not bad: print("  none yet")
     byh = {}
     for r in done:
