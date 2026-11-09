@@ -148,17 +148,19 @@ def sample():
     if not os.path.exists(START): open(START, "w").write(datetime.now().isoformat())
     if datetime.now() > datetime.fromisoformat(open(START).read().strip()) + timedelta(days=RUN_DAYS): return
     def _wd(*_): raise TimeoutError("watchdog: cycle exceeded 240 s")
-    signal.signal(signal.SIGALRM, _wd); signal.alarm(240)   # a cron cycle can never hang
+    signal.signal(signal.SIGALRM, _wd); signal.alarm(330)   # a cron cycle can never hang
     row = {c: "" for c in COLS}; row["ts"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     notes = []
     try:
         host, user, pw, sid = stream_base()
-        def busy(settle=True):
-            # The provider keeps counting our own just-closed connection for ~5 s (measured 2026-11-08), so give the
-            # count up to 20 s to drop to 0 before deciding a real viewer is present.
-            for i in range(7):
+        def busy(settle=True, wait=20):
+            # The provider keeps counting our own just-closed TS connection for ~5 s (measured 2026-11-08) and a closed
+            # HLS session for ~60 s (2026-11-09), so give the count up to `wait` s to drop to 0 before deciding a real
+            # viewer is present.
+            n = int(wait / 3) + 1
+            for i in range(n):
                 if active_conns(host, user, pw) == 0: return False
-                if not settle or i == 6: break
+                if not settle or i == n - 1: break
                 time.sleep(3)
             return True
         if busy(settle=False):
@@ -166,20 +168,20 @@ def sample():
         else:
             ts_url = "%s/%s/%s/%s.ts" % (host, user, pw, sid)
             cdn_state = os.path.join(DIR, "cdnhost")
-            cdn_host = open(cdn_state).read().strip() if os.path.exists(cdn_state) else "ray.frontcdn.me"
+            cdn_host = open(cdn_state).read().strip().split(":")[0] if os.path.exists(cdn_state) else "ray.frontcdn.me"
             # HLS goes FIRST: after a TS pull the provider answers the .m3u8 request with a raw TS stream
             # (http 200, video/mp2t) in every full cycle so far (0 of 8 on 2026-11-09), while a standalone request gets the playlist.
             try:
                 h = measure_hls(host, user, pw, sid)
                 row.update(hls_kbps=h["kbps"], hls_worst_ratio=h["worst_ratio"], hls_cdn=h["cdn"])
             except Exception as e: notes.append("hls:" + str(e)[:60])
-            if busy(): row["skipped"] = "viewer_started_after_hls"
+            if busy(wait=90): row["skipped"] = "viewer_started_after_hls"
             else:
                 o0, r0 = tcp_counters(); pg = start_ping(cdn_host, False)
                 m = run_measure(ts_url, False)
                 o1, r1 = tcp_counters(); row["ts_ping_loss"], row["ts_ping_max"] = finish_ping(pg)
                 if o1 > o0: row["ts_retrans_pct"] = round(100.0 * (r1 - r0) / (o1 - o0), 2)
-                if m.get("host"): open(cdn_state, "w").write(m["host"])
+                if m.get("host"): open(cdn_state, "w").write(m["host"].split(":")[0])
                 row.update(ts_kbps=m.get("kbps", ""), ts_ttfb=m.get("ttfb", ""), ts_maxgap=m.get("maxgap", ""), ts_cdn=m.get("cdn", ""))
                 if "error" in m: notes.append("ts:" + m["error"])
                 if busy(): row["skipped"] = "viewer_started_after_ts"
