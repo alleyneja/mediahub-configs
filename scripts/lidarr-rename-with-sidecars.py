@@ -12,7 +12,9 @@ Scope: albums that appear in the downloader's track_downloads table
 a rename (pilot Nov 13 2026: The Script - Science & Faith), only paths change.
 
 Dry run by default. --apply renames. --album-id N limits to one album.
-Idempotent: albums with an empty rename preview are skipped; a sidecar is moved
+NOTE: the first bulk run (Nov 13) left sidecars behind for multi-disc / renamed-folder
+albums (Lidarr moves audio there); fixed by matching sidecars to audio afterwards, and
+this script now targets the new folder. Idempotent: albums with an empty rename preview are skipped; a sidecar is moved
 only if its target does not already exist.
 """
 import argparse
@@ -59,10 +61,13 @@ def sidecar_moves(preview):
     """[(src, dst)] for sidecars whose audio is being renamed."""
     moves = []
     for x in preview:
-        d = os.path.dirname(host(x["existingPath"]))
+        # Lidarr may also move audio to a new folder (multi-disc "CD 01/", or a
+        # renamed album folder), so the sidecar goes to the audio's NEW folder.
+        sd = os.path.dirname(host(x["existingPath"]))
+        dd = os.path.dirname(host(x["newPath"]))
         old, new = stem(x["existingPath"]), stem(x["newPath"])
         for ext in SIDECARS:
-            s, t = os.path.join(d, old + ext), os.path.join(d, new + ext)
+            s, t = os.path.join(sd, old + ext), os.path.join(dd, new + ext)
             if os.path.exists(s) and not os.path.exists(t):
                 moves.append((s, t))
     return moves
@@ -127,7 +132,7 @@ def main():
         log.write(json.dumps({"album": aid, "audio": len(prev), "sidecars": done,
                               "ts": time.time()}) + "\n")
         log.flush()
-        refresh.append(os.path.dirname(host(prev[0]["existingPath"])))
+        refresh.append(os.path.dirname(os.path.dirname(host(prev[0]["newPath"]))) if False else os.path.dirname(host(prev[0]["newPath"])))
     print(json.dumps(tot))
     if a.apply and refresh:
         with open(os.path.expanduser("~/logs/lidarr-rename-dirs.txt"), "a") as f:
