@@ -132,7 +132,7 @@ def main():
         log.write(json.dumps({"album": aid, "audio": len(prev), "sidecars": done,
                               "ts": time.time()}) + "\n")
         log.flush()
-        refresh.append(os.path.dirname(os.path.dirname(host(prev[0]["newPath"]))) if False else os.path.dirname(host(prev[0]["newPath"])))
+        refresh.append(os.path.dirname(host(prev[0]["newPath"])))
     print(json.dumps(tot))
     if a.apply and refresh:
         with open(os.path.expanduser("~/logs/lidarr-rename-dirs.txt"), "a") as f:
