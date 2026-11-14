@@ -51,6 +51,10 @@ or rotate each one:
   the file in place (`cat > file`), not by rename: single-file bind mounts
   keep serving the old inode.
 
+The music-discovery approval bot (`stacks/discovery-bot/`, see
+`docs/discovery-bot.md`) also posts to `#media-alerts`: weekly album cards with
+Approve/Reject buttons, plus its own skip/failure notices.
+
 ## The bot
 
 A Discord Application + bot ("Homelab Ops") was created 2026-09-15 to

@@ -1,0 +1,1330 @@
+{
+ "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+ "name": "Johnny Gill",
+ "sort-name": "Gill, Johnny",
+ "disambiguation": "",
+ "type-id": null,
+ "type": "Person",
+ "country": null,
+ "life-span": {
+  "begin": null,
+  "end": null,
+  "ended": false
+ },
+ "genres": [
+  "rnb",
+  "soul",
+  "new jack swing",
+  "90s",
+  "johnny gill",
+  "male vocalists",
+  "r&b",
+  "love songs",
+  "quiet storm",
+  "new edition"
+ ],
+ "links": [
+  {
+   "type": "discogs",
+   "target": "https://www.discogs.com/artist/45534"
+  },
+  {
+   "type": "wikidata",
+   "target": "https://www.wikidata.org/wiki/Q2393563"
+  },
+  {
+   "type": "muzikum",
+   "target": "http://muzikum.eu/en/122-8534/johnny-gill/lyrics.html"
+  },
+  {
+   "type": "rateyourmusic",
+   "target": "https://rateyourmusic.com/artist/johnny_gill"
+  },
+  {
+   "type": "allmusic",
+   "target": "https://www.allmusic.com/artist/mn0000253734"
+  },
+  {
+   "type": "spotify",
+   "target": "https://open.spotify.com/artist/7oHzn7edwmrYClrPRINkbn"
+  },
+  {
+   "type": "google",
+   "target": "https://play.google.com/store/music/artist?id=A6xip3vyk7or54lcsdvqfbjcek4"
+  },
+  {
+   "type": "deezer",
+   "target": "https://www.deezer.com/artist/2354"
+  },
+  {
+   "type": "tidal",
+   "target": "https://tidal.com/artist/30487"
+  },
+  {
+   "type": "last",
+   "target": "https://www.last.fm/music/Johnny+Gill"
+  },
+  {
+   "type": "deezer",
+   "target": "https://www.deezer.com/artist/266005552"
+  }
+ ],
+ "relations": [
+  {
+   "type": "discogs",
+   "url": {
+    "resource": "https://www.discogs.com/artist/45534"
+   }
+  },
+  {
+   "type": "wikidata",
+   "url": {
+    "resource": "https://www.wikidata.org/wiki/Q2393563"
+   }
+  },
+  {
+   "type": "muzikum",
+   "url": {
+    "resource": "http://muzikum.eu/en/122-8534/johnny-gill/lyrics.html"
+   }
+  },
+  {
+   "type": "rateyourmusic",
+   "url": {
+    "resource": "https://rateyourmusic.com/artist/johnny_gill"
+   }
+  },
+  {
+   "type": "allmusic",
+   "url": {
+    "resource": "https://www.allmusic.com/artist/mn0000253734"
+   }
+  },
+  {
+   "type": "spotify",
+   "url": {
+    "resource": "https://open.spotify.com/artist/7oHzn7edwmrYClrPRINkbn"
+   }
+  },
+  {
+   "type": "google",
+   "url": {
+    "resource": "https://play.google.com/store/music/artist?id=A6xip3vyk7or54lcsdvqfbjcek4"
+   }
+  },
+  {
+   "type": "deezer",
+   "url": {
+    "resource": "https://www.deezer.com/artist/2354"
+   }
+  },
+  {
+   "type": "tidal",
+   "url": {
+    "resource": "https://tidal.com/artist/30487"
+   }
+  },
+  {
+   "type": "last",
+   "url": {
+    "resource": "https://www.last.fm/music/Johnny+Gill"
+   }
+  },
+  {
+   "type": "deezer",
+   "url": {
+    "resource": "https://www.deezer.com/artist/266005552"
+   }
+  }
+ ],
+ "rating": {
+  "count": 2,
+  "value": 9
+ },
+ "bio": "Johnny Gill Jr. (born May 22, 1966) is an American singer and songwriter. He is the sixth and final member of the R&B/pop group New Edition and was also a member of the supergroup called LSG, with Gerald Levert and Keith Sweat. Gill has released eight solo albums, three albums with New Edition, two albums with LSG, and one collaborative album with Stacy Lattisaw. Gill has sold over 15 million copies worldwide as a solo artist.",
+ "tags": [
+  {
+   "name": "rnb",
+   "count": 100
+  },
+  {
+   "name": "soul",
+   "count": 83
+  },
+  {
+   "name": "new jack swing",
+   "count": 37
+  },
+  {
+   "name": "90s",
+   "count": 36
+  },
+  {
+   "name": "johnny gill",
+   "count": 11
+  },
+  {
+   "name": "male vocalists",
+   "count": 6
+  },
+  {
+   "name": "r&b",
+   "count": 3
+  },
+  {
+   "name": "love songs",
+   "count": 1
+  },
+  {
+   "name": "quiet storm",
+   "count": 1
+  },
+  {
+   "name": "new edition",
+   "count": 1
+  }
+ ],
+ "release-groups": [
+  {
+   "id": "b93b7eae-a7f4-4874-9c72-d845ebaef678",
+   "title": "20th Century Masters - The Millennium Collection: The Best of Johnny Gill",
+   "first-release-date": "2003-01-01",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "c2cca5d0-1c1a-399e-8783-ec0896c57956",
+   "title": "Chemistry",
+   "first-release-date": "1985-01-01",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b4ba5fa4-2b68-3d8c-abfc-9cdc721b4ced",
+   "title": "Favorites",
+   "first-release-date": "1997-11-11",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "26c592e3-c881-4956-896a-0bfa50dd078e",
+   "title": "Game Changer",
+   "first-release-date": "2014-12-09",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "e8b42e78-67c5-4c6e-b031-944aa7a84799",
+   "title": "Game Changer II",
+   "first-release-date": "2019-09-06",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "0a32879d-47b5-3df2-8a69-1574b0c2954f",
+   "title": "Johnny Gill",
+   "first-release-date": "1990-04-17",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "1c0402f1-8bda-4508-b9da-0f8f118cf2aa",
+   "title": "Johnny Gill",
+   "first-release-date": "1983-04-17",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "721bae3f-c792-33de-90b3-b5ab302b3208",
+   "title": "Let\u2019s Get the Mood Right",
+   "first-release-date": "1996-09-30",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "f80c60cf-a325-396e-883f-e56a0981f2cf",
+   "title": "Love Songs",
+   "first-release-date": "2005-01-11",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "1bf06a6f-c47a-342f-8fcc-54398b61e63b",
+   "title": "Provocative",
+   "first-release-date": "1993-06-08",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "fd15369d-7c2a-4f27-a2d3-2be1525bad61",
+   "title": "Still Winning",
+   "first-release-date": "2011-10-11",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "96815dfc-2028-3eeb-bb1f-6a659f2d948f",
+   "title": "Ultimate Collection",
+   "first-release-date": "0001-01-01",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "34351a1a-dede-4c3c-9f2b-8995c651819b",
+   "title": "Fairweather Friend",
+   "first-release-date": "1990-01-01",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b8398cbe-725b-408f-ba65-2c31ac0f3968",
+   "title": "Let's Get the Mood Right",
+   "first-release-date": "1996-01-01",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "1af9798f-e756-4594-a066-ad05971d5ee3",
+   "title": "Love in an Elevator / So Gentle",
+   "first-release-date": "1997-01-01",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "b48369d3-aeea-416c-a82d-e130f3260ff2",
+   "title": "My My My",
+   "first-release-date": "1990-01-01",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "c15112a6-df40-4111-bb70-ccb40f485c81",
+   "title": "Perfect",
+   "first-release-date": "2019-08-16",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "0f8aceae-6dff-307c-9a4a-efc2933a3e21",
+   "title": "Rub You the Right Way",
+   "first-release-date": "1990-01-01",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "1604cabd-98f1-49b0-ac09-3f243da17160",
+   "title": "Soul of a Woman",
+   "first-release-date": "2019-02-15",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "52de1c1f-1e7f-313a-be0d-644397e73b72",
+   "title": "The Floor",
+   "first-release-date": "1993-01-01",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  },
+  {
+   "id": "f98df378-a93d-4a53-b8ae-48447157a3ff",
+   "title": "Wrap My Body Tight",
+   "first-release-date": "1991-01-01",
+   "primary-type": "Single",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Johnny Gill",
+     "artist": {
+      "id": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+      "name": "Johnny Gill"
+     }
+    }
+   ]
+  }
+ ],
+ "appears-on-release-groups": [
+  {
+   "id": "d3064a41-ead0-4a6c-a445-de80dac84de0",
+   "title": "The Cotillion Years 1979 - 1985",
+   "first-release-date": "2021-09-24",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Stacy Lattisaw",
+     "artist": {
+      "id": "ac6dff9d-f26d-4d71-b2db-96aeb90a4225",
+      "name": "Stacy Lattisaw",
+      "sort-name": "Lattisaw, Stacy"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Falling in Love Again",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "c504a806-5f5a-4f38-9c02-2588e9227ac8",
+     "status": null,
+     "date": "2021-09-24",
+     "title": "The Cotillion Years 1979 - 1985"
+    }
+   ]
+  },
+  {
+   "id": "0cc8347c-0201-4b73-85fd-597f5446d214",
+   "title": "Motown Party",
+   "first-release-date": "2019-12-27",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Wrap My Body Tight",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "cf2ea4a8-e3c8-44f0-acca-859f7d192fcb",
+     "status": "Official",
+     "date": "2019-12-27",
+     "title": "Motown Party"
+    }
+   ]
+  },
+  {
+   "id": "30ae9702-3f6b-3893-a96d-7f912dc9c2ef",
+   "title": "Motown: The Complete No. 1\u2019s",
+   "first-release-date": "2019-06-28",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Wrap My Body Tight",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "b06a5881-e2b7-4e40-a587-fbfb1c98df72",
+     "status": "Official",
+     "date": "2019-06-28",
+     "title": "Motown: The Complete No. 1\u2019s"
+    }
+   ]
+  },
+  {
+   "id": "607bb72f-9980-4ff5-ada5-e89efd08308a",
+   "title": "New Jack Swing: Gold",
+   "first-release-date": "2019-03-22",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You the Right Way (7-Inch version)",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "72f686da-8597-45a5-9fb8-d764ed1ce831",
+     "status": "Official",
+     "date": "2019-03-22",
+     "title": "New Jack Swing: Gold"
+    }
+   ]
+  },
+  {
+   "id": "162af80b-e7a6-4f24-ad24-18f711705927",
+   "title": "Motown 60",
+   "first-release-date": "2019-03-20",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "My, My, My",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "6f3d6d3b-ef02-472c-8411-7530fc1d6105",
+     "status": "Official",
+     "date": "2019-03-20",
+     "title": "Motown 60"
+    }
+   ]
+  },
+  {
+   "id": "80e08c50-27ad-40d1-8e16-b0e8b4496a58",
+   "title": "From Motown With Love",
+   "first-release-date": "2015",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Silent Prayer",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "7a06c965-8a75-4793-b6af-4cae5f382946",
+     "status": "Official",
+     "date": "2015",
+     "title": "From Motown With Love"
+    }
+   ]
+  },
+  {
+   "id": "38fded87-157c-46a7-94f9-70d97b125ecd",
+   "title": "Pure Swing",
+   "first-release-date": "2010-08-16",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You the Right Way",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "222b55bd-f525-45b8-a710-6efbfb7874c5",
+     "status": "Official",
+     "date": "2010-08-16",
+     "title": "Pure Swing"
+    }
+   ]
+  },
+  {
+   "id": "74c51986-bf4e-49bf-ab01-7d9091348eee",
+   "title": "Anthems: R&B",
+   "first-release-date": "2010",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "My, My, My (album version)",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "e87bd771-27b7-4fcd-9293-994b91de0951",
+     "status": "Official",
+     "date": "2010",
+     "title": "Anthems: R&B"
+    }
+   ]
+  },
+  {
+   "id": "c6833cde-f87f-4cbb-96b3-450bd04416cc",
+   "title": "Crave, Volume 2",
+   "first-release-date": "2009-06-12",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation",
+    "DJ-mix"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Havana Brown",
+     "artist": {
+      "id": "202d9955-4cd2-4bb2-835c-e0152c6abf19",
+      "name": "Havana Brown",
+      "sort-name": "Brown, Havana",
+      "disambiguation": "Australian DJ"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You the Right Way",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "ce466544-cabb-439c-9646-179fcb71934b",
+     "status": "Official",
+     "date": "2009-06-12",
+     "title": "Crave, Volume 2"
+    }
+   ]
+  },
+  {
+   "id": "7f3f28c5-3d07-41cd-a52c-d2a6c55ef1e9",
+   "title": "A Tribute to R&B: The Collectors Edition",
+   "first-release-date": "2007",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Mixtape/Street"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Fire & Desire",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "58ca5a33-d1d3-444f-b4e6-4903819d5581",
+     "status": "Promotion",
+     "date": "2007",
+     "title": "A Tribute to R&B: The Collectors Edition"
+    }
+   ]
+  },
+  {
+   "id": "d82effed-c870-32bd-81b3-9c5427c44f71",
+   "title": "Ultimate 16 Originals: Classic Love Duets (Lite FM)",
+   "first-release-date": "2005-11-08",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Where Do We Go From Here",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "03c6d265-65bb-4fff-94f0-64fff99b8aed",
+     "status": "Official",
+     "date": "2005-11-08",
+     "title": "Ultimate 16 Originals: Classic Love Duets (Lite FM)"
+    }
+   ]
+  },
+  {
+   "id": "2fb4a331-7fc4-3a4a-8c4f-862c56027ffe",
+   "title": "Gold",
+   "first-release-date": "2005-10-11",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "New Edition",
+     "artist": {
+      "id": "b4b94b15-1535-48a4-aa1e-d44e55d75bc5",
+      "name": "New Edition",
+      "sort-name": "New Edition"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Wrap My Body Tight",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "b955aa57-3cb1-44b7-a9a3-e54dd08e3a63",
+     "status": "Official",
+     "date": "2005-10-11",
+     "title": "Gold"
+    }
+   ]
+  },
+  {
+   "id": "b36f9eec-295d-3571-9d64-ad4b444f440d",
+   "title": "Motown Christmas",
+   "first-release-date": "2005",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Silent Prayer",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "993876cd-3376-4ebb-9b41-3b68253aee82",
+     "status": "Official",
+     "date": "2005",
+     "title": "Motown Christmas"
+    }
+   ]
+  },
+  {
+   "id": "469b743e-babc-4e9b-b5dd-2676c46a71b4",
+   "title": "Body & Soul: Slow Caress",
+   "first-release-date": "2005",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "My My My",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "b4fd8fa4-c549-4482-a103-4ba7ca372d56",
+     "status": "Official",
+     "date": "2005",
+     "title": "Body & Soul: Slow Caress"
+    }
+   ]
+  },
+  {
+   "id": "151421b9-2042-41e5-9335-38b1278f5700",
+   "title": "Corn\u00e9 Klijn\u2019s Disco Classics Top 100",
+   "first-release-date": "2005",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You the Right Way",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "71e4768d-1860-47a4-a862-046091ea71ad",
+     "status": "Official",
+     "date": "2005",
+     "title": "Corn\u00e9 Klijn\u2019s Disco Classics Top 100"
+    }
+   ]
+  },
+  {
+   "id": "da7877ba-4917-32e6-8b96-e7faec1a67c2",
+   "title": "100 Love Songs",
+   "first-release-date": "2004-10-08",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Silent Prayer",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "ba65d9dc-3e8a-4230-a498-aa76af3253dc",
+     "status": "Official",
+     "date": "2004-10-08",
+     "title": "100 Love Songs"
+    }
+   ]
+  },
+  {
+   "id": "2d3d117b-953d-3faa-8b58-4592011b41d4",
+   "title": "The Best Duets",
+   "first-release-date": "2003",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Silent Prayer",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "0ad8099c-e4a5-4ad8-9f32-23db1e7df815",
+     "status": "Official",
+     "date": "2003",
+     "title": "The Best Duets"
+    }
+   ]
+  },
+  {
+   "id": "7c5bdf4f-201a-4ed8-ad61-a86a446108de",
+   "title": "New Jack Swing - A Body + Soul Collection",
+   "first-release-date": "2003",
+   "primary-type": "Album",
+   "secondary-types": [],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You The Right Way",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "d774aa8d-a241-41da-9921-b093d119450f",
+     "status": "Official",
+     "date": "2003",
+     "title": "New Jack Swing - A Body + Soul Collection"
+    }
+   ]
+  },
+  {
+   "id": "70614c9b-3fc0-4483-8a6d-82b0e63387f0",
+   "title": "No.1 R&B Hits, Volume 1",
+   "first-release-date": "2003",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You the Right Way",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "378058a3-720a-4dab-a930-5efc2d7037ef",
+     "status": "Official",
+     "date": "2003",
+     "title": "No.1 R&B Hits, Volume 1"
+    }
+   ]
+  },
+  {
+   "id": "be4aeb65-b452-4177-a1ea-fe545285878e",
+   "title": "Hip Hop Soul Party 6",
+   "first-release-date": "2003",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation",
+    "DJ-mix"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "joinphrase": " & ",
+     "name": "Cut Killer",
+     "artist": {
+      "id": "e6207340-e26f-49dc-869f-3750804e8096",
+      "name": "Cut Killer",
+      "sort-name": "Cut Killer"
+     }
+    },
+    {
+     "name": "DJ Abdel",
+     "artist": {
+      "id": "7b4ac3d6-19df-4663-8d22-18189394acff",
+      "name": "DJ Abdel",
+      "sort-name": "Abdel, DJ"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You the Right Way",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "941bec08-3107-43a4-9e91-9d70ff379b10",
+     "status": "Official",
+     "date": "2003",
+     "title": "Hip Hop Soul Party 6"
+    }
+   ]
+  },
+  {
+   "id": "0544ea7a-6234-4f60-863b-63e49cbf2380",
+   "title": "High School Reunion, Volume 2",
+   "first-release-date": "2002",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "The Floor",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "7c383a61-8c71-40d1-ba4d-178998b8d5cc",
+     "status": "Official",
+     "date": "2002",
+     "title": "High School Reunion, Volume 2"
+    }
+   ]
+  },
+  {
+   "id": "1881a5a0-7767-3bdf-9182-2908edb61125",
+   "title": "Hitsville USA: The Motown Singles Collection, Volume 2: 1972-1992",
+   "first-release-date": "2000-06-27",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Where Do We Go From Here",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "c9ee0c82-46f8-4c1a-860c-608a4f0f6cc8",
+     "status": "Official",
+     "date": "2000-06-27",
+     "title": "Hitsville USA: The Motown Singles Collection, Volume 2: 1972-1992"
+    }
+   ]
+  },
+  {
+   "id": "879a8dc5-54e7-4236-98cd-8ef9ee20c2d2",
+   "title": "Sweet R&B Grooves",
+   "first-release-date": "2000",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "My, My, My",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "6c2a32d5-3173-4a63-ba51-898408b11b49",
+     "status": "Official",
+     "date": "2000",
+     "title": "Sweet R&B Grooves"
+    }
+   ]
+  },
+  {
+   "id": "4f68fb17-3986-395f-8474-586da5058e53",
+   "title": "MTV the First 1000 Years: R&B",
+   "first-release-date": "1999-11-02",
+   "primary-type": "Album",
+   "secondary-types": [
+    "Compilation"
+   ],
+   "rating": null,
+   "artist-credit": [
+    {
+     "name": "Various Artists",
+     "artist": {
+      "id": "89ad4ac3-39f7-470e-963a-56509c546377",
+      "name": "Various Artists",
+      "sort-name": "Various Artists",
+      "disambiguation": "add compilations to this artist"
+     }
+    }
+   ],
+   "_appearsOn": true,
+   "_appearsOnTrack": "Rub You the Right Way",
+   "_appearsOnArtistMbid": "7dc35846-c93a-4261-b665-ae750e3afdfb",
+   "releases": [
+    {
+     "id": "07a2d413-9f89-444a-8530-4e4bdb0095c3",
+     "status": "Official",
+     "date": "1999-11-02",
+     "title": "MTV the First 1000 Years: R&B"
+    }
+   ]
+  }
+ ],
+ "release-group-count": 21,
+ "release-count": 21
+}

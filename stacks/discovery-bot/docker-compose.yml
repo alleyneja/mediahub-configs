@@ -1,0 +1,18 @@
+# Discord music-discovery approval bot. Deploy from this directory:
+#   docker compose up -d --build
+# Secrets live in discovery-bot.env (gitignored); see discovery-bot.env.example.
+services:
+  discovery-bot:
+    build: .
+    image: discovery-bot:local
+    container_name: discovery-bot
+    restart: unless-stopped
+    # Must reach Aurral (:3001), Lidarr (:8686) and Prowlarr (:9696) on localhost.
+    network_mode: host
+    env_file: discovery-bot.env
+    volumes:
+      - discovery-bot-data:/data   # SQLite file; matches DB_PATH=/data/discovery.db
+    mem_limit: 256m
+
+volumes:
+  discovery-bot-data:

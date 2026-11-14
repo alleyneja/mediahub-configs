@@ -1,0 +1,529 @@
+{
+ "recommendations": [
+  {
+   "id": "23f82f59-0219-5d0e-8394-8b16c5320e87",
+   "name": "Recommended Artist 1",
+   "type": "Artist",
+   "image": null,
+   "tags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4",
+    "tag-5",
+    "tag-6",
+    "tag-7",
+    "tag-8",
+    "tag-9",
+    "tag-10",
+    "tag-11",
+    "tag-12",
+    "tag-13",
+    "tag-14",
+    "tag-15",
+    "tag-16",
+    "tag-17"
+   ],
+   "matchedTags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4"
+   ],
+   "supportingSeeds": [
+    {
+     "artistName": "Seed Artist A",
+     "source": "library",
+     "weight": 1.44,
+     "profileBucket": "recent_interest"
+    },
+    {
+     "artistName": "Seed Artist B",
+     "source": "library",
+     "weight": 1.44,
+     "profileBucket": "recent_interest"
+    },
+    {
+     "artistName": "Seed Artist C",
+     "source": "library",
+     "weight": 1.4,
+     "profileBucket": "core_favorites"
+    },
+    {
+     "artistName": "Seed Artist D",
+     "source": "lastfm_related",
+     "weight": 0.7321835,
+     "profileBucket": "two_hop_bridge"
+    }
+   ],
+   "seedCount": 3,
+   "score": 421,
+   "scoreTotal": 421,
+   "scoreSimilarity": 323,
+   "scoreTagAffinity": 45,
+   "scoreSeedCoverage": 21,
+   "scoreNovelty": 25,
+   "scoreDiversityPenalty": 0,
+   "scorePopularityPenalty": 11,
+   "sourceArtist": "Seed Artist A, Seed Artist B +5 more",
+   "sourceArtists": [
+    "Seed Artist A",
+    "Seed Artist B",
+    "Seed Artist C",
+    "Seed Artist D",
+    "Seed Artist E",
+    "Seed Artist F",
+    "Seed Artist G"
+   ],
+   "sourceType": "blended",
+   "sourceTypes": [
+    "library",
+    "lastfm_related"
+   ],
+   "sourceMix": [
+    "library",
+    "lastfm_related"
+   ],
+   "discoveryDepth": 1,
+   "bestMatch": 1,
+   "reasonCodes": [
+    "tag_affinity_strong",
+    "seed_consensus",
+    "deeper_pick",
+    "mainstream_overlap",
+    "two_hop",
+    "history_aligned",
+    "multi_seed"
+   ],
+   "discoveryTier": "deeper",
+   "confidence": 87,
+   "candidateTagsHydrated": true,
+   "tagSource": "inherited",
+   "hiddenByFeedback": false,
+   "navigateTo": "23f82f59-0219-5d0e-8394-8b16c5320e87",
+   "popularityLabel": null,
+   "popularityRank": null,
+   "listeners": 0,
+   "playcount": 0,
+   "firstDiscoveredAt": "2026-01-01T00:00:00.000Z",
+   "discoveredAt": "2026-01-01T00:00:00.000Z",
+   "lastRecommendedAt": "2026-01-01T00:00:00.000Z",
+   "recommendationPoolState": "fresh",
+   "scoreFreshnessBoost": 18,
+   "scoreAgingPenalty": 0,
+   "recommendationPoolRank": 1
+  },
+  {
+   "id": "1ae52115-6199-5fad-838b-4faa79320c86",
+   "name": "Recommended Artist 2",
+   "type": "Artist",
+   "image": null,
+   "tags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4",
+    "tag-5",
+    "tag-6",
+    "tag-7",
+    "tag-8",
+    "tag-9",
+    "tag-10",
+    "tag-11",
+    "tag-12",
+    "tag-13",
+    "tag-14",
+    "tag-15",
+    "tag-16",
+    "tag-17"
+   ],
+   "matchedTags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4"
+   ],
+   "supportingSeeds": [
+    {
+     "artistName": "Seed Artist A",
+     "source": "library",
+     "weight": 1.44,
+     "profileBucket": "recent_interest"
+    },
+    {
+     "artistName": "Seed Artist B",
+     "source": "library",
+     "weight": 1.44,
+     "profileBucket": "recent_interest"
+    },
+    {
+     "artistName": "Seed Artist C",
+     "source": "library",
+     "weight": 1.4,
+     "profileBucket": "core_favorites"
+    },
+    {
+     "artistName": "Seed Artist D",
+     "source": "lastfm_related",
+     "weight": 0.7321835,
+     "profileBucket": "two_hop_bridge"
+    }
+   ],
+   "seedCount": 3,
+   "score": 370,
+   "scoreTotal": 370,
+   "scoreSimilarity": 289,
+   "scoreTagAffinity": 45,
+   "scoreSeedCoverage": 21,
+   "scoreNovelty": 25,
+   "scoreDiversityPenalty": 18,
+   "scorePopularityPenalty": 10,
+   "sourceArtist": "Seed Artist A, Seed Artist B +3 more",
+   "sourceArtists": [
+    "Seed Artist A",
+    "Seed Artist B",
+    "Seed Artist C",
+    "Seed Artist D",
+    "Seed Artist E"
+   ],
+   "sourceType": "blended",
+   "sourceTypes": [
+    "library",
+    "lastfm_related"
+   ],
+   "sourceMix": [
+    "library",
+    "lastfm_related"
+   ],
+   "discoveryDepth": 1,
+   "bestMatch": 0.766387,
+   "reasonCodes": [
+    "tag_affinity_strong",
+    "seed_consensus",
+    "deeper_pick",
+    "multi_seed",
+    "mainstream_overlap",
+    "two_hop",
+    "history_aligned"
+   ],
+   "discoveryTier": "deeper",
+   "confidence": 84,
+   "candidateTagsHydrated": true,
+   "tagSource": "inherited",
+   "hiddenByFeedback": false,
+   "navigateTo": "1ae52115-6199-5fad-838b-4faa79320c86",
+   "popularityLabel": null,
+   "popularityRank": null,
+   "listeners": 0,
+   "playcount": 0,
+   "firstDiscoveredAt": "2026-01-01T00:00:00.000Z",
+   "discoveredAt": "2026-01-01T00:00:00.000Z",
+   "lastRecommendedAt": "2026-01-01T00:00:00.000Z",
+   "recommendationPoolState": "fresh",
+   "scoreFreshnessBoost": 17.92,
+   "scoreAgingPenalty": 0,
+   "recommendationPoolRank": 2
+  },
+  {
+   "id": "b639f8b7-35a3-5902-bfb7-ce2fdb844196",
+   "name": "Recommended Artist 3",
+   "type": "Artist",
+   "image": null,
+   "tags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4",
+    "tag-5",
+    "tag-6",
+    "tag-7",
+    "tag-8",
+    "tag-9",
+    "tag-10",
+    "tag-11",
+    "tag-12",
+    "tag-13",
+    "tag-14",
+    "tag-15",
+    "tag-16"
+   ],
+   "matchedTags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4"
+   ],
+   "supportingSeeds": [
+    {
+     "artistName": "Seed Artist A",
+     "source": "library",
+     "weight": 1.26,
+     "profileBucket": "core_favorites"
+    },
+    {
+     "artistName": "Seed Artist B",
+     "source": "library",
+     "weight": 1.04,
+     "profileBucket": "collection_anchor"
+    },
+    {
+     "artistName": "Seed Artist C",
+     "source": "library",
+     "weight": 1,
+     "profileBucket": "exploratory_seed"
+    }
+   ],
+   "seedCount": 3,
+   "score": 350,
+   "scoreTotal": 350,
+   "scoreSimilarity": 218,
+   "scoreTagAffinity": 135,
+   "scoreSeedCoverage": 20,
+   "scoreNovelty": 17,
+   "scoreDiversityPenalty": 0,
+   "scorePopularityPenalty": 11,
+   "sourceArtist": "Seed Artist A, Seed Artist B +1 more",
+   "sourceArtists": [
+    "Seed Artist A",
+    "Seed Artist B",
+    "Seed Artist C"
+   ],
+   "sourceType": "library",
+   "sourceTypes": [
+    "library"
+   ],
+   "sourceMix": [
+    "library"
+   ],
+   "bestMatch": 0.976639,
+   "reasonCodes": [
+    "tag_affinity_strong",
+    "multi_seed",
+    "mainstream_overlap"
+   ],
+   "discoveryTier": "safer",
+   "confidence": 87,
+   "popularityLabel": null,
+   "popularityRank": null,
+   "listeners": 0,
+   "playcount": 0,
+   "hiddenByFeedback": false,
+   "firstDiscoveredAt": "2026-01-01T00:00:00.000Z",
+   "discoveredAt": "2026-01-01T00:00:00.000Z",
+   "lastRecommendedAt": "2026-01-01T00:00:00.000Z",
+   "recommendationPoolState": "retained",
+   "scoreFreshnessBoost": 0,
+   "scoreAgingPenalty": 29,
+   "navigateTo": "b639f8b7-35a3-5902-bfb7-ce2fdb844196",
+   "discoveryDepth": 1,
+   "recommendationPoolRank": 3
+  },
+  {
+   "id": "63bcae06-bf2e-590f-a4fb-d9284a4d315c",
+   "name": "Recommended Artist 4",
+   "type": "Artist",
+   "image": null,
+   "tags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4",
+    "tag-5",
+    "tag-6",
+    "tag-7",
+    "tag-8",
+    "tag-9",
+    "tag-10",
+    "tag-11",
+    "tag-12",
+    "tag-13",
+    "tag-14",
+    "tag-15",
+    "tag-16"
+   ],
+   "matchedTags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4"
+   ],
+   "supportingSeeds": [
+    {
+     "artistName": "Seed Artist A",
+     "source": "library",
+     "weight": 1.26,
+     "profileBucket": "core_favorites"
+    },
+    {
+     "artistName": "Seed Artist B",
+     "source": "library",
+     "weight": 1.04,
+     "profileBucket": "collection_anchor"
+    },
+    {
+     "artistName": "Seed Artist C",
+     "source": "library",
+     "weight": 1,
+     "profileBucket": "exploratory_seed"
+    }
+   ],
+   "seedCount": 3,
+   "score": 323,
+   "scoreTotal": 323,
+   "scoreSimilarity": 203,
+   "scoreTagAffinity": 135,
+   "scoreSeedCoverage": 20,
+   "scoreNovelty": 17,
+   "scoreDiversityPenalty": 12,
+   "scorePopularityPenalty": 11,
+   "sourceArtist": "Seed Artist A, Seed Artist B +1 more",
+   "sourceArtists": [
+    "Seed Artist A",
+    "Seed Artist B",
+    "Seed Artist C"
+   ],
+   "sourceType": "library",
+   "sourceTypes": [
+    "library"
+   ],
+   "sourceMix": [
+    "library"
+   ],
+   "bestMatch": 0.957334,
+   "reasonCodes": [
+    "tag_affinity_strong",
+    "multi_seed",
+    "mainstream_overlap"
+   ],
+   "discoveryTier": "safer",
+   "confidence": 87,
+   "popularityLabel": null,
+   "popularityRank": null,
+   "listeners": 0,
+   "playcount": 0,
+   "hiddenByFeedback": false,
+   "firstDiscoveredAt": "2026-01-01T00:00:00.000Z",
+   "discoveredAt": "2026-01-01T00:00:00.000Z",
+   "lastRecommendedAt": "2026-01-01T00:00:00.000Z",
+   "recommendationPoolState": "retained",
+   "scoreFreshnessBoost": 0,
+   "scoreAgingPenalty": 29,
+   "navigateTo": "63bcae06-bf2e-590f-a4fb-d9284a4d315c",
+   "discoveryDepth": 1,
+   "recommendationPoolRank": 4
+  },
+  {
+   "id": "bafd0057-747b-5723-b178-4fde8d1ce94e",
+   "name": "Recommended Artist 5",
+   "type": "Artist",
+   "image": null,
+   "tags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4",
+    "tag-5",
+    "tag-6",
+    "tag-7",
+    "tag-8",
+    "tag-9",
+    "tag-10",
+    "tag-11",
+    "tag-12",
+    "tag-13",
+    "tag-14",
+    "tag-15",
+    "tag-16",
+    "tag-17",
+    "tag-18"
+   ],
+   "matchedTags": [
+    "tag-1",
+    "tag-2",
+    "tag-3",
+    "tag-4"
+   ],
+   "supportingSeeds": [
+    {
+     "artistName": "Seed Artist A",
+     "source": "library",
+     "weight": 1.26,
+     "profileBucket": "core_favorites"
+    },
+    {
+     "artistName": "Seed Artist B",
+     "source": "library",
+     "weight": 1.04,
+     "profileBucket": "collection_anchor"
+    },
+    {
+     "artistName": "Seed Artist C",
+     "source": "library",
+     "weight": 1,
+     "profileBucket": "exploratory_seed"
+    },
+    {
+     "artistName": "Seed Artist D",
+     "source": "lastfm_related",
+     "weight": 0.6710455,
+     "profileBucket": "two_hop_bridge"
+    }
+   ],
+   "seedCount": 3,
+   "score": 311,
+   "scoreTotal": 311,
+   "scoreSimilarity": 196,
+   "scoreTagAffinity": 135,
+   "scoreSeedCoverage": 20,
+   "scoreNovelty": 24,
+   "scoreDiversityPenalty": 24,
+   "scorePopularityPenalty": 11,
+   "sourceArtist": "Seed Artist A, Seed Artist B +4 more",
+   "sourceArtists": [
+    "Seed Artist A",
+    "Seed Artist B",
+    "Seed Artist C",
+    "Seed Artist D",
+    "Seed Artist E",
+    "Seed Artist F"
+   ],
+   "sourceType": "blended",
+   "sourceTypes": [
+    "lastfm_related",
+    "library"
+   ],
+   "sourceMix": [
+    "lastfm_related",
+    "library"
+   ],
+   "discoveryDepth": 1,
+   "bestMatch": 1,
+   "reasonCodes": [
+    "tag_affinity_strong",
+    "multi_seed",
+    "two_hop",
+    "history_aligned",
+    "mainstream_overlap",
+    "deeper_pick"
+   ],
+   "discoveryTier": "safer",
+   "confidence": 87,
+   "candidateTagsHydrated": true,
+   "tagSource": "inherited",
+   "hiddenByFeedback": false,
+   "navigateTo": "bafd0057-747b-5723-b178-4fde8d1ce94e",
+   "popularityLabel": null,
+   "popularityRank": null,
+   "listeners": 0,
+   "playcount": 0,
+   "firstDiscoveredAt": "2026-01-01T00:00:00.000Z",
+   "discoveredAt": "2026-01-01T00:00:00.000Z",
+   "lastRecommendedAt": "2026-01-01T00:00:00.000Z",
+   "recommendationPoolState": "retained",
+   "scoreFreshnessBoost": 0,
+   "scoreAgingPenalty": 29,
+   "recommendationPoolRank": 5
+  }
+ ],
+ "recommendationCount": 5
+}
