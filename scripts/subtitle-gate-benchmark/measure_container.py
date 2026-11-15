@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Runs INSIDE the bazarr container. usage: measure_container.py JOBS.json OUT.jsonl [WORKERS]
 Same method as audio_windows.py (7 x 480 s windows, ffsubsync offset), but each window's audio is extracted once per video."""
-import re,subprocess,sys,os,json
+import re,subprocess,sys,os,json,shutil
 from multiprocessing import Pool
 W=480; F=(0.08,0.2,0.35,0.5,0.65,0.8,0.92)
 def parse(p):
@@ -30,6 +30,7 @@ def video_job(args):
             m=re.findall(r'offset seconds: ([-\d.]+)',r.stdout+r.stderr);sc=re.findall(r'score: ([-\d.]+)',r.stdout+r.stderr)
             res['windows'].append({'at_min':round((t0+W/2)/60),'offset':float(m[-1]),'score':float(sc[-1]),'cues':len(sel)} if m and sc else None)
         with open(outp,'a') as fh: fh.write(json.dumps(res)+'\n')
+    shutil.rmtree(work,ignore_errors=True)   # ~100 MB of wav per video
     return video
 if __name__=='__main__':
     jobs=json.load(open(sys.argv[1])); outp=sys.argv[2]; n=int(sys.argv[3]) if len(sys.argv)>3 else 3

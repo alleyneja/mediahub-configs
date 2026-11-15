@@ -204,3 +204,33 @@ candidate came out UNVERIFIABLE (flagged for review, not passed). Sith's current
 **Bars status:** recall bar met; false-positive bar not provable at this n (see finding 1). Jay's call whether
 v1 is good enough to start building the report-only gate; findings 2 to 4 are known gaps, not blockers.
 
+## 9. Report-only gate: built (2026-11-15)
+
+`scripts/subtitle-gate.py` on prod (i7), cron Tue/Thu/Sat 04:45 (after the 02:00-04:30 maintenance window), rule v1
+from `scripts/subtitle-gate-benchmark/chosen_rule_v1.json`. **It changes nothing**: no subtitle file is edited,
+deleted, renamed or blacklisted, and no Bazarr setting is touched. It reads Bazarr only through a read-only snapshot of
+its history database, so no Bazarr post-processing hook is needed (that would have been a global Bazarr setting).
+
+What a run does: finds English (regular and HI) downloads and upgrades since its checkpoint, waits until the file has
+been untouched for 10 minutes (Bazarr's post-download sync rewrites it), measures it in the bazarr container at lowest
+CPU priority, applies rule v1 and appends to `~/logs/subtitle-gate/ledger.jsonl`. It posts to #media-alerts only when
+something is flagged. Safety: stops when Plex has a stream or the count is unknown (checked before every batch of 5),
+2-hour cap, single instance (lock), refuses a suspicious backlog (over 200 files), and fails open (any error ends the
+run with files untouched). First run starts from "now"; `--backfill-days N` looks back.
+
+Operating it:
+- `subtitle-gate.py --summary`: counts, every flagged file with the reason, review progress, and whether the
+  report-only exit is met (30+ gated downloads and every flag reviewed by eye).
+- `subtitle-gate.py --review "<part of the name>" good|bad|unsure`: record your verdict on a flagged file. That is
+  what turns the 0-of-16 false-positive observation into a live precision number.
+- `subtitle-gate.py --dry-run`: what the next run would measure.
+- Tests: `python3 -m unittest scripts/test_subtitle_gate.py`.
+
+First run (Nov 15, 5 of 10 queued files before a viewer started a stream and the guard stopped it): 2 PASS, 3 FAIL.
+The failures read like real problems: Delivery Man drifts smoothly +1.6 s to -3.5 s (framerate-style), Fired Up! is
+fine until the last two windows (-18 s, -14 s), Hoot wanders +/-2 s throughout. Not yet reviewed by eye.
+
+Known gaps: no Kuma heartbeat yet (creating a push monitor means stopping Kuma briefly; Jay's call), the three
+limits in section 8 (truncation threshold, gaps between windows, low-speech films), and nothing yet acts on a FAIL:
+replacement is the next phase, only after the report-only exit.
+
