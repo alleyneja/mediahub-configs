@@ -40,7 +40,7 @@ its declared bar.
    whisperai. Every action reported to Discord.
 2. **If nothing passes:** keep the best available sub and flag the title "unresolved". Never remove.
 3. **Scope v1:** new downloads only (including upgrades). Library sweep (1,551 flagged, 440 damaged,
-   53 scaled files) is a separate later decision.
+   53 scaled files) is a separate decision: see [subtitle-library-sweep.md](subtitle-library-sweep.md) (draft).
 4. **Spanish:** leave alone. Gate is English-only in v1; note which Spanish files derive from any
    replaced English one.
 
