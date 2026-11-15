@@ -72,8 +72,8 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 | `~/pathtest.sh`, `~/verify-nvfbc.sh`, `~/sonic-analysis-loop.sh` | phone-path test, NvFBC post-reboot check, Plex sonic-analysis loop | no repo copy |
 | `~/nextcloud-backup.sh`, `~/vaultwarden-backup.sh`, `~/authentik-backup.sh` | nightly backups at 02:35/02:40/02:45 | **not in repo, no Kuma heartbeat**; `calibre-backup.sh` and `immich-db-backup.sh` are symlinks into the repo |
 | `~/subtitle-audit-tools/`, `~/talkarr-trial/` | subtitle sync measurement + Talkarr trial (#73) | active work, in progress; adopt when the trial concludes |
-| `~/logs/reboot-test-watch.sh`, `pilot-2026-09-25-check.sh` | Sep 25 one-offs | delete |
-| x51 `~/thermal-monitor.log`, `gpu-burn*`, `stress-ng.log` | burn-in leftovers | delete |
+| x51 `~/thermal-monitor.log`, `gpu-burn*`, `stress-ng.log`; r9 `~/burnin`, `~/loadtest` | burn-in leftovers (burn-in passed) | delete when Jay confirms |
+| x51 `~/setup.sh.staging-local-edit-20260925.diff` | backup of local setup.sh edits from before the Sep 25 clone reset | compare with repo `setup.sh`, then delete |
 
 ## E. Known gaps (no monitor yet)
 
@@ -89,3 +89,6 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 `#service-outages` (Kuma, Fleet Health, update restarts, monthly report), `#resource-alerts` (Netdata), `#media-alerts`
 (Lidarr audit, audio mismatch, discovery), `#permissions-issues` (permissions + canary), `#service-logs` (weekly digest),
 `#home-automation` (unwired), `#joyboy-alerts` (retired, still receives old Kuma posts).
+
+## Change log
+- 2026-11-15: created. Deleted the Sep 25 D12 leftovers (pilot/sentinel/permlab/reboot-test files in prod `~/logs`, r9 `crontab.bak.2026-09-25`, x51 `scripts.retired-20260925`); D12 is closed and nothing referenced them.
