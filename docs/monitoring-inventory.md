@@ -19,7 +19,7 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 
 | What | Host | Schedule | Measures | Alerts to | Doc / issue |
 |---|---|---|---|---|---|
-| Uptime Kuma (44 monitors) | prod | 60 s | service up/down: 36 http, 2 port, 1 keyword, 1 json-query (IPTV account), 4 push | #service-outages | `stacks/uptime-kuma`, `docs/discord-alerts.md` |
+| Uptime Kuma (45 monitors) | prod | 60 s | service up/down: 37 http (incl. #50 `Plex (server /identity)`, added 2026-11-15, catches a hung Plex that `/web` misses), 2 port, 1 keyword, 1 json-query (IPTV account), 4 push | #service-outages | `stacks/uptime-kuma`, `docs/discord-alerts.md` |
 | Netdata (~400 alarms) | prod | continuous | CPU/RAM/disk/OOM/gluetun health; swap-% silenced Sep 25 | #resource-alerts | `stacks/uptime-kuma/netdata-health.d/` |
 | `fleet-healthcheck.sh` | prod, r9, x51 | every 30 min + after boot | Caddy, AdGuard, Home Assistant and more (see the script header); posts only on change | #service-outages ("Fleet Health") | `docs/os-updates.md` |
 | `integration-check.py` | prod | hourly :20 | *arr/Bazarr health, *arr->Plex, Seerr->Plex/Radarr/Sonarr, Immich version match, Loki freshness | Discord on change + Kuma push 49 | `docs/log-monitoring.md`, #71 |
@@ -77,7 +77,6 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 
 ## E. Known gaps (no monitor yet)
 
-- Plex hung-but-listening: Kuma "Plex" checks `plex.lan/web` (Caddy redirect), so a hung Plex looks healthy. Add an `/identity` HTTPS check (#87).
 - Nextcloud, Vaultwarden, Authentik, Calibre backups, r9 saves backup: no heartbeat, so a silently failing backup is invisible.
 - NAS drive health / capacity: nothing watches it (#31).
 - Live TV feed quality after the sampler expires; Schedules Direct EPG freshness.
@@ -97,3 +96,4 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 - 2026-11-15: deleted burn-in leftovers (x51 gpu-burn/logs/thermal-monitor, r9 `~/burnin`), the stale x51 setup.sh diff (OCR seeding is in the repo) and the duplicate home `netcheck.sh`. Kept r9 `~/loadtest`.
 - 2026-11-15: added `subtitle-gate.py` (report-only subtitle quality gate, #73).
 - 2026-11-15: `ts-watch.sh`: kept the newer home version (1 s sleep, was 2 s) in the repo; home path is now a symlink. The five `~/arcade-*` scripts (all identical to repo copies) are now symlinks into `scripts/`, so documented `~/arcade-*` paths still work. r9 got the same symlinks (it lacked them, so `arcade-bootcheck.sh` could not find `arcade-screenshot.sh`).
+- 2026-11-15: added Kuma monitor 50 `Plex (server /identity)` (`https://plex.lan/identity`, 60 s, Discord). DB backup `kuma.db.pre-plex-identity-20261115` (730 MB) is in `/srv/docker/visibility/uptime-kuma/`; delete after a few days.
