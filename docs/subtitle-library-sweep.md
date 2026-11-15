@@ -1,6 +1,6 @@
 # Subtitle Library Sweep: Decision Record (DRAFT)
 
-**Status:** DRAFT 2026-11-15, awaiting Jay's confirmation of the items in section 7. NOTHING RUN YET.
+**Status:** DRAFT 2026-11-15; four of five open items confirmed by Jay (section 6); tranche sizes still to confirm. NOTHING RUN YET.
 **Issue:** alleyneja/mediahub-issues#73
 **Parent record:** [subtitle-quality-gate.md](subtitle-quality-gate.md). That record scoped v1 to new downloads
 and left a library sweep as "a separate later decision". This is that decision.
@@ -125,13 +125,18 @@ and removes the Bazarr blacklist entry. Rollback of a whole tranche is a loop ov
 
 ## 6. Decision log
 
-(Empty until confirmed.)
+Confirmed by Jay, 2026-11-15:
+1. Watch list = Plex watch history on Jay's account (from r9).
+2. Per-tranche replacement bar: at least 50% resolved in the early tranches (T0-T1), at least 70% after.
+3. Run window = the existing Plex-aware maintenance windows (Tue / Thu / Sat).
+4. Spanish stays untouched in the sweep (no extra variable).
+
+Still open: tranche sizes (5 / 10 / 25 / 50, then 100 a night).
 
 ## 7. Open items for Jay
 
-1. Watch-list source: Plex watch history from r9, or a hand-picked list?
-2. Tranche sizes 5 / 10 / 25 / 50 then 100 a night: acceptable?
-3. Per-tranche replacement bar (50% early, 70% later): acceptable, or different?
-4. Run window: which nights/hours count as off-peak? (Parent record uses the Plex-aware maintenance windows
-   Tue/Thu/Sat as a starting point.)
-5. Confirm Spanish stays untouched in the sweep too (parent decision 4).
+1. ~~Watch-list source~~ Confirmed: Plex watch history on Jay's account.
+2. Tranche sizes 5 / 10 / 25 / 50 then 100 a night: OPEN.
+3. ~~Replacement bar~~ Confirmed: 50% early, 70% after.
+4. ~~Run window~~ Confirmed: Tue / Thu / Sat maintenance windows.
+5. ~~Spanish~~ Confirmed: untouched.
