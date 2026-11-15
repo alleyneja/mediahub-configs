@@ -23,6 +23,6 @@ for p in d.get('Peer',{}).values():
               f"path={path:<10} curaddr={ca or '-':<24} relay={p.get('Relay','-'):<4} "
               f"rx={p.get('RxBytes',0)/1e6:8.2f}MB tx={p.get('TxBytes',0)/1e6:8.2f}MB")
 PY
-  python3 -c "import time;time.sleep(2)"
+  python3 -c "import time;time.sleep(1)"
 done
 echo "=== WATCH END ===" | tee -a $LOG

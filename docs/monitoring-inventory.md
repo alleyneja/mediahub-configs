@@ -32,6 +32,7 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 | `update-restart-report.sh` | prod, r9, x51 | after daily unattended-upgrades | which services the updates restarted | #service-outages | `docs/os-updates.md`, #53 |
 | `adguard-sync-x51.py` | prod | hourly :17 | AdGuard replica sync | Kuma push 44 | |
 | `immich-backup.sh` | prod | 02:30 | Immich DB dump | Kuma push 43 | |
+| `subtitle-gate.py` (REPORT-ONLY) | prod | Tue/Thu/Sat 04:45 | measures new English Bazarr downloads against the audio (rule v1); ledger `~/logs/subtitle-gate/`; changes nothing; skips while Plex streams | #media-alerts only when something is flagged | `docs/subtitle-quality-gate.md` section 9, #73 |
 | `offsite-backup.sh` | prod | 03:00 | restic -> Google Drive | Kuma push 48 | #34 |
 | `issues-report.sh` | prod | monthly | tracker age/volume report | #service-outages | |
 | `check-fleet-identity.sh` | prod | monthly | PUID/PGID drift in compose files | log only | |
@@ -69,9 +70,8 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 |---|---|---|
 | `~/nextcloud-save-watch.py` | **the running service executes this copy**; byte-identical to `scripts/nextcloud-save-watch.py` | point the unit at the repo copy, delete the home copy |
 | r9 `~/loadtest/` | Plex load-test + VRAM probe results (#43/#48): data, keep until those issues close | keep |
-| `~/ts-watch.sh` | **differs** from `scripts/ts-watch.sh` | diff and keep one |
 | `~/nextcloud-backup.sh`, `~/vaultwarden-backup.sh`, `~/authentik-backup.sh` | nightly backups at 02:35/02:40/02:45 | **not in repo, no Kuma heartbeat**; `calibre-backup.sh` and `immich-db-backup.sh` are symlinks into the repo |
-| `~/subtitle-audit-tools/`, `~/talkarr-trial/` | subtitle sync measurement + Talkarr trial (#73) | active work, in progress; adopt when the trial concludes |
+| `~/subtitle-audit-tools/`, `~/talkarr-trial/`, `~/talkarr-scratch/` | subtitle sync measurement + Talkarr trial (#73); `talkarr-trial` container (127.0.0.1:9494, read-only media, Manual mode) is still running | active work; remove the container + scratch when the trial concludes |
 
 Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (old production P400/NvFBC post-reboot check; streaming now on r9) and `scripts/archive/sonic-analysis-loop.sh` (May 2026 Plex sonic-analysis restart loop; hardcoded to production Plex paths, retired Nov 15).
 
@@ -82,6 +82,7 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 - NAS drive health / capacity: nothing watches it (#31).
 - Live TV feed quality after the sampler expires; Schedules Direct EPG freshness.
 - Netdata is confirmed on prod only (r9/x51 Docker containers were not inspected); `placement-metrics` runs on all three but is a collector, not an alerter.
+- `subtitle-gate.py`: no Kuma heartbeat yet (creating a push monitor means stopping Kuma; decision pending), so a silently stopped gate is only visible in `--summary` and `~/logs/subtitle-gate/gate.log`.
 - Unpackerr: no API; only the weekly digest sees its failures.
 
 ## F. Discord channels
@@ -94,3 +95,5 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 - 2026-11-15: created. Deleted the Sep 25 D12 leftovers (pilot/sentinel/permlab/reboot-test files in prod `~/logs`, r9 `crontab.bak.2026-09-25`, x51 `scripts.retired-20260925`); D12 is closed and nothing referenced them.
 - 2026-11-15: `pathtest.sh` moved into `scripts/`; `verify-nvfbc.sh` and `sonic-analysis-loop.sh` archived in `scripts/archive/` (Jay approved).
 - 2026-11-15: deleted burn-in leftovers (x51 gpu-burn/logs/thermal-monitor, r9 `~/burnin`), the stale x51 setup.sh diff (OCR seeding is in the repo) and the duplicate home `netcheck.sh`. Kept r9 `~/loadtest`.
+- 2026-11-15: added `subtitle-gate.py` (report-only subtitle quality gate, #73).
+- 2026-11-15: `ts-watch.sh`: kept the newer home version (1 s sleep, was 2 s) in the repo; home path is now a symlink. The five `~/arcade-*` scripts (all identical to repo copies) are now symlinks into `scripts/`, so documented `~/arcade-*` paths still work. Note: r9 has no `~/arcade-*` links, so `arcade-bootcheck.sh` there cannot find `$HOME/arcade-screenshot.sh`.
