@@ -54,6 +54,7 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 
 | Script | Purpose |
 |---|---|
+| `pathtest.sh` | reach the server from a phone WITHOUT Tailscale (temp web server on TCP 41641, firewall open only to T-Mobile range, auto-teardown 15 min) to separate tunnel slowness from path slowness; run with sudo |
 | `netcheck.sh` | repeatable network baseline; `--compare` last two runs |
 | `ts-watch.sh` | sample tailnet path (direct vs DERP) during a transfer |
 | `plexload.py`, `vramprobe.py` | synthetic Plex transcode load / VRAM peak on r9 (abort if a real viewer appears) |
@@ -69,11 +70,12 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 | `~/nextcloud-save-watch.py` | **the running service executes this copy**; byte-identical to `scripts/nextcloud-save-watch.py` | point the unit at the repo copy, delete the home copy |
 | `~/netcheck.sh` | identical to repo copy | delete home copy |
 | `~/ts-watch.sh` | **differs** from `scripts/ts-watch.sh` | diff and keep one |
-| `~/pathtest.sh`, `~/verify-nvfbc.sh`, `~/sonic-analysis-loop.sh` | phone-path test, NvFBC post-reboot check, Plex sonic-analysis loop | no repo copy |
 | `~/nextcloud-backup.sh`, `~/vaultwarden-backup.sh`, `~/authentik-backup.sh` | nightly backups at 02:35/02:40/02:45 | **not in repo, no Kuma heartbeat**; `calibre-backup.sh` and `immich-db-backup.sh` are symlinks into the repo |
 | `~/subtitle-audit-tools/`, `~/talkarr-trial/` | subtitle sync measurement + Talkarr trial (#73) | active work, in progress; adopt when the trial concludes |
 | x51 `~/thermal-monitor.log`, `gpu-burn*`, `stress-ng.log`; r9 `~/burnin`, `~/loadtest` | burn-in leftovers (burn-in passed) | delete when Jay confirms |
 | x51 `~/setup.sh.staging-local-edit-20260925.diff` | backup of local setup.sh edits from before the Sep 25 clone reset | compare with repo `setup.sh`, then delete |
+
+Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (old production P400/NvFBC post-reboot check; streaming now on r9) and `scripts/archive/sonic-analysis-loop.sh` (May 2026 Plex sonic-analysis restart loop; hardcoded to production Plex paths, retired Nov 15).
 
 ## E. Known gaps (no monitor yet)
 
@@ -92,3 +94,4 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 
 ## Change log
 - 2026-11-15: created. Deleted the Sep 25 D12 leftovers (pilot/sentinel/permlab/reboot-test files in prod `~/logs`, r9 `crontab.bak.2026-09-25`, x51 `scripts.retired-20260925`); D12 is closed and nothing referenced them.
+- 2026-11-15: `pathtest.sh` moved into `scripts/`; `verify-nvfbc.sh` and `sonic-analysis-loop.sh` archived in `scripts/archive/` (Jay approved).
