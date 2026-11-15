@@ -48,6 +48,13 @@ What already worked: Ubuntu's `unattended-upgrades` installs **security** update
   `/var/run/reboot-required` exists or Docker/NVIDIA updates are pending, **and** nobody is streaming on Plex
   (production counts too: Live TV and the prod-internal media branch come from it). If someone is watching, it
   retries every 30 min until the window closes, then waits a week.
+  **GPU guard (2026-11-14):** because the driver is held (A2), a new kernel can install without matching nvidia
+  modules; on r9 (prebuilt `linux-modules-nvidia-*`) the new kernel's module package needs the *newer* held driver, and
+  GRUB boots the newest kernel, so the reboot would come up with no GPU. Found when r9 had kernel 43 installed and only
+  kernel 38 had `nvidia.ko`. Before rebooting, the window now checks the newest `/boot/vmlinuz-*` has an `nvidia.ko`
+  under `/lib/modules`; if not it skips the reboot, logs `NOT rebooting`, and posts one Discord warning per window.
+  Fix is a deliberate driver upgrade (unhold, install the new driver + `linux-modules-nvidia-*-<kver>`, re-hold,
+  verify modinfo version), after which the next window reboots normally. `--dry-run` prints `gpu_boot=[...]`.
 - **D. Health check:** `scripts/fleet-healthcheck.sh` runs after every boot (`systemd/fleet-healthcheck.service`,
   3 min delay) and every 30 min (cron `4,34`). It checks the required mounts (plus the D12 `lookupcache=none` fix),
   containers that were running before a reboot, containers running with no network, crash loops/unhealthy

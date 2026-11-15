@@ -49,6 +49,21 @@ activity(){
 
 DRY=0; [ "${1:-}" = --dry-run ] && DRY=1
 export DEBIAN_FRONTEND=noninteractive
+
+# --- will the machine still have its GPU after the reboot? ---------------------------------------------------------
+# GRUB boots the NEWEST installed kernel. The NVIDIA packages are held (below), so a new kernel can land without
+# matching nvidia modules: on r9 (prebuilt linux-modules-nvidia-*, not DKMS) the new kernel's module package needs the
+# NEWER held driver. Rebooting then brings the machine up with no GPU (no Plex HW transcode, Sunshine or display).
+# Found 2026-11-14: kernel 43 installed, only 38 had nvidia.ko. Prints nothing when fine (or no NVIDIA here), else why not.
+# MW_BOOT_KERNEL overrides the kernel to check (testing only).
+gpu_boot_problem(){
+  [ "${#nv_pkgs[@]}" -gt 0 ] || return 0                       # no NVIDIA driver installed on this machine
+  local k="${MW_BOOT_KERNEL:-$(ls /boot/vmlinuz-* 2>/dev/null | sed 's#.*/vmlinuz-##' | sort -V | tail -1)}"
+  [ -n "$k" ] || { echo "cannot determine the kernel GRUB will boot"; return 0; }
+  [ -n "$(find "/lib/modules/$k" -name 'nvidia.ko*' 2>/dev/null | head -1)" ] && return 0
+  if [ -n "${nv_pending:-}" ]; then echo "newest kernel $k has no nvidia.ko; held driver needs a deliberate upgrade: $nv_pending"
+  else echo "newest kernel $k has no nvidia.ko (module build/install problem?)"; fi
+}
 apt-get update -qq >/dev/null 2>&1
 # NVIDIA driver packages are held and NEVER upgraded automatically: Ubuntu retires driver branches by turning the old
 # branch's packages into transitional ones that pull in the next branch (seen 2026-09-25: 535 -> 580 on staging), so an
@@ -88,7 +103,7 @@ deferred_waiting(){ command -v needrestart >/dev/null 2>&1 || return 0
   needrestart -b -r l 2>/dev/null | sed -n 's/^NEEDRESTART-SVC: //p' | grep -E "$DEFERRED_RE"; }
 
 if [ "$DRY" = 1 ]; then
-  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] deferred_restarts=[$(deferred_waiting | tr '\n' ' ')] activity=$( { [ "$HOST" = mediahub-staging ] || [ "$HOST" = mediahub-x51 ]; } && echo n/a || activity)"; exit 0
+  echo "DRY: held-nvidia-updates=[${nv_pending:-none}] pending=[${pending:-none}] reboot_needed=$reboot_needed why=[${why}] deferred_restarts=[$(deferred_waiting | tr '\n' ' ')] gpu_boot=[$(gpu_boot_problem)] activity=$( { [ "$HOST" = mediahub-staging ] || [ "$HOST" = mediahub-x51 ]; } && echo n/a || activity)"; exit 0
 fi
 
 # --- apply updates (only packages that don't need a restart are handled here when no reboot is due) ---------------
@@ -120,6 +135,14 @@ if [ "$reboot_needed" = 0 ]; then
       post "❌ **$HOST** maintenance window: restarting held-back services FAILED (${svc[*]}) - check \`systemctl status\`"
     fi
   fi
+  exit 0
+fi
+gpu_problem=$(gpu_boot_problem)
+if [ -n "$gpu_problem" ]; then
+  # Do NOT reboot into a kernel without the GPU driver. Updates are already applied; the machine keeps running the old
+  # kernel (Livepatch covers security fixes). Needs a deliberate NVIDIA upgrade, then the next window reboots normally.
+  log "NOT rebooting: $gpu_problem"
+  [ "$(date +%H)" = 02 ] && [ "$(date +%M)" -lt 15 ] && post "🛑 **$HOST** needs a reboot ($why) but it was SKIPPED: $gpu_problem. Rebooting would leave the machine without its GPU. Upgrade the held NVIDIA packages deliberately (see gotcha_r9_nvidia_hold_kernel_module_mismatch), then reboot."
   exit 0
 fi
 log "rebooting: required by $why"
