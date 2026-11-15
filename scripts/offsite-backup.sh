@@ -28,8 +28,12 @@ source "$HERE/offsite-backup.env"
 run_restic() { sudo -n env RESTIC_REPOSITORY="$RESTIC_REPOSITORY" RCLONE_CONFIG=/home/jay/.config/rclone/rclone.conf restic --password-file "$HERE/offsite-backup.password" "$@"; }
 
 LOG=/home/jay/logs/offsite-backup.log
-KEEP_DAILY=30
-KEEP_MONTHLY=12
+KEEP_DAILY=14   # two weeks of nightlies (restic dedupes, so this is cheap)
+KEEP_MONTHLY=2  # newest snapshot of the previous month = one older long-term copy
+# Human-readable snapshot name (restic IDs are hashes and cannot be renamed; tags show in `restic snapshots`).
+# The last night of a month is labelled monthly, which is the snapshot --keep-monthly retains.
+if [ "$(date -d tomorrow +%d)" = 01 ]; then KIND=monthly; else KIND=daily; fi
+SNAP_NAME="$(date '+%-d %b %Y') $KIND mediahub backup"
 
 # Existing dumps (already produced by the 02:30-02:50 jobs) plus live file trees for things that
 # are not databases. Database data directories are deliberately NOT included raw -- their own
@@ -60,7 +64,7 @@ heartbeat() {  # $1 = up|down, $2 = message
   else curl -fsS -m 20 "${KUMA_PUSH_URL%%\?*}?status=down&msg=$2&ping=" >> "$LOG" 2>&1 || true; fi
 }
 
-if run_restic backup "${present[@]}" --tag nightly >> "$LOG" 2>&1; then
+if run_restic backup "${present[@]}" --tag "$SNAP_NAME" >> "$LOG" 2>&1; then
   log "backup ok"
   run_restic forget --keep-daily "$KEEP_DAILY" --keep-monthly "$KEEP_MONTHLY" --prune >> "$LOG" 2>&1
   heartbeat up
