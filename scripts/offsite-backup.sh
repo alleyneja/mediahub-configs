@@ -25,7 +25,7 @@ source "$HERE/offsite-backup.env"
 # rclone (spawned by restic as a subprocess) looks for its config under whichever user is running
 # it; as root (via sudo) that is /root/.config/rclone, which does not exist. Point it at the one
 # real copy instead of duplicating the Google credential into root's own config.
-run_restic() { sudo -n env RESTIC_REPOSITORY="$RESTIC_REPOSITORY" RCLONE_CONFIG=/home/jay/.config/rclone/rclone.conf restic --password-file "$HERE/offsite-backup.password" "$@"; }
+run_restic() { sudo -n env RESTIC_REPOSITORY="$RESTIC_REPOSITORY" RCLONE_DRIVE_USE_TRASH=false RCLONE_CONFIG=/home/jay/.config/rclone/rclone.conf restic --password-file "$HERE/offsite-backup.password" "$@"; }
 
 LOG=/home/jay/logs/offsite-backup.log
 KEEP_DAILY=14   # two weeks of nightlies (restic dedupes, so this is cheap)
