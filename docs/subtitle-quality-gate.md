@@ -153,3 +153,54 @@ confirm none already meets the section 3 bars. If one does, adopt it instead of 
 5. Run report-only until the section 4 exit; then a separate decision to enforce.
 
 Related tooling: `~/subtitle-audit-tools/` (audio_windows.py, pgs_vs_srt.py, sync_report.py).
+
+## 8. Measurer benchmark results (2026-11-15)
+
+Scripts: `scripts/subtitle-gate-benchmark/`. Method as designed in section 3, with one change: the
+"known-good" label needed two independent signals to agree (our 7-window audio measurement within 0.5 s,
+AND Talkarr reporting nothing; for the 13 Sopranos episodes the embedded PGS track also agrees within
++/-0.25 s). That gave **16 known-good subs**: 13 Sopranos S01 episodes, Jumanji, I Am Legend, Resident Evil
+(2026). Sith, Get Hard and Uncharted were left out as ambiguous. Each good sub was corrupted 17 ways
+(shifts of +/-1/5/20/60 s, three framerate scales, truncation to 50% and 90%, a 10-minute gap, a +45 s step at
+45%, linear drift to +4 s and +8 s), 288 measurements. The rule was tuned on 8 titles and tested on the other 8.
+
+**Rule v1** (`chosen_rule_v1.json`) is three-state: FAIL = positive evidence of a mismatch; UNVERIFIABLE = too
+few usable windows and nothing contradicts (report, never replace); PASS. Usable window = reads within 10 s;
+FAIL if fewer than 7 windows have 10+ cues, last cue ends before 90% of the runtime, any usable window
+reads more than 0.5 s, usable windows spread more than 1.0 s, or 3+ windows agree on the same large offset.
+PASS needs at least 5 usable windows.
+
+| Bar / category | Result |
+|---|---|
+| False positives on untouched good subs (bar: no more than 2%) | 0 of 16 observed |
+| Recall on shifts of 5 s or more (bar: at least 90%) | 96 of 96 (100%) |
+| Shifts of 1 s | 32 of 32 |
+| Framerate scales | 34 of 48 FAIL, 14 UNVERIFIABLE (the small x1.001 scale), 0 silently passed |
+| Truncation | 32 of 32 (but see finding 2) |
+| Step (different cut) | 16 of 16 |
+| Drift | 32 of 32 |
+| 10-minute gap | 12 of 16, 4 silently passed |
+
+**Real known-bad (Nov 13 backups, both signals agree):** all 13 FAIL. Get Hard's original and one Uncharted
+candidate came out UNVERIFIABLE (flagged for review, not passed). Sith's current file is UNVERIFIABLE
+(only 3 usable windows, all reading 0.0 to +0.1 s).
+
+**Findings (honest limits).**
+1. **The 2% false-positive bar cannot be demonstrated at this size.** 0 of 16 gives a 95% upper bound of
+   about 19%; proving 2% needs roughly 150 clean files. The 13 Sopranos episodes are also one show. Treat
+   0 of 16 as "no evidence of a problem", and measure precision live during the report-only phase.
+2. **Truncation detection leans on a fragile threshold.** Without the 90% coverage check, 13 of 32
+   truncations pass. I Am Legend's good sub ends at 91% of the runtime, so the threshold sits 0.01 above a
+   known-good file; a film with long credits would be falsely failed. Needs a per-file speech-end estimate
+   from the audio instead of a fixed ratio.
+3. **A missing block of dialogue between sample windows is invisible** (4 of 16 gaps passed). A sparse-window
+   check caught one more but failed Sith's current sub, so it was dropped.
+4. **Low-speech films** (Sith: 4 of 7 windows read as artifacts) land in UNVERIFIABLE. That is the right
+   outcome, but it means such titles can never be confirmed good with 7 windows. More windows or a
+   speech-weighted window choice is a possible later improvement.
+5. Synthetic corruptions are easier than real ones. The real known-bad set (13 of 13) is circular for
+   labels (our own measurer plus Talkarr), so it supports the rule but does not independently prove it.
+
+**Bars status:** recall bar met; false-positive bar not provable at this n (see finding 1). Jay's call whether
+v1 is good enough to start building the report-only gate; findings 2 to 4 are known gaps, not blockers.
+

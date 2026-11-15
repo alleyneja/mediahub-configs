@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "date": "2026-11-15",
+  "states": {"FAIL": "positive evidence of mismatch", "UNVERIFIABLE": "too few usable windows, nothing contradicts: report, do not replace", "PASS": "ok"},
+  "params": {"usable_cutoff_s": 10, "min_usable_windows": 5, "max_abs_offset_s": 0.5, "max_spread_s": 1.0,
+             "min_windows_with_10_cues": 7, "min_coverage_last_cue_over_duration": 0.9, "sparse_window_ratio": 0,
+             "consensus_big_offset": "3 or more windows with |offset| > cutoff agreeing within 2 s -> FAIL"}
+}
