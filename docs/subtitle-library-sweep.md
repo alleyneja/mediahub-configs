@@ -1,6 +1,6 @@
-# Subtitle Library Sweep: Decision Record (DRAFT)
+# Subtitle Library Sweep: Decision Record
 
-**Status:** DRAFT 2026-11-15; four of five open items confirmed by Jay (section 6); tranche sizes still to confirm. NOTHING RUN YET.
+**Status:** APPROVED 2026-11-15 (all five items confirmed by Jay, section 6). NOTHING RUN YET; Phase 1 is blocked on the parent record's benchmark bars.
 **Issue:** alleyneja/mediahub-issues#73
 **Parent record:** [subtitle-quality-gate.md](subtitle-quality-gate.md). That record scoped v1 to new downloads
 and left a library sweep as "a separate later decision". This is that decision.
@@ -131,12 +131,12 @@ Confirmed by Jay, 2026-11-15:
 3. Run window = the existing Plex-aware maintenance windows (Tue / Thu / Sat).
 4. Spanish stays untouched in the sweep (no extra variable).
 
-Still open: tranche sizes (5 / 10 / 25 / 50, then 100 a night).
+5. Tranche sizes 5 / 10 / 25 / 50, then 100 a night: confirmed.
 
 ## 7. Open items for Jay
 
 1. ~~Watch-list source~~ Confirmed: Plex watch history on Jay's account.
-2. Tranche sizes 5 / 10 / 25 / 50 then 100 a night: OPEN.
+2. ~~Tranche sizes~~ Confirmed: 5 / 10 / 25 / 50, then 100 a night.
 3. ~~Replacement bar~~ Confirmed: 50% early, 70% after.
 4. ~~Run window~~ Confirmed: Tue / Thu / Sat maintenance windows.
 5. ~~Spanish~~ Confirmed: untouched.
