@@ -113,11 +113,43 @@ a tested whisperai path, and off-peak / no-active-stream scheduling became requi
 **Risks accepted in writing:** some different-cut subs will pass (content-level detection is
 imperfect); old library damage remains until a separate sweep decision.
 
-## 6. Next steps
+## 6. Prior-art survey (added 2026-11-15)
 
-1. Build the benchmark set and run the measurer against it (read-only).
-2. Compare against the section 3 bars; set the cutoff from data.
-3. If the bars are met, build the report-only gate (runs from i7 against Bazarr's DB and API).
-4. Run report-only until the section 4 exit; then a separate decision to enforce.
+Done before building, to avoid re-inventing the wheel. Web searches plus `gh search repos`; not
+exhaustive. Findings come from READMEs, release notes and package pages, not from running the tools.
+
+| Project | Relevant capability | Why not adopt as-is |
+|---|---|---|
+| ffsubsync, alass | sync + offset/framerate report; ffsubsync has `--min-score` / `--skip-sync-on-low-quality` | sync tools, not a gate; ffsubsync already in use |
+| Bazarr+ fork (LavX/bazarr v2.6.0) | max offset becomes an acceptance threshold; rejected result falls back to next engine | replaces core Bazarr; offset case only; no truncation/wrong-cut/framerate rejection |
+| subflux (cplieger) | 0-1 sync confidence (apply at 0.5, auto-apply 0.6); candidate voting (agree if per-cue diff < 1500 ms); known-ratio + golden-section framerate; split alignment; golden-corpus validation | `internal/` Go package, cannot import; re-aligns instead of rejecting |
+| Talkarr (Nick2253/Talkarr) | Bazarr post-processing webhook (`POST /process`); validates cue density / duration sanity / mislabelled forced subs; blacklists via Bazarr API and re-searches; Manual / Safe Auto / Full Auto modes; backs up before change; **perturbation eval** (`talkarr/eval/perturb.py`: known shifts, framerate scales, dropped cues, junk cues, wrong-film sub with expected verdicts) | 0 stars, created 2026-10-16, no license (cannot copy code), one maintainer. Validation of regular subs is structural, not audio timing. Its docs say to disable Bazarr's own auto-sync (violates "never change global settings"); `MISLABELLED_ACTION=remove` default removes without backup (violates "never remove first") |
+| Subarr (coaxk/subarr) | quality flags on generated subs; manual blacklist | different job |
+| Sublarr (Abrechen2/sublarr) | "sync-quality" scoring in candidate scoring | how it is measured is not documented |
+| btch/bazarr-qc | reported by a search result: blacklists when recorded offset > 5 s | repo not found on GitHub (user `btch` has only Sportarr); unverified, and it would only read Bazarr's recorded offset |
+| ahmadmu.com blog | accepts a shift only when an English reference and the audio agree within 0.5 s across each third of the video | write-up only, no code |
+
+**Conclusion:** the measuring primitives exist (ffsubsync, alass) and several projects solve parts of the
+problem, but nothing found does audio-timed rejection of truncation / wrong cut / framerate with
+automatic download-then-swap, blacklist, backup, report-only phase and an unresolved flag. We build that
+glue and borrow ideas, not code.
+
+**Ideas adopted:**
+- Perturbation benchmark with expected verdicts (Talkarr; matches section 3).
+- Candidate agreement within 1.5 s as a cheap extra signal and a duplicate-candidate detector (subflux).
+- A 0-1 confidence with separate apply and auto-apply thresholds (subflux).
+- Reference agreement across thirds of the runtime, English reference vs audio (ahmadmu blog).
+- Manual / Safe Auto / Full Auto modes with backup-first changes (Talkarr). Our report-only week is "Manual".
+
+**Survey step before building:** time-boxed (about an hour) read of the Bazarr+ fork and Talkarr code to
+confirm none already meets the section 3 bars. If one does, adopt it instead of building the measurer.
+
+## 7. Next steps
+
+1. Time-boxed code read of Bazarr+ rejection logic and Talkarr validation/eval (section 6).
+2. Build the benchmark set and run the measurer against it (read-only).
+3. Compare against the section 3 bars; set the cutoff from data.
+4. If the bars are met, build the report-only gate (runs from i7 against Bazarr's DB and API).
+5. Run report-only until the section 4 exit; then a separate decision to enforce.
 
 Related tooling: `~/subtitle-audit-tools/` (audio_windows.py, pgs_vs_srt.py, sync_report.py).
