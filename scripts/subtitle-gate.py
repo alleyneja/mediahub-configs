@@ -213,6 +213,7 @@ def main():
     ap.add_argument("--review", nargs=2, metavar=("TEXT", "VERDICT"))
     ap.add_argument("--backfill-days", type=int, default=0)
     ap.add_argument("--max-minutes", type=int, default=120)
+    ap.add_argument("--no-discord", action="store_true", help="the enforce wrapper posts its own messages")
     ap.add_argument("--ignore-plex", action="store_true", help="testing only, when you know nobody is watching")
     a = ap.parse_args()
     os.makedirs(STATE_DIR, exist_ok=True)
@@ -289,7 +290,7 @@ def main():
         counts = {s: sum(1 for r in results if r["state"] == s) for s in ("PASS", "FAIL", "UNVERIFIABLE")}
         log(f"measured {len(results)}: {counts}")
         fails = [r for r in results if r["state"] == "FAIL"]
-        if fails:
+        if fails and not a.no_discord:
             lines = [f"**Subtitle gate (report-only):** {len(fails)} of {len(results)} new English subs flagged; nothing was changed."]
             lines += [f"- {nice_name(r['path'])} ({r['provider']}, score {r['score']}): {'; '.join(r['reasons'])}" for r in fails[:10]]
             discord("\n".join(lines))

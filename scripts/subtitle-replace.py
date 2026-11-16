@@ -58,17 +58,27 @@ def ro_db():
     return sqlite3.connect(f"file:{gate.BAZARR_DB}?mode=ro", uri=True, timeout=30)
 
 
-def find_movie(text):
-    rows = ro_db().execute("select radarrId,title,path from table_movies where title like ?", (f"%{text}%",)).fetchall()
-    if len(rows) != 1:
-        sys.exit(f"'{text}' matches {len(rows)} movies: {[r[1] for r in rows]}")
-    rid, title, path = rows[0]
+def _movie(rid, title, path):
     h = ro_db().execute("select id,provider,subs_id,language,subtitles_path from table_history_movie where radarrId=? "
                         "and action in (1,2,3) and language in ('en','en:hi') order by id desc limit 1", (rid,)).fetchone()
     if not h:
         sys.exit(f"{title}: no English download in Bazarr history")
     return {"rid": rid, "title": title, "video_c": path, "video": gate.host_path(path), "hist": h,
             "sub_c": h[4], "sub": gate.host_path(h[4]), "lang": h[3]}
+
+
+def find_movie(text):
+    rows = ro_db().execute("select radarrId,title,path from table_movies where title like ?", (f"%{text}%",)).fetchall()
+    if len(rows) != 1:
+        sys.exit(f"'{text}' matches {len(rows)} movies: {[r[1] for r in rows]}")
+    return _movie(*rows[0])
+
+
+def movie_by_history_id(hid):
+    """The movie a gate row belongs to (gate rows carry the Bazarr movie-history id), or None. Never matches by name."""
+    row = ro_db().execute("select m.radarrId, m.title, m.path from table_history_movie h join table_movies m "
+                          "on m.radarrId = h.radarrId where h.id=?", (hid,)).fetchone()
+    return _movie(*row) if row else None
 
 
 def measure_one(sub_c, video_c):
@@ -536,23 +546,29 @@ def main():
         print("restored", man["orig_path"], "(Bazarr blacklist rows are left; they only stop the same sub returning)")
         return
     for text in (a.plan or a.run):
-        m = find_movie(text)
-        guard()
-        rec, st, why = measure_one(m["sub_c"], m["video_c"])
-        if rec is None:
-            log(f"{m['title']}: could not measure; skipped"); continue
-        tier = tier_of(rec)
-        log(f"{m['title']}: current {st} {why[:2]} | cues {rec['cues']} cov {rec['last_cue_end'] / rec['dur']:.0%} -> Tier {tier}"
-            if st == "FAIL" else f"{m['title']}: current is {st}; not a replacement target")
-        if st != "FAIL":
-            continue
-        if a.plan:
-            normal, whisper = candidates(m, set())
-            log(f"  would try up to {len(normal)} candidates in {NORMAL_BUDGET_S // 60} min, then whisperai ({len(whisper)} available)")
-            for c in normal[:5]:
-                log(f"    {c['provider']} score {c['orig_score']} hi={c['hearing_impaired']} {str(c['release_info'])[:55]}")
-        else:
-            log(f"{m['title']}: RESULT {run_title(m, tier, rec, True, a.direct_subsource)}")
+        process(find_movie(text), bool(a.plan), a.direct_subsource)
+
+
+def process(m, plan_only, direct):
+    """Measure the current sub, decide the tier, and (unless plan_only) replace. Returns the outcome string or None."""
+    guard()
+    rec, st, why = measure_one(m["sub_c"], m["video_c"])
+    if rec is None:
+        log(f"{m['title']}: could not measure; skipped"); return None
+    tier = tier_of(rec)
+    log(f"{m['title']}: current {st} {why[:2]} | cues {rec['cues']} cov {rec['last_cue_end'] / rec['dur']:.0%} -> Tier {tier}"
+        if st == "FAIL" else f"{m['title']}: current is {st}; not a replacement target")
+    if st != "FAIL":
+        return None
+    if plan_only:
+        normal, whisper = candidates(m, set())
+        log(f"  would try up to {len(normal)} candidates in {NORMAL_BUDGET_S // 60} min, then whisperai ({len(whisper)} available)")
+        for c in normal[:5]:
+            log(f"    {c['provider']} score {c['orig_score']} hi={c['hearing_impaired']} {str(c['release_info'])[:55]}")
+        return None
+    outcome = run_title(m, tier, rec, True, direct)
+    log(f"{m['title']}: RESULT {outcome}")
+    return outcome
 
 
 if __name__ == "__main__":

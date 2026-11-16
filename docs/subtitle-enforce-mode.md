@@ -1,6 +1,6 @@
 # Subtitle Gate: Enforce Mode (auto-replace) Decision Record
 
-**Status:** DRAFT 2026-11-16, waiting for Jay's go. Nothing in this record is live. The cron job stays report-only until Jay approves.
+**Status:** APPROVED by Jay 2026-11-16 (record and building the wrapper). BUILT, NOT LIVE: `scripts/subtitle-enforce.py` is tested but has no cron line. Go-live (the cron line) needs Jay's separate OK.
 **Issue:** alleyneja/mediahub-issues#73. **Parents:** [subtitle-quality-gate.md](subtitle-quality-gate.md), [subtitle-replace-t0.md](subtitle-replace-t0.md), [subtitle-subsource-direct.md](subtitle-subsource-direct.md)
 
 ## Requirements (what this must do, affect, and not affect)
@@ -34,7 +34,19 @@ TV episodes, the Spanish files, the library sweep (still manual, in tranches, wi
 ## Rollback
 Remove the wrapper line from cron (or create the PAUSE file). The gate itself keeps running report-only. Replaced files restore from `~/subtitle-sweep/backups/`.
 
+## Built 2026-11-16 (not live)
+`scripts/subtitle-enforce.py` (tick, `--dry-run`, `--status`, `--spot`, `--resume`), `test_subtitle_enforce.py` (4 tests), the replace tool's
+`process()` and `movie_by_history_id()`, and the gate's `--no-discord`. A dry run against the last 72 hours of gate rows dropped every
+stale row (the file had changed since it was measured), reported Home as coverage-only "needs review", and would have replaced nothing.
+The staleness check compares the file's size and mtime, not just its path (a dry run caught that bug before go-live).
+
+**Finding:** in a sample of 60 library movies, 7 (12%) have a non-English first audio stream, and all 7 have an English stream later.
+The measurer reads stream `0:a:0` (the gate benchmark was built that way), so the audio guard would send about one movie in eight to
+"needs review", for example Delivery Man (first stream Italian) and Fired Up! (Portuguese). Better fix, not done yet: make the measurer
+choose the first English non-commentary stream, then re-test those titles. Timing against a dub is usually, not always, the same.
+
 ## Open items before go-live
-- Wrapper script, Discord post, spot-check marker, audio-stream guard: to be built and tested on files nothing runs yet.
+- Decide the audio-stream question above (measurer picks the English stream, or leave the guard strict).
+- A live Discord test post, and one real end-to-end tick on a title Jay chooses.
 - Kuma heartbeat for the wrapper (Jay's call; needs a Kuma stop, see `gotcha_kuma_monitor_db_insert`).
 - Jay's approval of this record.
