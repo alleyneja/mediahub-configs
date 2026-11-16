@@ -27,8 +27,10 @@ CSV = os.path.join(DIR, "probe.csv")
 STOP = os.path.join(DIR, "STOP")
 M3U = "/srv/docker/threadfin/conf/data/MLXG7IZI17KCJ5IPBDCN.m3u"
 TVG_ID = "nbcwesh.us"            # same channel as the sampler (ch 1021 WESH)
-QUIET_SECS = int(os.environ.get("PROBE_QUIET_SECS", "300"))
-SESSION_MAX = 3600               # reconnect hourly so one long session cannot go stale
+QUIET_SECS = int(os.environ.get("PROBE_QUIET_SECS", "300"))   # idle needed after a viewer was last seen
+ON_SECS = int(os.environ.get("PROBE_ON_SECS", "180"))      # hold the stream this long ...
+OFF_SECS = int(os.environ.get("PROBE_OFF_SECS", "420"))    # ... then rest this long (3 min in every 10)
+SESSION_MAX = ON_SECS
 MAX_BYTES = 100 * 1024 * 1024
 
 
@@ -135,9 +137,10 @@ def run():
             quiet_since = quiet_since or time.time()
             if time.time() - quiet_since >= QUIET_SECS:
                 reason = probe_session(url, host, user, pw)
-                quiet_since = None
-                # after a viewer-yield, wait QUIET_SECS of 0 again; after an error retry soon
-                time.sleep(5 if reason in ("session-max",) else 15)
+                # finished its slice: rest OFF_SECS, then go again once the account still reads 0.
+                # yielded to a viewer: wait a full QUIET_SECS of 0 again before the next try.
+                quiet_since = time.time() - QUIET_SECS if reason == "session-max" else None
+                time.sleep(OFF_SECS if reason == "session-max" else 15)
                 continue
         else:
             quiet_since = None

@@ -17,27 +17,21 @@ so per-second rates are meaningless. A second is "starved" when the rolling 10 s
 Usage:  livetv-session-tap.py            run forever (systemd)
         livetv-session-tap.py --summary  print stalls per session from the log
 """
-import csv, os, re, socket, subprocess, sys, time, hashlib
+import csv, os, re, subprocess, sys, time, hashlib
 from datetime import datetime
 
-HOST = os.environ.get("TAP_PROVIDER_HOST", "link4tv.cc")
+PEER = os.environ.get("TAP_PEER", "192.168.0.21")      # Threadfin (production): Plex pulls every Live TV stream from here
+PORT = os.environ.get("TAP_PORT", "34400")
 LOGDIR = os.environ.get("TAP_LOGDIR", os.path.expanduser("~/logs/livetv-session-tap"))
 MAX_BYTES = 200 * 1024 * 1024          # rotate at 200 MB, keep 1 old file
 STOP = os.path.join(LOGDIR, "STOP")
-
-
-def provider_ips():
-    try:
-        return sorted({a[4][0] for a in socket.getaddrinfo(HOST, 80, socket.AF_INET)})
-    except OSError:
-        return []
 
 
 def snapshot(ips):
     """Return {conn_id: (bytes_received, rtt_ms, retrans_total, unacked)} for provider conns."""
     out = {}
     for ip in ips:
-        r = subprocess.run(["ss", "-tinH", "state", "established", "dst", ip],
+        r = subprocess.run(["ss", "-tinH", "state", "established", "(", "dst", ip, "and", "dport", "=", ":" + PORT, ")"],
                            capture_output=True, text=True)
         lines = r.stdout.splitlines()
         # ss prints the socket line, then an indented info line
@@ -66,11 +60,9 @@ def rotate(path):
 def run():
     os.makedirs(LOGDIR, exist_ok=True)
     path = os.path.join(LOGDIR, "tap.csv")
-    ips, ips_at, prev, prev_t = provider_ips(), time.time(), {}, time.time()
+    ips, prev, prev_t = [PEER], {}, time.time()
     first, active = {}, set()     # a conn is a "stream" once it has moved >=100 kB (skips idle keepalives)
     while not os.path.exists(STOP):
-        if time.time() - ips_at > 300:           # CDN address can change
-            ips, ips_at = provider_ips() or ips, time.time()
         now = time.time()
         cur = snapshot(ips)
         dt = max(now - prev_t, 0.001)
@@ -122,6 +114,8 @@ def summary():
         by.setdefault(r["conn"], []).append(r)
     print(f"{'conn':7} {'start':19} {'secs':>6} {'starved_s':>9} {'longest':>7} {'gap_s':>5} {'mean_kBps':>9} {'retrans':>7}")
     for cid, rs in by.items():
+        if len(rs) < 30:
+            continue                              # guide/playlist fetches and test blips
         k = [float(r["recv_kBps"]) for r in rs]
         starved, longest, gap = judge(k)
         print(f"{cid:7} {rs[0]['ts']:19} {len(rs):6d} {starved:9d} {longest:7d} {gap:5d} {sum(k)/len(k):9.0f} "
