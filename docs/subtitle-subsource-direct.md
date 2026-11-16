@@ -1,6 +1,6 @@
 # Subsource Direct Candidates: Decision Record
 
-**Status:** APPROVED (Jay: "lets try it"; shift step agreed Nov 16) 2026-11-16, waiting for Jay's go. NOTHING BUILT OR RUN beyond the two read-only searches in "Evidence".
+**Status:** APPROVED and BUILT 2026-11-16 (Jay: "lets try it"; shift step agreed in chat the same day). Code: `scripts/subtitle-replace.py` (`--phase0`, `--phase1`, `--direct-subsource`). Manual, movies only, not cron.
 **Issue:** alleyneja/mediahub-issues#73. **Parent:** [subtitle-replace-t0.md](subtitle-replace-t0.md)
 
 ## Problem
