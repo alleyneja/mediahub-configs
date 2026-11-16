@@ -54,21 +54,29 @@ def classify(row):
     return "replace"
 
 
+def pick_audio_index(streams):
+    """Same rule as pick_audio() in subtitle-gate-benchmark/measure_container.py: first English, non-commentary track, else None."""
+    for i, x in enumerate(streams):
+        t = {k.lower(): str(v) for k, v in (x.get("tags") or {}).items()}
+        if t.get("language", "").lower() in ("eng", "en") and "comment" not in t.get("title", "").lower():
+            return i
+    return None
+
+
 def audio_ok(probe_json):
-    """First audio stream must be English (or untagged) and not a commentary track. Returns (ok, note)."""
+    """The film needs an English, non-commentary audio track for the measurer to use. Returns (ok, note).
+    An untagged single track is accepted (older rips often carry no language tag)."""
     try:
         streams = json.loads(probe_json).get("streams", [])
     except ValueError:
         return False, "could not read the audio streams"
     if not streams:
         return False, "no audio stream found"
-    tags = {k.lower(): str(v) for k, v in (streams[0].get("tags") or {}).items()}
-    lang, title = tags.get("language", "").lower(), tags.get("title", "").lower()
-    if "commentary" in title or "comment" in title:
-        return False, f"first audio stream is a commentary track ({tags.get('title')})"
-    if lang not in ("eng", "en", "und", ""):
-        return False, f"first audio stream is not English ({lang})"
-    return True, ""
+    if pick_audio_index(streams) is not None:
+        return True, ""
+    if len(streams) == 1 and not (streams[0].get("tags") or {}).get("language") and "comment" not in str((streams[0].get("tags") or {}).get("title", "")).lower():
+        return True, ""
+    return False, "no English, non-commentary audio track to measure against"
 
 
 def plan_work(rows, state, since_ts):
@@ -121,7 +129,7 @@ def mark(st, row):
 
 # ---------------------------------------------------------------- side effects
 def probe_audio(video):
-    p = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream_tags=language,title",
+    p = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream_tags=language,title",
                         "-of", "json", video], capture_output=True, text=True, timeout=60)
     return p.stdout if p.returncode == 0 else ""
 

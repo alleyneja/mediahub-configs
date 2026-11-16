@@ -42,11 +42,11 @@ The staleness check compares the file's size and mtime, not just its path (a dry
 
 **Finding:** in a sample of 60 library movies, 7 (12%) have a non-English first audio stream, and all 7 have an English stream later.
 The measurer reads stream `0:a:0` (the gate benchmark was built that way), so the audio guard would send about one movie in eight to
-"needs review", for example Delivery Man (first stream Italian) and Fired Up! (Portuguese). Better fix, not done yet: make the measurer
-choose the first English non-commentary stream, then re-test those titles. Timing against a dub is usually, not always, the same.
+"needs review", for example Delivery Man (first stream Italian) and Fired Up! (Portuguese). DONE (Jay, 2026-11-16): the measurer now picks the first English non-commentary stream (falls back to the first), and the guard sends a
+title to needs-review only when no such stream exists. Re-test against the English track: Delivery Man PASS (offsets within 0.1 s), Fired Up! PASS
+(within 0.2 s), Idiocracy (single track, control) PASS and unchanged.
 
 ## Open items before go-live
-- Decide the audio-stream question above (measurer picks the English stream, or leave the guard strict).
 - A live Discord test post, and one real end-to-end tick on a title Jay chooses.
 - Kuma heartbeat for the wrapper (Jay's call; needs a Kuma stop, see `gotcha_kuma_monitor_db_insert`).
 - Jay's approval of this record.

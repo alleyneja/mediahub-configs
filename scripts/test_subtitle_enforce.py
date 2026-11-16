@@ -19,13 +19,22 @@ class T(unittest.TestCase):
         self.assertEqual(enf.classify(row(reasons=["last cue ends at 60% of the runtime", "a usable window reads +9 s"])), "replace")
 
     def test_audio_guard(self):
-        mk = lambda **t: json.dumps({"streams": [{"tags": t}]})
-        self.assertTrue(enf.audio_ok(mk(language="eng", title="Opus 7.1"))[0])
-        self.assertTrue(enf.audio_ok(mk())[0])
-        self.assertFalse(enf.audio_ok(mk(language="eng", title="Commentary by the director"))[0])
-        self.assertFalse(enf.audio_ok(mk(language="jpn"))[0])
+        mk = lambda *streams: json.dumps({"streams": [{"tags": x} for x in streams]})
+        self.assertTrue(enf.audio_ok(mk({"language": "eng", "title": "Opus 7.1"}))[0])
+        self.assertTrue(enf.audio_ok(mk({}))[0])                                  # single untagged track
+        self.assertTrue(enf.audio_ok(mk({"language": "ita"}, {"language": "eng"}))[0])   # dub first, English later
+        self.assertFalse(enf.audio_ok(mk({"language": "eng", "title": "Commentary by the director"}))[0])
+        self.assertFalse(enf.audio_ok(mk({"language": "jpn"}))[0])
+        self.assertFalse(enf.audio_ok(mk({}, {"language": "ita"}))[0])
         self.assertFalse(enf.audio_ok("")[0])
         self.assertFalse(enf.audio_ok(json.dumps({"streams": []}))[0])
+
+    def test_pick_audio_index(self):
+        S = lambda lang, title="": {"tags": {"language": lang, "title": title}}
+        self.assertEqual(enf.pick_audio_index([S("ita"), S("eng")]), 1)
+        self.assertEqual(enf.pick_audio_index([S("eng", "Commentary"), S("eng", "Main")]), 1)
+        self.assertEqual(enf.pick_audio_index([S("eng"), S("ita")]), 0)
+        self.assertIsNone(enf.pick_audio_index([S("ita")]))
 
     def test_plan_skips_old_and_handled(self):
         a, b, c = row(ts=50, path="/m/old"), row(ts=150, path="/m/handled"), row(ts=150, path="/m/new")
