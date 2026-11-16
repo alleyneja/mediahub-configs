@@ -224,7 +224,145 @@ def blacklist(m, c_provider, c_subs_id, path_c):
     return st, bool(row)
 
 
-def run_title(m, tier, rec, apply_):
+# ---------------------------------------------------------------- subsource, queried directly (docs/subtitle-subsource-direct.md)
+SS_BASE, SS_CAP_ZIP, SS_CAP_SRT, SS_PAUSE_S = "https://api.subsource.net/api/v1/", 6_000_000, 2_000_000, 2.0
+SS_CALLS = 0
+
+
+class RateStop(Exception):
+    pass
+
+
+def ss_key():
+    return re.search(r"^subsource:\s*\n\s+apikey:\s*(\S+)", open(BAZARR_CFG).read(), re.M).group(1).strip("'\"")
+
+
+def ss_get(path, params):
+    """GET with the api key in the query string (as Bazarr's provider does). URLs are never logged or printed."""
+    global SS_CALLS
+    time.sleep(SS_PAUSE_S)
+    SS_CALLS += 1
+    req = urllib.request.Request(SS_BASE + path + "?" + urllib.parse.urlencode({**params, "api_key": ss_key()}),
+                                 headers={"User-Agent": "subtitle-replace/1"})
+    try:
+        with urllib.request.urlopen(req, timeout=40) as r:
+            return r.status, r.read(SS_CAP_ZIP + 1)
+    except urllib.error.HTTPError as e:
+        if e.code == 429:
+            raise RateStop("subsource said slow down (429)")
+        return e.code, b""
+    except Exception as e:                      # type name only: the message could carry the URL
+        return 0, type(e).__name__.encode()
+
+
+def ss_candidates(imdb):
+    st, body = ss_get("movies/search", {"searchType": "imdb", "imdb": imdb})
+    d = json.loads(body).get("data") if st == 200 else None
+    mid = (d[0].get("movieId") or d[0].get("id")) if d else None
+    if not mid:
+        return []
+    st, body = ss_get("subtitles", {"language": "english", "limit": 100, "movieId": mid})
+    items = json.loads(body).get("data", []) if st == 200 else []
+    out, seen = [], set()
+    for it in items:
+        if it.get("foreignParts") or "forced" in str(it.get("commentary", "")).lower() or it["subtitleId"] in seen:
+            continue
+        seen.add(it["subtitleId"])
+        up = next((c.get("displayname", "") for c in it.get("contributors", []) if c.get("id") == it.get("uploaderId")), "")
+        out.append({"id": it["subtitleId"], "release": (" ".join(it["releaseInfo"]) if isinstance(it.get("releaseInfo"), list) else str(it.get("releaseInfo", ""))).lower(), "uploader": str(up), "hi": bool(it.get("hearingImpaired"))})
+    return out
+
+
+def ss_fetch(sid):
+    """Download the zip to memory, return up to 3 .srt members as text. Member names are never used as paths."""
+    import io, zipfile
+    st, body = ss_get(f"subtitles/{sid}/download", {})
+    if st != 200 or len(body) > SS_CAP_ZIP or not zipfile.is_zipfile(io.BytesIO(body)):
+        return []
+    zf, out = zipfile.ZipFile(io.BytesIO(body)), []
+    for info in sorted(zf.infolist(), key=lambda i: -i.file_size):
+        if info.filename.lower().endswith(".srt") and 0 < info.file_size <= SS_CAP_SRT and len(out) < 3:
+            raw = zf.open(info).read(SS_CAP_SRT + 1)
+            if len(raw) <= SS_CAP_SRT:
+                for enc in ("utf-8-sig", "cp1252"):
+                    try:
+                        out.append(raw.decode(enc)); break
+                    except UnicodeDecodeError:
+                        continue
+    return out
+
+
+def ss_measure(text, video_c):
+    """Measure a subtitle that is NOT in the library: copy it into the bazarr container's /tmp, measure, remove."""
+    import subprocess, tempfile
+    name = f"ssc_{os.getpid()}_{int(time.time() * 1000) % 10**9}.srt"
+    with tempfile.TemporaryDirectory() as td:
+        host = os.path.join(td, name)
+        open(host, "w", encoding="utf-8").write(text)
+        subprocess.run(["docker", "cp", host, f"{gate.CONTAINER}:/tmp/{name}"], check=True, capture_output=True)
+    try:
+        return measure_one(f"/tmp/{name}", video_c)
+    finally:
+        subprocess.run(["docker", "exec", gate.CONTAINER, "rm", "-f", f"/tmp/{name}"], capture_output=True)
+
+
+def imdb_of(m):
+    return ro_db().execute("select imdbId from table_movies where radarrId=?", (m["rid"],)).fetchone()[0]
+
+
+def phase0(titles):
+    """Look only: fetch and measure every subsource English candidate for each title. Swaps nothing."""
+    for t in titles:
+        m = find_movie(t)
+        log(f"== {m['title']} (imdb {imdb_of(m)}), current file left untouched")
+        try:
+            cands = ss_candidates(imdb_of(m))
+            log(f"   {len(cands)} subsource English candidates (after dropping forced)")
+            for c in cands:
+                guard()
+                texts = ss_fetch(c["id"])
+                if not texts:
+                    log(f"   {c['release'][:46]:46s} no usable .srt in the download"); continue
+                for k, text in enumerate(texts):
+                    rec, st, why = ss_measure(text, m["video_c"])
+                    if rec is None:
+                        log(f"   {c['release'][:46]:46s} could not measure"); continue
+                    use = [w["offset"] for w in rec["windows"] if w and abs(w["offset"]) <= 10]
+                    rng = f"{min(use):+.1f}..{max(use):+.1f}s" if use else "n/a"
+                    log(f"   {c['release'][:46]:46s} hi={int(c['hi'])} {st:12s} offsets {rng:14s} cues {rec['cues']} cov {rec['last_cue_end'] / rec['dur']:.0%}")
+                    ledger({"title": m["title"], "event": "phase0", "provider": "subsource", "release": c["release"], "uploader": c["uploader"],
+                            "state": st, "why": why, "usable_offsets": use, "cues": rec["cues"]})
+        except RateStop as e:
+            log(f"   STOPPED: {e}")
+    log(f"subsource API calls this run: {SS_CALLS}")
+
+
+def try_direct(m, bak, tier):
+    """Real run: measure subsource candidates from temp files; on the first PASS put it in the library atomically."""
+    past = {(prov, rel, up) for (prov, rel, up) in ledger_tried(m["title"])}
+    try:
+        for c in ss_candidates(imdb_of(m)):
+            if ("subsource", c["release"], c["uploader"]) in past:
+                continue
+            guard()
+            for text in ss_fetch(c["id"]):
+                rec, st, why = ss_measure(text, m["video_c"])
+                log(f"  subsource direct: {c['release'][:50]} -> {st} {why[:1]}")
+                ledger({"title": m["title"], "event": "candidate", "provider": "subsource", "subs_id": c["id"], "release": c["release"],
+                        "uploader": c["uploader"], "state": st, "why": why, "path": "direct"})
+                if st == "PASS":
+                    tmp = m["sub"] + ".new.tmp"
+                    open(tmp, "w", encoding="utf-8").write(text)
+                    shutil.copymode(bak, tmp)
+                    os.replace(tmp, m["sub"])
+                    log(f"  ACCEPTED (subsource direct) at {m['sub']}")
+                    return True
+    except RateStop as e:
+        log(f"  subsource direct stopped: {e}")
+    return False
+
+
+def run_title(m, tier, rec, apply_, direct=False):
     guard()
     bak = backup(m)
     ledger({"title": m["title"], "event": "start", "tier": tier, "backup": bak, "current": rec.get("windows") and "measured"})
@@ -236,6 +374,9 @@ def run_title(m, tier, rec, apply_):
                         "hi": str(m["lang"].endswith(":hi")), "path": m["sub_c"]})
             log(f"  deleted via API ({st}); gone={not os.path.exists(m['sub'])}")
     tried, tries, outcome = set(), 0, "unresolved"
+    if direct and try_direct(m, bak, tier):
+        ledger({"title": m["title"], "event": "end", "tier": tier, "outcome": "replaced", "via": "subsource-direct"})
+        return "replaced"
     normal, whisper = candidates(m, tried)
     log(f"{len(normal)} usable candidates + {len(whisper)} whisperai")
     queue = normal + whisper[:1]
@@ -292,7 +433,8 @@ def run_title(m, tier, rec, apply_):
 def main():
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--plan", nargs="+"); g.add_argument("--run", nargs="+"); g.add_argument("--restore")
+    g.add_argument("--plan", nargs="+"); g.add_argument("--run", nargs="+"); g.add_argument("--restore"); g.add_argument("--phase0", nargs="+")
+    ap.add_argument("--direct-subsource", action="store_true")
     a = ap.parse_args()
     os.makedirs(ROOT, exist_ok=True)
     lk = open(LOCK, "w")
@@ -300,6 +442,8 @@ def main():
         fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         sys.exit("another subtitle-replace run holds the lock")
+    if a.phase0:
+        phase0(a.phase0); return
     if a.restore:
         m = find_movie(a.restore)
         base = os.path.join(ROOT, "backups")
@@ -329,7 +473,7 @@ def main():
             for c in normal[:5]:
                 log(f"    {c['provider']} score {c['orig_score']} hi={c['hearing_impaired']} {str(c['release_info'])[:55]}")
         else:
-            log(f"{m['title']}: RESULT {run_title(m, tier, rec, True)}")
+            log(f"{m['title']}: RESULT {run_title(m, tier, rec, True, a.direct_subsource)}")
 
 
 if __name__ == "__main__":
