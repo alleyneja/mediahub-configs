@@ -32,7 +32,7 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 | `update-restart-report.sh` | prod, r9, x51 | after daily unattended-upgrades | which services the updates restarted | #service-outages | `docs/os-updates.md`, #53 |
 | `adguard-sync-x51.py` | prod | hourly :17 | AdGuard replica sync | Kuma push 44 | |
 | `immich-backup.sh` | prod | 02:30 | Immich DB dump | Kuma push 43 | |
-| `subtitle-gate.py` (REPORT-ONLY) | prod | Tue/Thu/Sat 04:45 | measures new English Bazarr downloads against the audio (rule v1); ledger `~/logs/subtitle-gate/`; changes nothing; skips while Plex streams | #media-alerts only when something is flagged | `docs/subtitle-quality-gate.md` section 9, #73 |
+| `subtitle-enforce.py` (gate + auto-replace, movies) | prod | every 15 min | runs the gate (rule v1) then replaces new movie FAILs via `subtitle-replace.py` (cap 5/tick); posts every replacement, unresolved and needs-review title to #media-alerts; TV stays report-only (digest post); `~/subtitle-sweep/PAUSE` stops it; state `~/subtitle-sweep/enforce-state.json`, ledgers `~/subtitle-sweep/` and `~/logs/subtitle-gate/`; log `~/logs/subtitle-gate/enforce-cron.log`; record `docs/subtitle-enforce-mode.md` |
 | `offsite-backup.sh` | prod | 03:00 | restic -> Google Drive | Kuma push 48 | #34 |
 | `issues-report.sh` | prod | monthly | tracker age/volume report | #service-outages | |
 | `check-fleet-identity.sh` | prod | monthly | PUID/PGID drift in compose files | log only | |
@@ -83,7 +83,7 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 - NAS drive health / capacity: nothing watches it (#31).
 - Live TV feed quality after the sampler expires; Schedules Direct EPG freshness.
 - Netdata is confirmed on prod only (r9/x51 Docker containers were not inspected); `placement-metrics` runs on all three but is a collector, not an alerter.
-- `subtitle-gate.py`: no Kuma heartbeat yet (creating a push monitor means stopping Kuma; decision pending), so a silently stopped gate is only visible in `--summary` and `~/logs/subtitle-gate/gate.log`.
+- `subtitle-enforce.py` (runs the gate every 15 min): no Kuma heartbeat yet (creating a push monitor means stopping Kuma; decision pending), so a silently stopped gate is only visible in `--summary` and `~/logs/subtitle-gate/enforce-cron.log` or `~/logs/subtitle-gate/gate.log`.
 - Unpackerr: no API; only the weekly digest sees its failures.
 
 ## F. Discord channels
@@ -103,3 +103,5 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 - 2026-11-15: added `livetv-idle-probe.py` (prod systemd) for idle-time coverage; both Live TV loggers judge a rolling 10 s average vs 1000 kB/s because the feed is bursty (MBs every 6-8 s), so per-second rates are not stalls.
 - 2026-11-15: tap finally pointed at Plex Transcoder's outbound :80 connection to the provider's video server (verified on a live stream; two earlier targets were wrong); stalls judged per session (30 s average under half the session mean, plus silent gaps), because the feed is bursty and bitrate varies by channel; idle probe set to 3 min on / 7 min off and left STOPPED (`systemctl stop livetv-idle-probe`) until Live TV tuning was confirmed working. Plex Live TV wedged ~18:53-20:48 (tunes never reached Threadfin; `/livetv/sessions` hung); `docker restart plex` cleared it.
 - 2026-11-16: added Kuma monitor 51 `Plex Live TV (sessions API)` (`http://192.168.0.22:32400/livetv/sessions`, X-Plex-Token header stored in the monitor, 10 s timeout, 60 s, Discord); backup `kuma.db.pre-livetv-monitor-20261116` (delete with the Nov 15 one in a few days). Tap now also logs `ooo_total` (out-of-order packets in = download-side loss; `retrans` only counts our sends). One-shot `livetv-game-probe` (systemd-run timer, prod, 2026-11-16 18:45, ESPN HD, up to 3.5 h, yields to viewers) captures a busy sports feed; output `~/logs/livetv-game-probe/probe.csv`, read with `PROBE_LOGDIR=~/logs/livetv-game-probe livetv-idle-probe.py --summary`.
+
+- 2026-11-16: subtitle gate moved from Tue/Thu/Sat 04:45 report-only to `subtitle-enforce.py` every 15 minutes (auto-replace for movies, Jay's go; crontab before: `~/subtitle-sweep/crontab.before-enforce`).

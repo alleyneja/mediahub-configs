@@ -159,6 +159,60 @@ def say(msg, quiet):
         gate.discord(msg)
 
 
+def do_replace(st, m, key):
+    """Replace one movie's sub through the replace tool and report it. Returns "guard" (Plex guard stopped it; stays queued),
+    "done" (replaced or unresolved, posted), "noop" (the sub no longer fails; nothing posted) or "error"."""
+    started = datetime.datetime.now().isoformat(timespec="seconds")
+    try:
+        outcome = r.process(m, False, True)
+    except SystemExit as e:                       # the Plex guard: stop the whole tick, retry next time
+        log(f"stopped by guard: {str(e)[:120]}; {m['title']} stays queued")
+        return "guard"
+    except Exception as e:
+        st["attempts"][key] = st["attempts"].get(key, 0) + 1
+        log(f"{m['title']}: error {type(e).__name__}: {str(e)[:120]}")
+        if st["attempts"][key] >= MAX_ATTEMPTS:
+            say(f"**Subtitle check, failed:** {m['title']}: the replace step errored twice. The original is untouched or "
+                f"restored. Needs a look.", False)
+            return "noop"
+        return "error"
+    if outcome is None:
+        log(f"{m['title']}: no longer a FAIL (or could not be measured); nothing to do")
+        return "noop"
+    how, backup = method_of(m["title"], started)
+    if outcome == "replaced":
+        st["replaced"] += 1
+        spot = spot_due(st["replaced"])
+        if spot:
+            st["spot"].append(m["title"])
+        say(f"**Subtitle replaced:** {m['title']}\nHow: {how}\nBackup: `{backup}`\nUndo: `subtitle-replace.py --restore \"{m['title']}\"`"
+            + ("\n:eyes: **Spot-check this one** when you can, then `subtitle-enforce.py --spot \"" + m["title"] + "\" good|bad`." if spot else ""), False)
+    else:
+        say(f"**Subtitle unresolved:** {m['title']}: no candidate passed the check. Backup: `{backup}`. "
+            f"Tier B keeps the old file; a Tier A fragment was removed and can be restored with `--restore`.", False)
+    r.ledger({"title": m["title"], "event": "enforce", "outcome": outcome, "how": how})
+    return "done"
+
+
+def test_title(title):
+    """Run one title through exactly the code path a tick uses, on Jay's say-so (for the first end-to-end check)."""
+    if os.path.exists(PAUSE):
+        sys.exit("PAUSED; resume first")
+    lk = open(r.LOCK, "w")
+    try:
+        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        sys.exit("another subtitle run holds the lock")
+    st = load_state() or {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
+    m = r.find_movie(title)
+    ok, note = audio_ok(probe_audio(m["video"]))
+    if not ok:
+        return say(f"**Subtitle check, needs review:** {m['title']}: {note}. Not replaced.", False)
+    res = do_replace(st, m, f"test|{m['title']}")
+    save_state(st)
+    log(f"test-title result: {res}")
+
+
 def tick(dry, look_back_h=0):
     os.makedirs(ROOT, exist_ok=True)
     if os.path.exists(PAUSE):
@@ -182,10 +236,12 @@ def tick(dry, look_back_h=0):
             log("gate run timed out; continuing with what it recorded")
     since = time.time() - look_back_h * 3600 if (dry and look_back_h) else st["since_ts"]
     work = plan_work(gate.read_ledger(), st, since)
-    done = 0
+    done, tv_flags = 0, []
     for action, row in work:
         name = gate.nice_name(row["path"])
         if action == "ignore":
+            if row.get("table") == "episodes" and row["state"] == "FAIL":
+                tv_flags.append(f"- {name} ({row['provider']}): {'; '.join(row['reasons'][:2])}")
             if not dry:
                 mark(st, row)
             continue
@@ -211,37 +267,16 @@ def tick(dry, look_back_h=0):
             continue
         if dry:
             log(f"WOULD replace: {m['title']} ({'; '.join(row['reasons'][:2])})"); done += 1; continue
-        started = datetime.datetime.now().isoformat(timespec="seconds")
-        key = row_key(row)
-        try:
-            outcome = r.process(m, False, True)
-        except SystemExit as e:                   # the Plex guard: stop the whole tick, retry next time
-            log(f"stopped by guard: {str(e)[:120]}; {m['title']} stays queued")
+        res = do_replace(st, m, row_key(row))
+        if res == "guard":
             break
-        except Exception as e:
-            st["attempts"][key] = st["attempts"].get(key, 0) + 1
-            log(f"{m['title']}: error {type(e).__name__}: {str(e)[:120]}")
-            if st["attempts"][key] >= MAX_ATTEMPTS:
-                say(f"**Subtitle check, failed:** {m['title']}: the replace step errored twice. The original is untouched or "
-                    f"restored. Needs a look.", False)
-                mark(st, row)
-            save_state(st)
-            continue
-        done += 1
-        how, backup = method_of(m["title"], started)
-        if outcome == "replaced":
-            st["replaced"] += 1
-            spot = spot_due(st["replaced"])
-            if spot:
-                st["spot"].append(m["title"])
-            say(f"**Subtitle replaced:** {m['title']}\nHow: {how}\nBackup: `{backup}`\nUndo: `subtitle-replace.py --restore \"{m['title']}\"`"
-                + ("\n:eyes: **Spot-check this one** when you can, then `subtitle-enforce.py --spot \"" + m["title"] + "\" good|bad`." if spot else ""), False)
-        else:
-            say(f"**Subtitle unresolved:** {m['title']}: no candidate passed the check. Backup: `{backup}`. "
-                f"Tier B keeps the old file; a Tier A fragment was removed and can be restored with `--restore`.", False)
-        r.ledger({"title": m["title"], "event": "enforce", "outcome": outcome, "how": how})
-        mark(st, row)
+        if res == "done":
+            done += 1
+        if res in ("done", "noop"):
+            mark(st, row)
         save_state(st)
+    if tv_flags:
+        say(f"**Subtitle gate (TV, report-only):** {len(tv_flags)} new episode subs flagged; nothing was changed.\n" + "\n".join(tv_flags[:10]), dry)
     if not dry:
         save_state(st)
     log(f"tick done: {done} handled, {len(work)} rows considered")
@@ -278,8 +313,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--look-back-hours", type=float, default=0, help="with --dry-run only: pretend go-live was this long ago")
     ap.add_argument("--status", action="store_true")
-    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true"); ap.add_argument("--test-post", action="store_true", help="send one clearly-labelled TEST message to Discord")
+    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true"); ap.add_argument("--test-title", metavar="TITLE", help="run one movie through the real replace-and-report path now"); ap.add_argument("--test-post", action="store_true", help="send one clearly-labelled TEST message to Discord")
     a = ap.parse_args()
+    if a.test_title:
+        return test_title(a.test_title)
     if a.test_post:
         gate.discord("**TEST (no action taken):** subtitle enforce wrapper, Discord check. Real posts look like this:\n"
                      "**Subtitle replaced:** Example Movie\nHow: subsource, shifted +0.88 s\nBackup: `~/subtitle-sweep/backups/DATE/Example Movie`\n"
