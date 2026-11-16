@@ -394,6 +394,8 @@ def sweep(n, max_minutes):
         elif res == "error":
             tally["errors"] += 1
     summary = ", ".join(f"{k} {v}" for k, v in tally.items() if v)
+    if not summary:
+        return log(f"sweep: nothing measured" + (f" ({stopped})" if stopped else ""))
     say(f"**Subtitle sweep tranche done:** {summary or 'nothing measured'}." + (f" Stopped early: {stopped}." if stopped else "")
         + f" {max(len(queue) - sum(tally.values()), 0)} movies still to measure.", False)
 
