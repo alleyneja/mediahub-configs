@@ -48,7 +48,7 @@ Bazarr is not changed in any way. Turning the switch off returns to the current 
 - Subsource's terms of use for API access are not checked; the key is already used by Bazarr for the same endpoints.
 - Whether Jay's plan is paid, and its quota, is unknown to me; the tool stops on 429 and logs the count of calls.
 - Untrusted zip content: handled as above (read-only, size cap, no path use).
-- Not reported upstream: a bug report for Bazarr (single language from a set) is possible; draft only on Jay's request.
+- Reported upstream 2026-11-16 (Jay's go, under his account): https://github.com/morpheus65535/bazarr/issues/3735 (`query()` picks `list(languages)[0]`, arbitrary for a set). Includes the AI-assistance disclosure Bazarr's contributor rules ask for. Check it from time to time; if fixed upstream, the direct-subsource path stays useful for the shift step.
 
 ## Shift step (added 2026-11-16, agreed by Jay in chat)
 Phase 0 showed many raw FAILs are clean constant offsets of about 1-2.5 s (rule v1 allows 0.5 s). For a candidate whose usable
