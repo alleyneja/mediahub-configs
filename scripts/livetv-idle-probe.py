@@ -26,7 +26,7 @@ DIR = os.environ.get("PROBE_LOGDIR", os.path.expanduser("~/logs/livetv-idle-prob
 CSV = os.path.join(DIR, "probe.csv")
 STOP = os.path.join(DIR, "STOP")
 M3U = "/srv/docker/threadfin/conf/data/MLXG7IZI17KCJ5IPBDCN.m3u"
-TVG_ID = "nbcwesh.us"            # same channel as the sampler (ch 1021 WESH)
+TVG_ID = os.environ.get("PROBE_TVG_ID", "nbcwesh.us")   # default = the old sampler's channel (WESH); PROBE_TVG_ID=espn.us etc. for a game-time run
 QUIET_SECS = int(os.environ.get("PROBE_QUIET_SECS", "300"))   # idle needed after a viewer was last seen
 ON_SECS = int(os.environ.get("PROBE_ON_SECS", "180"))      # hold the stream this long ...
 OFF_SECS = int(os.environ.get("PROBE_OFF_SECS", "420"))    # ... then rest this long (3 min in every 10)

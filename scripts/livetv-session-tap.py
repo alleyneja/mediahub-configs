@@ -7,7 +7,7 @@ reads kernel TCP counters via `ss -tin` once a second; it opens no connection of
 so it never uses one of the account's 2 slots and it covers 100% of viewing time.
 
 Writes one CSV row per connection per second, only while a stream exists (idle = no rows):
-  ts,conn,recv_kBps,rtt_ms,retrans_total,unacked,peer_ip   (peer_ip = the provider video server; logged to see whether it rotates)
+  ts,conn,recv_kBps,rtt_ms,retrans_total,unacked,peer_ip,ooo_total   (ooo_total = cumulative out-of-order packets received; NOTE retrans_total only counts OUR sends, so it cannot show download loss; peer_ip = the provider video server; logged to see whether it rotates)
 Never logs URLs, credentials or remote ports beyond a short connection hash.
 
 Stall rule used by --summary: the feed is BURSTY (several MB every 6-8 s, near-silence between),
@@ -46,10 +46,12 @@ def snapshot():
         rtt = re.search(r"rtt:([\d.]+)/", info)
         ret = re.search(r"retrans:\d+/(\d+)", info)
         un = re.search(r"unacked:(\d+)", info)
+        ooo = re.search(r"rcv_ooopack:(\d+)", info)       # packets that arrived out of order = loss/reordering on the way IN (absent = 0)
         if not m:
             continue
         out[cid] = (int(m.group(1)), float(rtt.group(1)) if rtt else -1.0,
-                    int(ret.group(1)) if ret else 0, int(un.group(1)) if un else 0, peer.rsplit(":", 1)[0])
+                    int(ret.group(1)) if ret else 0, int(un.group(1)) if un else 0, peer.rsplit(":", 1)[0],
+                    int(ooo.group(1)) if ooo else 0)
     return out
 
 
@@ -68,21 +70,21 @@ def run():
         cur = snapshot()
         dt = max(now - prev_t, 0.001)
         rows = []
-        for cid, (b, rtt, ret, un, peer_ip) in cur.items():
+        for cid, (b, rtt, ret, un, peer_ip, ooo) in cur.items():
             first.setdefault(cid, b)
             if b - first[cid] >= 100 * 1024:
                 active.add(cid)
             if cid in prev and cid in active:     # need a previous reading for a rate
                 kbps = (b - prev[cid][0]) / 1024.0 / dt
                 rows.append([datetime.fromtimestamp(now).isoformat(timespec="seconds"),
-                             cid, f"{kbps:.0f}", f"{rtt:.1f}", ret, un, peer_ip])
+                             cid, f"{kbps:.0f}", f"{rtt:.1f}", ret, un, peer_ip, ooo])
         if rows:
             rotate(path)
             new = not os.path.exists(path)
             with open(path, "a", newline="") as f:
                 w = csv.writer(f)
                 if new:
-                    w.writerow(["ts", "conn", "recv_kBps", "rtt_ms", "retrans_total", "unacked", "peer_ip"])
+                    w.writerow(["ts", "conn", "recv_kBps", "rtt_ms", "retrans_total", "unacked", "peer_ip", "ooo_total"])
                 w.writerows(rows)
         prev, prev_t = cur, now
         for gone in set(first) - set(cur):
@@ -129,7 +131,7 @@ def summary():
         k = [float(r["recv_kBps"]) for r in rs]
         slow, longest, gap, longgaps = judge(k)
         print(f"{cid:7} {rs[0]['ts']:19} {len(rs):6d} {slow:6d} {longest:7d} {gap:5d} {longgaps:8d} {sum(k)/len(k):9.0f} "
-              f"{int(rs[-1]['retrans_total']) - int(rs[0]['retrans_total']):7d}  {','.join(sorted({r['peer_ip'] for r in rs}))}")
+              f"{int(rs[-1]['retrans_total']) - int(rs[0]['retrans_total']):7d} ooo+{int(rs[-1].get('ooo_total') or 0) - int(rs[0].get('ooo_total') or 0):<5d} {','.join(sorted({r['peer_ip'] for r in rs}))}")
 
 
 if __name__ == "__main__":
