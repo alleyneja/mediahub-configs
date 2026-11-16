@@ -71,3 +71,14 @@ Jay reviewed all 10 replaced titles by eye after replacement: 10 of 10 good (New
 Measured with `--ignore-plex` once, with Jay's say-so, because a paused Sopranos episode on his Fire TV kept the strict guard closed for hours.
 
 **Guard change (Jay, 2026-11-16):** the gate's guard now ignores paused sessions and stops only for active playback (playing, buffering, or no state reported). The replace tool's movie guard is unchanged (paused movies still count, because the file is still open). Both queries share one template in `subtitle-gate.py`. Tested with synthetic session data (unit test) and live. A test post to #media-alerts was sent with `subtitle-enforce.py --test-post`.
+
+## Follow-up parked: rule v1.1, retry failed windows (2026-11-16)
+Question (Jay): why was The Nun UNVERIFIABLE, and would choosing windows by where the audio has speech avoid it?
+Study (read-only, `webrtcvad` + the same ffsubsync call): The Nun's 7 fixed windows had 20-94 cues and 32-58% speech-like audio, so they were not
+empty of dialogue. 3 of 7 read 30-59 s anyway (ffsubsync lost the alignment, likely music/effects in a horror soundtrack). A scan of 18 overlapping
+8-minute windows read within 0.35 s everywhere except the last window (running into the credits, 59 s). Windows moved by 1-2 minutes from a failed
+one read about 0. Speech-picked windows fixed 1 of 3 failures, left one at 50 s, and produced a +3.2 s reading near the credits that the scan showed
+to be noise. Conclusion: the sub is almost certainly fine; the weak point is one reading per window, not where the windows sit.
+Proposed (not built): when a window reads beyond the 10 s cutoff, retry it about 2 minutes later before counting it as unusable. Requires the benchmark
+to be re-run (96/96 shifts caught, 0 false positives) before adoption. UNVERIFIABLE stays "never replaced" until then. Expected payoff: small
+(about 1 in 20 titles is UNVERIFIABLE).
