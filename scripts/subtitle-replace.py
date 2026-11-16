@@ -88,11 +88,12 @@ def tier_of(rec):
 
 MOVIE_QUERY = gate.PLEX_QUERY.replace(
     'print(json.load(sys.stdin)[\\"MediaContainer\\"].get(\\"size\\",0))',
-    'm=json.load(sys.stdin)[\\"MediaContainer\\"]; print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\"), m.get(\\"size\\",0))')
+    'm=json.load(sys.stdin)[\\"MediaContainer\\"]; print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\" and x.get(\\"live\\")!=\\"1\\" and not str(x.get(\\"key\\",\\"\\")).startswith(\\"/livetv\\")), m.get(\\"size\\",0))')
 
 
 def guard():
-    """Stop only for a MOVIE stream (this tool touches movie files only). Episodes and live TV do not block it.
+    """Stop only for a VOD MOVIE stream (this tool touches movie files only). Episodes and live TV do not block it
+    (Plex reports Live TV as type "movie" with live=1 and a /livetv key, so those are excluded explicitly).
     An unreadable answer counts as busy. If r9 does not answer ping at all, nobody is watching."""
     import subprocess
     try:
