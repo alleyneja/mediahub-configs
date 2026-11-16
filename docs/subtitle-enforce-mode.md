@@ -50,3 +50,17 @@ title to needs-review only when no such stream exists. Re-test against the Engli
 - A live Discord test post, and one real end-to-end tick on a title Jay chooses.
 - Kuma heartbeat for the wrapper (Jay's call; needs a Kuma stop, see `gotcha_kuma_monitor_db_insert`).
 - Jay's approval of this record.
+
+## Report-only exit: declared 2026-11-16
+`subtitle-gate.py --summary`: **18 gated downloads** (PASS 12, FAIL 6, UNVERIFIABLE 0); all 6 flags reviewed by Jay, **5 confirmed bad** (83% live precision on flags).
+Threshold was 15 (lowered from 30 by Jay). Exit condition: MET.
+
+**Make-up of the sample, stated plainly:** 10 were ordinary new downloads (6 flagged, 4 PASS). The other 8 were outputs of the replace tool
+(already passed rule v1 there, then re-measured by the gate: 8 of 8 PASS). So the independent evidence on false positives is the 10, not the 18.
+The one false positive on a good sub is Home (2015): long credits, last cue at 90%. 1 false positive in 13 good subs is not under the 2% bar,
+and 13 is too few to show it either way. What covers this in enforce mode: coverage-only FAILs go to "needs review" and are never replaced
+(Home would not be touched), plus the spot-check, the one-in-five Discord flag, the PAUSE file, backups and `--restore`.
+Jay reviewed all 10 replaced titles by eye after replacement: 10 of 10 good (New Moon re-checked on another client).
+Measured with `--ignore-plex` once, with Jay's say-so, because a paused Sopranos episode on his Fire TV kept the strict guard closed for hours.
+
+**Follow-up before go-live:** the gate's guard counts paused and idle sessions; propose it stop only for active playback.
