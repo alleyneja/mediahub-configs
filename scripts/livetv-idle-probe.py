@@ -147,20 +147,29 @@ def run():
         time.sleep(5)
 
 
-def judge(k, win=10, need=1000, quiet=50):
-    """k = kB received per second. Bursty feed: judge a rolling `win`-second average against `need`.
-    -> (starved_seconds, longest_starved_run, longest_silent_gap_seconds)"""
-    starved = []
+def judge(k, win=30, frac=0.5, quiet=50, longgap=15):
+    """k = kB received per second. The feed is BURSTY and bitrates differ per channel, so each session is
+    judged against its OWN average: a second is 'slow' when the trailing `win`-second average is under
+    `frac` of the session mean (needs 2*win seconds of data). Also: longest silent gap (< `quiet` kB/s)
+    and how many gaps exceeded `longgap` s (normal burst spacing is ~7 s).
+    -> (slow_seconds, longest_slow_run, longest_gap_s, gaps_over_longgap)"""
+    mean = sum(k) / len(k) if k else 0
+    slow = []
     for i in range(len(k)):
         w = k[max(0, i - win + 1):i + 1]
-        starved.append(len(w) == win and sum(w) / win < need)
-    def longest(flags):
-        best = cur = 0
-        for f in flags:
-            cur = cur + 1 if f else 0
-            best = max(best, cur)
-        return best
-    return sum(starved), longest(starved), longest([x < quiet for x in k])
+        slow.append(len(k) >= 2 * win and len(w) == win and sum(w) / win < frac * mean)
+    best = cur = 0
+    for f in slow:
+        cur = cur + 1 if f else 0
+        best = max(best, cur)
+    gaps, run = [], 0
+    for x in k + [10 ** 9]:
+        if x < quiet:
+            run += 1
+        else:
+            if run: gaps.append(run)
+            run = 0
+    return sum(slow), best, max(gaps, default=0), sum(1 for g in gaps if g > longgap)
 
 
 def summary():
@@ -171,11 +180,11 @@ def summary():
     k = [int(r["recv_kBps"]) for r in data]
     if not k:
         print("no samples"); return
-    starved, longest, gap = judge(k)
+    slow, longest, gap, longgaps = judge(k)
     drops = [r for r in rows if r["note"].startswith("drop:") and "viewer" not in r["note"] and "stop" not in r["note"] and "session-max" not in r["note"]]
     ks = sorted(k)
     print("seconds measured: %d (%.1f h)   %s -> %s" % (len(k), len(k) / 3600.0, data[0]["ts"], data[-1]["ts"]))
-    print("starved seconds (10 s average < 1000 kB/s): %d   longest starved run: %d s   longest silent gap: %d s   mean: %d kB/s" % (starved, longest, gap, sum(k) // len(k)))
+    print("slow seconds (30 s avg < half the session mean): %d   longest slow run: %d s   longest silent gap: %d s   gaps over 15 s: %d   mean: %d kB/s" % (slow, longest, gap, longgaps, sum(k) // len(k)))
     print("viewer yields: %d   unexpected drops: %d" % (sum(1 for r in rows if r["note"] == "drop:viewer"), len(drops)))
     for r in drops[-5:]:
         print("   ", r["ts"], r["note"])
