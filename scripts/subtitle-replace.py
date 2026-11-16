@@ -11,7 +11,7 @@ candidate passes rule v1 (the current file is a FAIL, so a PASS is strictly bett
 straight to the library path, so "download then swap" is "snapshot, download, verify, restore on failure".
 Up to 3 normal candidates, then one whisperai candidate; none passing = "unresolved" (Tier B keeps the old file).
 
-Never: touches Spanish, changes Bazarr settings, runs while Plex has a stream or the count is unknown, uses PATCH search.
+Never: touches Spanish, changes Bazarr settings, runs while Plex has a MOVIE stream (episodes and live TV do not block; unknown count does), uses PATCH search.
 Reads the Bazarr API key from its config at run time; never prints it.
 """
 import argparse, datetime, fcntl, importlib.util, json, os, re, shutil, sqlite3, sys, time, urllib.parse, urllib.request
@@ -86,10 +86,27 @@ def tier_of(rec):
     return "A" if (cov < 0.5 or cues < 20) else "B"
 
 
+MOVIE_QUERY = gate.PLEX_QUERY.replace(
+    'print(json.load(sys.stdin)[\\"MediaContainer\\"].get(\\"size\\",0))',
+    'm=json.load(sys.stdin)[\\"MediaContainer\\"]; print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\"), m.get(\\"size\\",0))')
+
+
 def guard():
-    busy, why = gate.plex_busy()
-    if busy:
-        sys.exit(f"STOP: {why or 'Plex busy'}; nothing further done")
+    """Stop only for a MOVIE stream (this tool touches movie files only). Episodes and live TV do not block it.
+    An unreadable answer counts as busy. If r9 does not answer ping at all, nobody is watching."""
+    import subprocess
+    try:
+        r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "jay@192.168.0.22", MOVIE_QUERY],
+                           capture_output=True, text=True, timeout=30)
+        parts = r.stdout.split()
+        if len(parts) == 2 and all(x.isdigit() for x in parts):
+            if int(parts[0]) > 0:
+                sys.exit(f"STOP: {parts[0]} movie stream(s) active ({parts[1]} stream(s) in all); nothing further done")
+            return
+    except (subprocess.TimeoutExpired, OSError):
+        pass
+    if subprocess.run(["ping", "-c1", "-W2", "192.168.0.22"], capture_output=True).returncode == 0:
+        sys.exit("STOP: Plex stream count unknown; nothing further done")
 
 
 def candidates(m, tried):
@@ -115,14 +132,52 @@ def settle(path):
     return False
 
 
+def jobs_busy(m):
+    """Bazarr queues downloads and syncs as jobs (a POST returns 204 at once). Count jobs for this movie or any pending manual download."""
+    st, body = api("GET", "/system/jobs", {}, 60)
+    if st != 200:
+        return 1                                   # unknown counts as busy
+    return sum(1 for j in json.loads(body)["data"]
+               if j["status"] in ("pending", "running") and (m["title"] in j["job_name"] or "Manually downloading" in j["job_name"]))
+
+
+def drain(m, max_s=2400):
+    t0 = time.time()
+    while time.time() - t0 < max_s:
+        if jobs_busy(m) == 0:
+            return True
+        time.sleep(15)
+    return False
+
+
 def download(m, c):
+    """POST one candidate, wait for Bazarr's job queue to empty, return (status, path-of-the-new-file or None, note).
+    Bazarr answers 200/204 for an accepted job; the file lands later and the history row after that."""
+    if not drain(m, 600):
+        return 0, None, "Bazarr already busy with this title; not starting another job"
+    t_post = time.time()
     before = ro_db().execute("select coalesce(max(id),0) from table_history_movie").fetchone()[0]
     st, body = api("POST", "/providers/movies", {"radarrid": m["rid"], "hi": str(c["hearing_impaired"]), "forced": "False",
                    "original_format": str(c["original_format"]), "provider": c["provider"], "subtitle": c["subtitle"]})
+    if st not in (200, 204):
+        return st, None, body[:160]
+    time.sleep(5)
+    if not drain(m):
+        return st, None, "Bazarr jobs did not finish in time"
     time.sleep(5)
     row = ro_db().execute("select id,subtitles_path from table_history_movie where radarrId=? and id>? and action in (1,2,3) "
                           "and language in ('en','en:hi') order by id desc limit 1", (m["rid"], before)).fetchone()
-    return st, (row[1] if row else None), body[:160]
+    if row:
+        return st, row[1], ""
+    d = os.path.dirname(m["sub"])                  # no history row: take an English sub written since the POST
+    new = [f for f in os.listdir(d) if re.search(r"\.en(\.hi)?\.srt$", f) and os.stat(os.path.join(d, f)).st_mtime >= t_post - 2]
+    if new:
+        return st, gate_c(os.path.join(d, new[0])), ""
+    return st, None, "no new English subtitle appeared"
+
+
+def gate_c(host):
+    return gate.CONTAINER_PREFIX + host[len(gate.HOST_PREFIX):]
 
 
 def backup(m):
@@ -164,42 +219,48 @@ def run_title(m, tier, rec, apply_):
     normal, whisper = candidates(m, tried)
     log(f"{len(normal)} usable candidates + {len(whisper)} whisperai")
     queue = normal[:MAX_NORMAL] + whisper[:1]
-    for c in queue:
-        guard()
-        tries += 1
-        tried.add((c["provider"], c["subtitle"]))
-        log(f"try {tries}: {c['provider']} score {c['orig_score']} hi={c['hearing_impaired']} | {str(c['release_info'])[:60]}")
-        st, newpath_c, note = download(m, c)
-        if st != 200 or not newpath_c:
-            log(f"  download failed ({st}) {note}"); ledger({"title": m["title"], "event": "download_failed", "cand": c["subtitle"], "status": st})
-            if tier == "B" and not os.path.exists(m["sub"]):
-                put_back(bak, m["sub"])
-            continue
-        newpath = gate.host_path(newpath_c)
-        if not settle(newpath):
-            log("  file never settled; restoring" if tier == "B" else "  file never settled")
-        guard()
-        nrec, nst, why = measure_one(newpath_c, m["video_c"])
-        log(f"  candidate -> {nst} {why[:2]}")
-        ledger({"title": m["title"], "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"], "state": nst, "why": why, "path": newpath})
-        if nst == "PASS":
-            if newpath != m["sub"] and tier == "B" and os.path.exists(m["sub"]):
-                os.remove(m["sub"])           # the old, backed-up, worse file; the better one passed
-            outcome = "replaced"; log(f"  ACCEPTED at {newpath}")
-            break
-        # rejected
-        if tier == "B":
-            if newpath == m["sub"]:
-                put_back(bak, m["sub"])
-            elif os.path.exists(newpath):
-                os.remove(newpath)
-            bst, brow = blacklist(m, c["provider"], c["subtitle"], newpath_c + ".rejected")   # path that does not exist: row only
-        else:
-            bst, brow = blacklist(m, c["provider"], c["subtitle"], newpath_c)                   # Tier A: deleting it is intended
-            if os.path.exists(newpath):
-                api("DELETE", "/movies/subtitles", {"radarrid": m["rid"], "language": "en", "forced": "False",
-                    "hi": str(c["hearing_impaired"]), "path": newpath_c})
-        log(f"  rejected; blacklist {bst} row={brow}; restored/removed={'yes' if tier == 'B' else 'removed'}")
+    try:
+        for c in queue:
+            guard()
+            tries += 1
+            tried.add((c["provider"], c["subtitle"]))
+            log(f"try {tries}: {c['provider']} score {c['orig_score']} hi={c['hearing_impaired']} | {str(c['release_info'])[:60]}")
+            st, newpath_c, note = download(m, c)
+            if st not in (200, 204) or not newpath_c:
+                log(f"  download failed ({st}) {note}"); ledger({"title": m["title"], "event": "download_failed", "cand": c["subtitle"], "status": st})
+                if tier == "B":
+                    put_back(bak, m["sub"])        # whatever Bazarr may have written, the snapshot goes back
+                continue
+            newpath = gate.host_path(newpath_c)
+            if not settle(newpath):
+                log("  file never settled; restoring" if tier == "B" else "  file never settled")
+            guard()
+            nrec, nst, why = measure_one(newpath_c, m["video_c"])
+            log(f"  candidate -> {nst} {why[:2]}")
+            ledger({"title": m["title"], "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"], "state": nst, "why": why, "path": newpath})
+            if nst == "PASS":
+                if newpath != m["sub"] and tier == "B" and os.path.exists(m["sub"]):
+                    os.remove(m["sub"])           # the old, backed-up, worse file; the better one passed
+                outcome = "replaced"; log(f"  ACCEPTED at {newpath}")
+                break
+            # rejected
+            if tier == "B":
+                if newpath == m["sub"]:
+                    put_back(bak, m["sub"])
+                elif os.path.exists(newpath):
+                    os.remove(newpath)
+                bst, brow = blacklist(m, c["provider"], c["subtitle"], newpath_c + ".rejected")   # path that does not exist: row only
+            else:
+                bst, brow = blacklist(m, c["provider"], c["subtitle"], newpath_c)                   # Tier A: deleting it is intended
+                if os.path.exists(newpath):
+                    api("DELETE", "/movies/subtitles", {"radarrid": m["rid"], "language": "en", "forced": "False",
+                        "hi": str(c["hearing_impaired"]), "path": newpath_c})
+            log(f"  rejected; blacklist {bst} row={brow}; restored/removed={'yes' if tier == 'B' else 'removed'}")
+    except BaseException:                      # includes the Plex guard stopping the run mid-title
+        if tier == "B" and outcome != "replaced":
+            put_back(bak, m["sub"]); log("interrupted: Tier B snapshot restored")
+        ledger({"title": m["title"], "event": "interrupted", "tier": tier, "outcome": outcome})
+        raise
     ledger({"title": m["title"], "event": "end", "tier": tier, "outcome": outcome, "tries": tries})
     return outcome
 
