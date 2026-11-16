@@ -234,3 +234,37 @@ Known gaps: no Kuma heartbeat yet (creating a push monitor means stopping Kuma b
 limits in section 8 (truncation threshold, gaps between windows, low-speech films), and nothing yet acts on a FAIL:
 replacement is the next phase, only after the report-only exit.
 
+
+## 10. First eyeball reviews and the coverage-threshold question (2026-11-15)
+
+Jay reviewed all 6 flags from the first 10 gated downloads in Plex: 5 confirmed bad, 1 false positive (live
+precision 5 of 6; far too few to test the 2% bar).
+
+| Title | Flag | Jay's verdict |
+|---|---|---|
+| Delivery Man | smooth drift +1.6 to -3.5 s | bad |
+| Fired Up! | last windows -18 s / -14 s | bad |
+| Hoot | wanders +/-2 s (hard to see by eye; he likely watched in-sync stretches) | bad |
+| The Boy Next Door | sub stops at 28% of runtime, nothing after | bad (he saw the cut-off line) |
+| Maid in Manhattan | sub is a 9-cue fragment (492 bytes, all at 31:29-31:49) | bad (he saw no English subs at all) |
+| Home (2015) | only reason: last cue at 90% of runtime (long end credits) | good = false positive |
+
+Both truncated files arrived as ordinary Bazarr downloads scored 162 and 133: the case the gate exists for.
+
+**Considered: relax the coverage check from 0.9 to 0.7 (rule v1.1) so credit-heavy films pass.** Re-scored on the
+saved benchmark measurements (`scripts/subtitle-gate-benchmark/rescore_coverage.py`, no re-measurement). Result:
+false positives stay 0 of 16, but the "sub cut at 90%" truncation test falls from 16/16 caught to 3/16, because
+the sampled windows sit earlier in the film and only the last-cue check sees a late cut. Home's last cue is at
+89.6%, so last-cue position alone cannot tell long credits from a sub missing its final 10% of dialogue.
+**Decision: rule stays v1.** Not shipped, because it would trade a known false positive for missed real truncation,
+which is a must-catch (section 1).
+
+**Planned instead (not built):**
+1. A tail probe: check the audio after the last cue for speech; credits have none, a truncated sub has dialogue.
+   This needs new measurement code and a re-run of the benchmark with the bars unchanged.
+2. Until then, in enforce mode a FAIL whose only reason is last-cue coverage is routed to "needs review", never
+   auto-replaced (same treatment as UNVERIFIABLE). Both truncated files above had other reasons too.
+
+**Review policy (Jay, 2026-11-15):** review every flag until the gate has seen 30 downloads; after that enforce
+mode replaces flagged subs automatically and Jay spot-checks a sample of the swaps; the first library-sweep
+tranches are still reviewed in full (sweep record); UNVERIFIABLE is reported and never replaced.
