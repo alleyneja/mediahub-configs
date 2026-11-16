@@ -13,12 +13,12 @@
 Report-only exit met: 15 gated downloads (lowered from 30), every flag reviewed by Jay, precision judged against the 2% bar in the parent record. The make-up of the sample is recorded when the exit is declared (ordinary downloads vs replace-tool output), so the evidence is read honestly.
 
 ## Design
-1. **Trigger:** after each gate run (Tue/Thu/Sat 04:45), a wrapper takes the new FAIL movies from the gate's state and calls `subtitle-replace.py --run --direct-subsource` on them. The replace tool's order is unchanged: subsource as-is, subsource shifted (constant offsets only), Bazarr candidates, whisperai after 20 minutes.
+1. **Trigger (Jay, 2026-11-16):** Jay watches a movie the day he downloads it, so a nightly run is too slow. The gate and the wrapper run every 15 minutes, all day, under `flock`. A download is measured once it has settled (10 minutes, because Bazarr's sync rewrites the file), and a new FAIL movie goes straight to `subtitle-replace.py --run --direct-subsource`. Expected time from download to fixed sub: about 30-45 minutes. No Bazarr hook is used: changing a global Bazarr setting is a must-never, and polling gets nearly the same result. The replace tool's order is unchanged: subsource as-is, subsource shifted (constant offsets only), Bazarr candidates, whisperai after 20 minutes.
 2. **Cap:** at most 5 replacements per run. The rest wait for the next run.
 3. **Never auto-replaced, only reported as "needs review":** UNVERIFIABLE, and FAILs whose only reason is last-cue coverage.
 4. **Guard:** a VOD movie stream, or an unknown stream count, stops the run and restores the original (existing behavior). Episodes and live TV do not block.
 5. **Audio-stream guard (new):** if the video's first audio stream is not English or is labelled commentary, the title is "needs review", not measured and replaced. The measurer uses stream `0:a:0` today.
-6. **Discord:** one post per replacement to #media-alerts: title, tier, how it was fixed (subsource, shifted, whisperai), backup path, restore command. One post when a run ends with unresolved titles.
+6. **Discord:** one post per replacement to #media-alerts: title, tier, how it was fixed (subsource, shifted, whisperai), backup path, restore command. A post for every title that ends unresolved or "needs review", so Jay knows before pressing play.
 7. **Spot-check:** about one in five replacements is marked for Jay to eyeball. A bad one drops the system back to report-only until Jay says otherwise. Spot-check results are recorded in the ledger.
 8. **Kill switch:** an empty file `~/subtitle-sweep/PAUSE` makes the wrapper do nothing. `--restore TITLE` undoes any single replacement.
 
