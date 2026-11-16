@@ -1,6 +1,6 @@
 # Subsource Direct Candidates: Decision Record
 
-**Status:** DRAFT 2026-11-16, waiting for Jay's go. NOTHING BUILT OR RUN beyond the two read-only searches in "Evidence".
+**Status:** APPROVED (Jay: "lets try it"; shift step agreed Nov 16) 2026-11-16, waiting for Jay's go. NOTHING BUILT OR RUN beyond the two read-only searches in "Evidence".
 **Issue:** alleyneja/mediahub-issues#73. **Parent:** [subtitle-replace-t0.md](subtitle-replace-t0.md)
 
 ## Problem
@@ -49,6 +49,17 @@ Bazarr is not changed in any way. Turning the switch off returns to the current 
 - Whether Jay's plan is paid, and its quota, is unknown to me; the tool stops on 429 and logs the count of calls.
 - Untrusted zip content: handled as above (read-only, size cap, no path use).
 - Not reported upstream: a bug report for Bazarr (single language from a set) is possible; draft only on Jay's request.
+
+## Shift step (added 2026-11-16, agreed by Jay in chat)
+Phase 0 showed many raw FAILs are clean constant offsets of about 1-2.5 s (rule v1 allows 0.5 s). For a candidate whose usable
+windows (|offset| <= 10 s, at least 3) agree within 0.5 s, the tool shifts every cue by the measured median offset in a temp
+copy, re-measures, and accepts only on a rule v1 PASS. Drift or a different cut (spread over 0.5 s) is never shifted.
+The sign convention is verified: shift by the measured offset itself; the opposite sign is tried second as a safeguard.
+Same safety as the direct path: backup first, atomic swap, `--restore` available.
+
+Look-only test (`--phase1`, swaps nothing): Maid in Manhattan 5 of 5 shiftable candidates PASS after shifting (offsets -0.70 to
+-0.94 s); Hoot 2 of 2 PASS (-2.52 s, -1.15 s). Delivery Man (spread about 5 s) is drift and not shiftable. Fired Up! mostly
+had too few usable windows to judge. Existing whisperai subs for Maid and Hoot were reviewed good by Jay and left in place.
 
 ## Rollback
 Do not pass `--direct-subsource`. Replaced files restore from `~/subtitle-sweep/backups/` with `--restore`.

@@ -306,6 +306,51 @@ def ss_measure(text, video_c):
         subprocess.run(["docker", "exec", gate.CONTAINER, "rm", "-f", f"/tmp/{name}"], capture_output=True)
 
 
+SHIFT_MAX_SPREAD_S = 0.5     # usable windows must agree within this, else it is drift or another cut: never shifted
+SHIFT_MIN_WINDOWS = 3
+SHIFT_MAX_ABS_S = 10.0
+_TS = re.compile(r"(\d{2}):(\d{2}):(\d{2})[,.](\d{3})(\s*-->\s*)(\d{2}):(\d{2}):(\d{2})[,.](\d{3})")
+
+
+def shift_plan(rec):
+    """Median offset to correct, or None unless the usable windows agree (constant shift only, never drift)."""
+    use = sorted(w["offset"] for w in rec.get("windows", []) if w and abs(w["offset"]) <= SHIFT_MAX_ABS_S)
+    if len(use) < SHIFT_MIN_WINDOWS or use[-1] - use[0] > SHIFT_MAX_SPREAD_S:
+        return None
+    return use[len(use) // 2]
+
+
+def shift_srt(text, delta):
+    """Move every cue by delta seconds (clamped at 0). Text and numbering are untouched."""
+    def t(h, m, sec, ms):
+        return max(0.0, int(h) * 3600 + int(m) * 60 + int(sec) + int(ms) / 1000 + delta)
+
+    def fmt(x):
+        ms = int(round(x * 1000))
+        return f"{ms // 3600000:02d}:{ms // 60000 % 60:02d}:{ms // 1000 % 60:02d},{ms % 1000:03d}"
+
+    def sub(mo):
+        g = mo.groups()
+        return f"{fmt(t(*g[0:4]))}{g[4]}{fmt(t(*g[5:9]))}"
+    return _TS.sub(sub, text)
+
+
+def shifted_pass(text, rec, video_c):
+    """If rec is a clean constant shift, try correcting it in memory/temp only. Tries shifting by the measured offset itself (verified Nov 16), then the
+    opposite (the measurer's sign convention is not assumed). Returns (shifted_text, delta, state, why, rec2) or None."""
+    off = shift_plan(rec)
+    if off is None:
+        return None
+    last = None
+    for delta in (off, -off):
+        txt = shift_srt(text, delta)
+        rec2, st, why = ss_measure(txt, video_c)
+        last = (txt, delta, st, why, rec2)
+        if st == "PASS":
+            return last
+    return last
+
+
 def imdb_of(m):
     return ro_db().execute("select imdbId from table_movies where radarrId=?", (m["rid"],)).fetchone()[0]
 
@@ -337,6 +382,31 @@ def phase0(titles):
     log(f"subsource API calls this run: {SS_CALLS}")
 
 
+def phase1(titles):
+    """Look only: for clean constant-shift subsource candidates, shift in memory, re-measure, report. Swaps nothing."""
+    for t in titles:
+        m = find_movie(t)
+        log(f"== {m['title']} shift test, current file left untouched")
+        try:
+            for c in ss_candidates(imdb_of(m)):
+                guard()
+                for text in ss_fetch(c["id"]):
+                    rec, st, why = ss_measure(text, m["video_c"])
+                    if rec is None or st == "PASS":
+                        continue
+                    off = shift_plan(rec)
+                    if off is None:
+                        continue
+                    r = shifted_pass(text, rec, m["video_c"])
+                    txt, delta, st2, why2, rec2 = r
+                    log(f"   {c['release'][:46]:46s} offset {off:+.2f}s, shifted {delta:+.2f}s -> {st2} {why2[:2]}")
+                    ledger({"title": m["title"], "event": "phase1", "provider": "subsource", "release": c["release"],
+                            "uploader": c["uploader"], "offset": off, "delta": delta, "state": st2, "why": why2})
+        except RateStop as e:
+            log(f"   STOPPED: {e}")
+    log(f"subsource API calls this run: {SS_CALLS}")
+
+
 def try_direct(m, bak, tier):
     """Real run: measure subsource candidates from temp files; on the first PASS put it in the library atomically."""
     past = {(prov, rel, up) for (prov, rel, up) in ledger_tried(m["title"])}
@@ -350,6 +420,13 @@ def try_direct(m, bak, tier):
                 log(f"  subsource direct: {c['release'][:50]} -> {st} {why[:1]}")
                 ledger({"title": m["title"], "event": "candidate", "provider": "subsource", "subs_id": c["id"], "release": c["release"],
                         "uploader": c["uploader"], "state": st, "why": why, "path": "direct"})
+                if st != "PASS" and rec is not None and shift_plan(rec) is not None:
+                    r = shifted_pass(text, rec, m["video_c"])
+                    if r:
+                        text, delta, st, why, rec = r
+                        log(f"  subsource direct (shifted {delta:+.2f}s): {c['release'][:40]} -> {st} {why[:1]}")
+                        ledger({"title": m["title"], "event": "candidate", "provider": "subsource", "subs_id": c["id"], "release": c["release"],
+                                "uploader": c["uploader"], "state": st, "why": why, "path": "direct-shifted", "delta": delta})
                 if st == "PASS":
                     tmp = m["sub"] + ".new.tmp"
                     open(tmp, "w", encoding="utf-8").write(text)
@@ -433,7 +510,7 @@ def run_title(m, tier, rec, apply_, direct=False):
 def main():
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=True)
-    g.add_argument("--plan", nargs="+"); g.add_argument("--run", nargs="+"); g.add_argument("--restore"); g.add_argument("--phase0", nargs="+")
+    g.add_argument("--plan", nargs="+"); g.add_argument("--run", nargs="+"); g.add_argument("--restore"); g.add_argument("--phase0", nargs="+"); g.add_argument("--phase1", nargs="+")
     ap.add_argument("--direct-subsource", action="store_true")
     a = ap.parse_args()
     os.makedirs(ROOT, exist_ok=True)
@@ -444,6 +521,8 @@ def main():
         sys.exit("another subtitle-replace run holds the lock")
     if a.phase0:
         phase0(a.phase0); return
+    if a.phase1:
+        phase1(a.phase1); return
     if a.restore:
         m = find_movie(a.restore)
         base = os.path.join(ROOT, "backups")
