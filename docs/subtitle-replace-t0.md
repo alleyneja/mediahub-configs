@@ -26,7 +26,7 @@ The inherited rule "remove a sub before a better one passes" is relaxed ONLY for
 2. Back up the current English sub to `~/subtitle-sweep/backups/<date>/<title>/` (Tier A too, even if useless).
 3. Candidates from Bazarr manual search (`GET /providers/{movies|episodes}`), never PATCH search. Skip duplicates
    (same uploader and identical timing), skip anything already blacklisted for this title.
-4. Download to a temp path; measure with the gate's measurer; judge with rule v1.
+4. Bazarr's download call has no temp path (batch-1 `attempt.py` shows it writes straight to the library path). So: Tier B snapshots the current file first, lets Bazarr write the candidate, waits for Bazarr's own sync to finish, measures it, and puts the snapshot back unless the candidate passes rule v1. Judge with rule v1.
 5. Pass (Tier B: and strictly better) -> atomic rename into place with the profile filename (plain `.en.srt`).
    Blacklist the rejected candidates in Bazarr and verify by DB row and file absence (not HTTP status).
 6. After 3 failed candidates -> whisperai once. Still failing -> unresolved, current file kept (Tier B) or none (Tier A).
@@ -39,8 +39,9 @@ after a library rescan. Bar from the sweep record: at least 50% resolved (3 of 5
 Rollback: `subtitle-replace.py --restore <title>` copies the backup back and removes the blacklist rows.
 
 ## Stress points specific to this tool
-- Bazarr's POST download may write straight to the final path rather than a temp path: verify on one title with a
-  throwaway copy BEFORE the pilot; if it does, snapshot the file first and restore on failure.
+- Bazarr's download writes straight to the final path (confirmed from batch-1 code, to be seen on the first real run, Maid in Manhattan, which is Tier A and so risks nothing). Tier B therefore has a short window where the candidate is in place; it is restored from the snapshot if it fails. A Plex scan in that window could briefly see the candidate (the pilot runs only while Plex is idle).
+- Blacklisting a rejected Tier B candidate uses a non-existent path (`<path>.rejected`) so the API adds the row without deleting the restored file. Verified by DB row on the first run; if it does not work the blacklist step is skipped, not forced.
+- `--restore` copies the backup back; blacklist rows are left in place (they only stop the same sub returning).
 - Bazarr's scheduled missing-search may refill a Tier A slot mid-run: the tool re-checks the slot before swapping.
 - A candidate that is a hearing-impaired `.en.hi.srt` is renamed to the profile filename.
 - Whisperai rate limit or timeout: title marked unresolved, retried in a later tranche.
