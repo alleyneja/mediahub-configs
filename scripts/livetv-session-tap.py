@@ -10,8 +10,9 @@ Writes one CSV row per connection per second, only while a stream exists (idle =
   ts,conn,recv_kBps,rtt_ms,retrans_total,unacked,state_flags
 Never logs URLs, credentials or remote ports beyond a short connection hash.
 
-Stall rule used by --summary: a connection counts as stalled in a second when it received
-< STALL_KBPS (default 400 kB/s; a healthy SD/HD live TS is ~500-3000 kB/s, see samples.csv).
+Stall rule used by --summary: the feed is BURSTY (several MB every 6-8 s, near-silence between),
+so per-second rates are meaningless. A second is "starved" when the rolling 10 s average is under
+1000 kB/s (what the stream needs); also reports the longest silent gap.
 
 Usage:  livetv-session-tap.py            run forever (systemd)
         livetv-session-tap.py --summary  print stalls per session from the log
@@ -21,7 +22,6 @@ from datetime import datetime
 
 HOST = os.environ.get("TAP_PROVIDER_HOST", "link4tv.cc")
 LOGDIR = os.environ.get("TAP_LOGDIR", os.path.expanduser("~/logs/livetv-session-tap"))
-STALL_KBPS = 400
 MAX_BYTES = 200 * 1024 * 1024          # rotate at 200 MB, keep 1 old file
 STOP = os.path.join(LOGDIR, "STOP")
 
@@ -97,6 +97,22 @@ def run():
         time.sleep(max(0.0, 1.0 - (time.time() - now)))
 
 
+def judge(k, win=10, need=1000, quiet=50):
+    """k = kB received per second. Bursty feed: judge a rolling `win`-second average against `need`.
+    -> (starved_seconds, longest_starved_run, longest_silent_gap_seconds)"""
+    starved = []
+    for i in range(len(k)):
+        w = k[max(0, i - win + 1):i + 1]
+        starved.append(len(w) == win and sum(w) / win < need)
+    def longest(flags):
+        best = cur = 0
+        for f in flags:
+            cur = cur + 1 if f else 0
+            best = max(best, cur)
+        return best
+    return sum(starved), longest(starved), longest([x < quiet for x in k])
+
+
 def summary():
     path = os.path.join(LOGDIR, "tap.csv")
     if not os.path.exists(path):
@@ -104,17 +120,12 @@ def summary():
     by = {}
     for r in csv.DictReader(open(path)):
         by.setdefault(r["conn"], []).append(r)
-    print(f"{'conn':7} {'start':19} {'secs':>6} {'stall_s':>7} {'longest':>7} {'median_kBps':>11} {'retrans':>7}")
+    print(f"{'conn':7} {'start':19} {'secs':>6} {'starved_s':>9} {'longest':>7} {'gap_s':>5} {'mean_kBps':>9} {'retrans':>7}")
     for cid, rs in by.items():
         k = [float(r["recv_kBps"]) for r in rs]
-        stalled = [x < STALL_KBPS for x in k]
-        longest = cur = 0
-        for s in stalled:
-            cur = cur + 1 if s else 0
-            longest = max(longest, cur)
-        ks = sorted(k)
-        print(f"{cid:7} {rs[0]['ts']:19} {len(rs):6d} {sum(stalled):7d} {longest:7d} "
-              f"{ks[len(ks)//2]:11.0f} {int(rs[-1]['retrans_total']) - int(rs[0]['retrans_total']):7d}")
+        starved, longest, gap = judge(k)
+        print(f"{cid:7} {rs[0]['ts']:19} {len(rs):6d} {starved:9d} {longest:7d} {gap:5d} {sum(k)/len(k):9.0f} "
+              f"{int(rs[-1]['retrans_total']) - int(rs[0]['retrans_total']):7d}")
 
 
 if __name__ == "__main__":
