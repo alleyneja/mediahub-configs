@@ -33,7 +33,7 @@ PLEX_QUERY = ('T=$(sudo -n grep -o "PlexOnlineToken=\\"[^\\"]*\\"" "/srv/docker/
 SETTLE_SECONDS = 600          # a download is measured only after the file has been untouched this long (post-download sync rewrites it)
 BATCH = 5                     # files per measurement batch; Plex is re-checked between batches
 MAX_QUEUE = 200               # a normal week is ~200 English downloads; more means a wrong checkpoint, so refuse
-EXIT_MIN_GATED = 30           # report-only exit: at least this many measured downloads, every flag reviewed (parent record section 4)
+EXIT_MIN_GATED = 15           # report-only exit: at least this many measured downloads, every flag reviewed (parent record section 4)
 
 
 def log(msg):

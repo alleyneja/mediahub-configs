@@ -67,7 +67,7 @@ The gate acts on a measurement of unproven accuracy, so the measurer is validate
 ## 4. Report-only phase
 
 The gate measures every new download and reports, changing nothing. Exit is count-based, not time-based:
-at least 30 gated downloads, every flag manually reviewed, precision above the bar from section 3.
+at least 15 gated (lowered from 30 by Jay, 2026-11-16) downloads, every flag manually reviewed, precision above the bar from section 3.
 Then enforce.
 
 ## 5. Challenge outcome
@@ -220,7 +220,7 @@ run with files untouched). First run starts from "now"; `--backfill-days N` look
 
 Operating it:
 - `subtitle-gate.py --summary`: counts, every flagged file with the reason, review progress, and whether the
-  report-only exit is met (30+ gated downloads and every flag reviewed by eye).
+  report-only exit is met (15+ gated (was 30; Jay, 2026-11-16) downloads and every flag reviewed by eye).
 - `subtitle-gate.py --review "<part of the name>" good|bad|unsure`: record your verdict on a flagged file. That is
   what turns the 0-of-16 false-positive observation into a live precision number.
 - `subtitle-gate.py --dry-run`: what the next run would measure.
@@ -265,6 +265,11 @@ which is a must-catch (section 1).
 2. Until then, in enforce mode a FAIL whose only reason is last-cue coverage is routed to "needs review", never
    auto-replaced (same treatment as UNVERIFIABLE). Both truncated files above had other reasons too.
 
-**Review policy (Jay, 2026-11-15):** review every flag until the gate has seen 30 downloads; after that enforce
+**Review policy (Jay, 2026-11-15):** review every flag until the gate has seen 15 downloads (was 30); after that enforce
 mode replaces flagged subs automatically and Jay spot-checks a sample of the swaps; the first library-sweep
 tranches are still reviewed in full (sweep record); UNVERIFIABLE is reported and never replaced.
+
+**Exit threshold change (Jay, 2026-11-16):** the report-only exit needs 15 gated downloads, not 30. Everything else in the exit
+condition is unchanged: every flag reviewed by Jay, precision judged against section 3, coverage-only FAILs and UNVERIFIABLE never
+auto-replaced, movie-stream guard, spot-check sample, and fall back to report-only if a spot-check finds a bad replacement.
+Reason given: the review is thorough but time-consuming; the replace path already has backups, restore and a never-worse rule.
