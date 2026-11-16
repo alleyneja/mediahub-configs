@@ -24,7 +24,7 @@ ROOT = os.path.expanduser("~/subtitle-sweep")
 LEDGER, LOCK = os.path.join(ROOT, "ledger.jsonl"), os.path.join(ROOT, "lock")
 BAZARR_CFG = "/srv/docker/bazarr/config/config.yaml"
 API = "http://127.0.0.1:6767/api"
-MAX_NORMAL, SETTLE_S, SETTLE_MAX_S = 3, 45, 1500
+NORMAL_BUDGET_S, SETTLE_S, SETTLE_MAX_S = 1200, 45, 1500   # time spent on regular candidates before whisperai
 
 
 def log(msg):
@@ -110,6 +110,17 @@ def guard():
         sys.exit("STOP: Plex stream count unknown; nothing further done")
 
 
+def ledger_tried(title):
+    """(provider, release, uploader) of every candidate already measured for this title in earlier runs."""
+    out = set()
+    if os.path.exists(LEDGER):
+        for l in open(LEDGER):
+            d = json.loads(l)
+            if d.get("title") == title and d.get("event") == "candidate" and d.get("release") is not None:
+                out.add((d["provider"], d["release"], d.get("uploader")))
+    return out
+
+
 def candidates(m, tried):
     st, body = api("GET", "/providers/movies", {"radarrid": m["rid"]}, 600)
     if st != 200:
@@ -118,7 +129,15 @@ def candidates(m, tried):
     cur_hi = m["lang"].endswith(":hi")
     en = [c for c in json.loads(body)["data"] if c["language"].split(":")[0] == "en" and c["subtitle"] not in bl
           and (c["provider"], c["subtitle"]) not in tried and c["subtitle"] != m["hist"][2]]
+    past = ledger_tried(m["title"])
+    en = [c for c in en if (c["provider"], str(c["release_info"]).lower(), str(c["uploader"])) not in past]
     en.sort(key=lambda c: (-c["orig_score"], c["hearing_impaired"] != cur_hi))
+    seen, first, rest = set(), [], []                  # one try per distinct release name first, repeats of a release last
+    for c in en:
+        k = str(c["release_info"]).lower()
+        (rest if k in seen else first).append(c)
+        seen.add(k)
+    en = first + rest
     normal = [c for c in en if c["provider"] != "whisperai"]
     whisper = [c for c in en if c["provider"] == "whisperai"]
     return normal, whisper
@@ -219,9 +238,12 @@ def run_title(m, tier, rec, apply_):
     tried, tries, outcome = set(), 0, "unresolved"
     normal, whisper = candidates(m, tried)
     log(f"{len(normal)} usable candidates + {len(whisper)} whisperai")
-    queue = normal[:MAX_NORMAL] + whisper[:1]
+    queue = normal + whisper[:1]
+    t_start = time.time()
     try:
         for c in queue:
+            if c["provider"] != "whisperai" and time.time() - t_start > NORMAL_BUDGET_S:
+                log("  time budget for regular candidates used up; skipping to whisperai"); continue
             guard()
             tries += 1
             tried.add((c["provider"], c["subtitle"]))
@@ -238,7 +260,8 @@ def run_title(m, tier, rec, apply_):
             guard()
             nrec, nst, why = measure_one(newpath_c, m["video_c"])
             log(f"  candidate -> {nst} {why[:2]}")
-            ledger({"title": m["title"], "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"], "state": nst, "why": why, "path": newpath})
+            ledger({"title": m["title"], "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"], "release": str(c["release_info"]).lower(),
+                "uploader": str(c["uploader"]), "state": nst, "why": why, "path": newpath})
             if nst == "PASS":
                 if newpath != m["sub"] and tier == "B" and os.path.exists(m["sub"]):
                     os.remove(m["sub"])           # the old, backed-up, worse file; the better one passed
@@ -302,8 +325,8 @@ def main():
             continue
         if a.plan:
             normal, whisper = candidates(m, set())
-            log(f"  would try {min(len(normal), MAX_NORMAL)} of {len(normal)} candidates, then whisperai ({len(whisper)} available)")
-            for c in normal[:MAX_NORMAL]:
+            log(f"  would try up to {len(normal)} candidates in {NORMAL_BUDGET_S // 60} min, then whisperai ({len(whisper)} available)")
+            for c in normal[:5]:
                 log(f"    {c['provider']} score {c['orig_score']} hi={c['hearing_impaired']} {str(c['release_info'])[:55]}")
         else:
             log(f"{m['title']}: RESULT {run_title(m, tier, rec, True)}")
