@@ -1,0 +1,13 @@
+[Unit]
+Description=Passive per-second logger of real Live TV streams (#87)
+After=network-online.target
+
+[Service]
+User=jay
+ExecStart=/usr/bin/python3 -I /home/jay/mediahub-configs/scripts/livetv-session-tap.py
+Restart=always
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=multi-user.target

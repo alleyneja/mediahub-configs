@@ -49,6 +49,7 @@ Scripts live in `scripts/` unless a path is given. Per-host logs: `~/logs/` (out
 | `netmon.py` (+ `--sample`, `netmon-report.py`) | prod | 30 min + every minute | `~/logs/netmon/` speed, latency, modem, buffering events | #48, #63 | live |
 | `sshmon.py` + `lossmon.py` | prod | every minute | `~/logs/sshmon/` | #81 | live; **review was due 2026-11-01** |
 | `livetv-feed-sampler.py` | prod | every 10 min, self-expires 7 d | `~/logs/livetv-sampler/samples.csv` | #87 | expires ~2026-11-15 20:08; 818 measured cycles, direct feed starved in 2; skips cycles while a viewer is watching |
+| `livetv-session-tap.py` (systemd) | r9 | every 1 s, always on | `~/logs/livetv-session-tap/tap.csv`: per-second kB/s, RTT, retransmits for each real Live TV stream (Plex's own connections to the provider; Threadfin buffer is off so it hands Plex the URL). No extra connection, 100% of viewing time; rotates at 200 MB; `--summary` | #87 | started 2026-11-15; replaces the 2% sampler as the evidence source |
 | `cc-survey.py` | prod | one-off | `~/logs/cc-survey/` | #66 | on hold |
 
 ## C. On-demand diagnostics (run by hand)
@@ -97,3 +98,4 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 - 2026-11-15: added `subtitle-gate.py` (report-only subtitle quality gate, #73).
 - 2026-11-15: `ts-watch.sh`: kept the newer home version (1 s sleep, was 2 s) in the repo; home path is now a symlink. The five `~/arcade-*` scripts (all identical to repo copies) are now symlinks into `scripts/`, so documented `~/arcade-*` paths still work. r9 got the same symlinks (it lacked them, so `arcade-bootcheck.sh` could not find `arcade-screenshot.sh`).
 - 2026-11-15: added Kuma monitor 50 `Plex (server /identity)` (`https://plex.lan/identity`, 60 s, Discord). DB backup `kuma.db.pre-plex-identity-20261115` (730 MB) is in `/srv/docker/visibility/uptime-kuma/`; delete after a few days.
+- 2026-11-15: added `livetv-session-tap.py` (r9 systemd service): passive per-second log of real Live TV streams (#87), because the 10-minute sampler covered ~2% of the week.
