@@ -101,6 +101,9 @@ MOVIE_QUERY = gate.PLEX_QUERY.replace(
     'm=json.load(sys.stdin)[\\"MediaContainer\\"]; print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\" and x.get(\\"live\\")!=\\"1\\" and not str(x.get(\\"key\\",\\"\\")).startswith(\\"/livetv\\")), m.get(\\"size\\",0))')
 
 
+ALLOW_MOVIE_STREAMS = False     # one-off, by Jay's explicit say-so (--allow-movie-streams); an unknown stream count still stops the run
+
+
 def guard():
     """Stop only for a VOD MOVIE stream (this tool touches movie files only). Episodes and live TV do not block it
     (Plex reports Live TV as type "movie" with live=1 and a /livetv key, so those are excluded explicitly).
@@ -111,7 +114,7 @@ def guard():
                            capture_output=True, text=True, timeout=30)
         parts = r.stdout.split()
         if len(parts) == 2 and all(x.isdigit() for x in parts):
-            if int(parts[0]) > 0:
+            if int(parts[0]) > 0 and not ALLOW_MOVIE_STREAMS:
                 sys.exit(f"STOP: {parts[0]} movie stream(s) active ({parts[1]} stream(s) in all); nothing further done")
             return
     except (subprocess.TimeoutExpired, OSError):
@@ -522,7 +525,12 @@ def main():
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--plan", nargs="+"); g.add_argument("--run", nargs="+"); g.add_argument("--restore"); g.add_argument("--phase0", nargs="+"); g.add_argument("--phase1", nargs="+")
     ap.add_argument("--direct-subsource", action="store_true")
+    ap.add_argument("--allow-movie-streams", action="store_true", help="one-off: do not stop for a movie stream (Jay said so for this run); unknown count still stops")
     a = ap.parse_args()
+    global ALLOW_MOVIE_STREAMS
+    ALLOW_MOVIE_STREAMS = a.allow_movie_streams
+    if ALLOW_MOVIE_STREAMS:
+        log("NOTE: movie streams will not stop this run (--allow-movie-streams, Jay's call)")
     os.makedirs(ROOT, exist_ok=True)
     lk = open(LOCK, "w")
     try:
