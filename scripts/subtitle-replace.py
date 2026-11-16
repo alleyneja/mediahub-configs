@@ -96,9 +96,8 @@ def tier_of(rec):
     return "A" if (cov < 0.5 or cues < 20) else "B"
 
 
-MOVIE_QUERY = gate.PLEX_QUERY.replace(
-    'print(json.load(sys.stdin)[\\"MediaContainer\\"].get(\\"size\\",0))',
-    'm=json.load(sys.stdin)[\\"MediaContainer\\"]; print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\" and x.get(\\"live\\")!=\\"1\\" and not str(x.get(\\"key\\",\\"\\")).startswith(\\"/livetv\\")), m.get(\\"size\\",0))')
+# Movie guard: counts VOD movie sessions, paused ones too (a paused movie still has its file open), and returns "movies all".
+MOVIE_QUERY = gate.PLEX_QUERY_TMPL % ('print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\" and x.get(\\"live\\")!=\\"1\\" and not str(x.get(\\"key\\",\\"\\")).startswith(\\"/livetv\\")), m.get(\\"size\\",0))')
 
 
 ALLOW_MOVIE_STREAMS = False     # one-off, by Jay's explicit say-so (--allow-movie-streams); an unknown stream count still stops the run

@@ -26,10 +26,12 @@ STATE, LEDGER, REVIEWS, LOG = (os.path.join(STATE_DIR, n) for n in ("state.json"
 RULE_FILE = os.path.join(HERE, "subtitle-gate-benchmark", "chosen_rule_v1.json")
 MEASURER = os.path.join(HERE, "subtitle-gate-benchmark", "measure_container.py")
 ENV_FILE = os.path.join(HERE, "subtitle-gate.env")
-PLEX_QUERY = ('T=$(sudo -n grep -o "PlexOnlineToken=\\"[^\\"]*\\"" "/srv/docker/plex/Library/Application Support/Plex Media Server/'
-              'Preferences.xml" | cut -d\\" -f2); curl -s -m 10 -H "Accept: application/json" '
-              '"http://127.0.0.1:32400/status/sessions?X-Plex-Token=$T" | python3 -c "import json,sys; '
-              'print(json.load(sys.stdin)[\\"MediaContainer\\"].get(\\"size\\",0))"')
+PLEX_QUERY_TMPL = ('T=$(sudo -n grep -o "PlexOnlineToken=\\"[^\\"]*\\"" "/srv/docker/plex/Library/Application Support/Plex Media Server/'
+                   'Preferences.xml" | cut -d\\" -f2); curl -s -m 10 -H "Accept: application/json" '
+                   '"http://127.0.0.1:32400/status/sessions?X-Plex-Token=$T" | python3 -c "import json,sys; '
+                   'm=json.load(sys.stdin)[\\"MediaContainer\\"]; %s"')
+# The gate stops for ACTIVE playback only: a paused session (player state "paused") does not count. A missing state counts as active.
+PLEX_QUERY = PLEX_QUERY_TMPL % ('print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"Player\\",{}).get(\\"state\\")!=\\"paused\\"))')
 SETTLE_SECONDS = 600          # a download is measured only after the file has been untouched this long (post-download sync rewrites it)
 BATCH = 5                     # files per measurement batch; Plex is re-checked between batches
 MAX_QUEUE = 200               # a normal week is ~200 English downloads; more means a wrong checkpoint, so refuse

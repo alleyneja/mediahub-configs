@@ -63,4 +63,4 @@ and 13 is too few to show it either way. What covers this in enforce mode: cover
 Jay reviewed all 10 replaced titles by eye after replacement: 10 of 10 good (New Moon re-checked on another client).
 Measured with `--ignore-plex` once, with Jay's say-so, because a paused Sopranos episode on his Fire TV kept the strict guard closed for hours.
 
-**Follow-up before go-live:** the gate's guard counts paused and idle sessions; propose it stop only for active playback.
+**Guard change (Jay, 2026-11-16):** the gate's guard now ignores paused sessions and stops only for active playback (playing, buffering, or no state reported). The replace tool's movie guard is unchanged (paused movies still count, because the file is still open). Both queries share one template in `subtitle-gate.py`. Tested with synthetic session data (unit test) and live. A test post to #media-alerts was sent with `subtitle-enforce.py --test-post`.

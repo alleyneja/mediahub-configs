@@ -278,8 +278,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--look-back-hours", type=float, default=0, help="with --dry-run only: pretend go-live was this long ago")
     ap.add_argument("--status", action="store_true")
-    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true"); ap.add_argument("--test-post", action="store_true", help="send one clearly-labelled TEST message to Discord")
     a = ap.parse_args()
+    if a.test_post:
+        gate.discord("**TEST (no action taken):** subtitle enforce wrapper, Discord check. Real posts look like this:\n"
+                     "**Subtitle replaced:** Example Movie\nHow: subsource, shifted +0.88 s\nBackup: `~/subtitle-sweep/backups/DATE/Example Movie`\n"
+                     "Undo: `subtitle-replace.py --restore \"Example Movie\"`\n:eyes: **Spot-check this one** when you can.")
+        return print("test message sent")
     if a.status:
         return status()
     if a.spot:

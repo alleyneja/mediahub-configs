@@ -43,5 +43,22 @@ class Helpers(unittest.TestCase):
         self.assertEqual(gate.host_path("/data/movies/X/X.en.srt"), "/mnt/media/movies/X/X.en.srt")
 
 
+class PlexGuardQuery(unittest.TestCase):
+    """The gate stops for active playback only; a paused session does not block it (Jay, 2026-11-16)."""
+    def run_q(self, meta):
+        import json as _j, subprocess as _s
+        snippet = gate.PLEX_QUERY.split('python3 -c "', 1)[1].rsplit('"', 1)[0].replace('\\"', '"')
+        data = _j.dumps({"MediaContainer": {"size": len(meta), "Metadata": meta}})
+        return _s.run(["python3", "-c", snippet], input=data, capture_output=True, text=True).stdout.strip()
+
+    def test_paused_does_not_block(self):
+        P = lambda s: {"type": "episode", "Player": {"state": s}}
+        self.assertEqual(self.run_q([]), "0")
+        self.assertEqual(self.run_q([P("paused")]), "0")
+        self.assertEqual(self.run_q([P("paused"), P("playing")]), "1")
+        self.assertEqual(self.run_q([P("buffering")]), "1")
+        self.assertEqual(self.run_q([{"type": "movie"}]), "1")      # no state field: counts as active
+
+
 if __name__ == "__main__":
     unittest.main()
