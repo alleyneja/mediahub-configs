@@ -22,6 +22,13 @@ Report-only exit met: 15 gated downloads (lowered from 30), every flag reviewed 
 7. **Spot-check:** about one in five replacements is marked for Jay to eyeball. A bad one drops the system back to report-only until Jay says otherwise. Spot-check results are recorded in the ledger.
 8. **Kill switch:** an empty file `~/subtitle-sweep/PAUSE` makes the wrapper do nothing. `--restore TITLE` undoes any single replacement.
 
+## Library sweep mode (added 2026-11-16, Jay: "yes please")
+`subtitle-enforce.py --sweep N` measures the next N library movies not yet handled (Plex watch list first, newest first; ambiguous titles are
+never guessed, they fall back to library order) and sends FAILs through the same path a tick uses (audio guard, coverage-only to needs-review,
+UNVERIFIABLE left alone, Plex movie guard, backup, Discord post, spot-check counter). It holds the replace lock, so scheduled ticks skip
+meanwhile. It posts a tally when done, and resumes where it stopped if the guard interrupts it (measured titles are in the ledger).
+Run by hand, one tranche at a time, with Jay's go: pilot already done (T0 5 + tranche 1 five + Injustice), next 25, then 50, then nightly 100.
+
 ## Not in scope
 TV episodes, the Spanish files, the library sweep (still manual, in tranches, with Jay's confirmation in #73), the tail probe for credit-heavy films (planned in the parent record, section 10).
 

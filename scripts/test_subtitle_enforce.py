@@ -42,6 +42,16 @@ class T(unittest.TestCase):
         work = enf.plan_work([a, b, c], st, 100)
         self.assertEqual([w[1]["path"] for w in work], ["/m/new"])
 
+    def test_order_candidates(self):
+        M = lambda rid, title, year=None: {"rid": rid, "title": title, "year": year}
+        movies = [M(1, "A"), M(2, "B"), M(3, "Cars", 2006), M(4, "Cars", 2011), M(5, "D")]
+        order = lambda watch, done=(): [m["rid"] for m in enf.order_candidates(movies, watch, set(done))]
+        self.assertEqual(order([("D", None), ("B", None)]), [5, 2, 1, 3, 4])            # watched first, newest first
+        self.assertEqual(order([("Cars", None)]), [1, 2, 3, 4, 5])                      # ambiguous without a year: not guessed
+        self.assertEqual(order([("Cars", "2011")]), [4, 1, 2, 3, 5])                    # year disambiguates
+        self.assertEqual(order([("B", None)], done=["B", "A"]), [3, 4, 5])             # done titles are skipped
+        self.assertEqual(order([("Unknown", None)]), [1, 2, 3, 4, 5])
+
     def test_spot_check_one_in_five_first_included(self):
         self.assertEqual([n for n in range(1, 12) if enf.spot_due(n)], [1, 6, 11])
 

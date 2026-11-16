@@ -179,6 +179,7 @@ def do_replace(st, m, key):
     if outcome is None:
         log(f"{m['title']}: no longer a FAIL (or could not be measured); nothing to do")
         return "noop"
+    st["last_outcome"] = outcome
     how, backup = method_of(m["title"], started)
     if outcome == "replaced":
         st["replaced"] += 1
@@ -211,6 +212,25 @@ def test_title(title):
     res = do_replace(st, m, f"test|{m['title']}")
     save_state(st)
     log(f"test-title result: {res}")
+
+
+def order_candidates(movies, watch, done):
+    """Movies still to measure, watch-list titles first (most recently watched first), then the rest in library order.
+    movies: [{"rid","title","year"}]; watch: [(title, year or None)] newest first; done: set of titles already handled.
+    A watch title that matches more than one movie (same title, different year, no year given) is skipped there and
+    comes up later in library order, so it is never matched to the wrong film."""
+    todo = [m for m in movies if m["title"] not in done]
+    by_title = {}
+    for m in todo:
+        by_title.setdefault(m["title"].lower(), []).append(m)
+    first, taken = [], set()
+    for t, y in watch:
+        hits = by_title.get(t.lower(), [])
+        if y:
+            hits = [m for m in hits if str(m.get("year")) == str(y)] or ([] if len(hits) > 1 else hits)
+        if len(hits) == 1 and hits[0]["rid"] not in taken:
+            first.append(hits[0]); taken.add(hits[0]["rid"])
+    return first + [m for m in todo if m["rid"] not in taken]
 
 
 def tick(dry, look_back_h=0):
@@ -282,6 +302,102 @@ def tick(dry, look_back_h=0):
     log(f"tick done: {done} handled, {len(work)} rows considered")
 
 
+WATCH_CMD = ('T=$(sudo -n grep -o "PlexOnlineToken=\\"[^\\"]*\\"" "/srv/docker/plex/Library/Application Support/Plex Media Server/'
+             'Preferences.xml" | cut -d\\" -f2); curl -s -m 30 -H "Accept: application/json" '
+             '"http://127.0.0.1:32400/status/sessions/history/all?accountID=1&sort=viewedAt:desc&X-Plex-Container-Size=500&X-Plex-Token=$T" '
+             '| python3 -c "import json,sys; [print(x.get(\\"title\\",\\"\\"), x.get(\\"year\\",\\"\\"), sep=chr(9)) for x in json.load(sys.stdin)[\\"MediaContainer\\"].get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\"]"')
+
+
+def watch_list():
+    """Distinct movies Jay (Plex account 1) has watched, newest first. Empty list if Plex cannot be asked."""
+    try:
+        out = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "jay@192.168.0.22", WATCH_CMD],
+                             capture_output=True, text=True, timeout=60).stdout
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    seen, res = set(), []
+    for line in out.splitlines():
+        t, _, y = line.partition("\t")
+        if t and t not in seen:
+            seen.add(t); res.append((t, y.strip() or None))
+    return res
+
+
+def handled_titles():
+    """Titles already measured or fixed by any earlier survey, sweep, T0 or enforce run."""
+    done = set()
+    if os.path.exists(r.LEDGER):
+        for l in open(r.LEDGER):
+            e = json.loads(l)
+            if e.get("event") in ("survey", "sweep", "enforce", "start", "review"):
+                done.add(e.get("title"))
+    return done
+
+
+def sweep(n, max_minutes):
+    """Measure the next n library movies (watch list first) and replace the FAILs through the same path a tick uses.
+    A tranche is run by hand with Jay's go; it is not scheduled."""
+    os.makedirs(ROOT, exist_ok=True)
+    if os.path.exists(PAUSE):
+        return log("PAUSED; nothing done")
+    lk = open(r.LOCK, "w")
+    try:
+        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return log("another subtitle run holds the lock")
+    st = load_state() or {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
+    db = r.ro_db()
+    movies = [{"rid": a, "title": b, "year": c} for a, b, c in db.execute(
+        "select radarrId, title, year from table_movies where radarrId in (select radarrId from table_history_movie "
+        "where action in (1,2,3) and language in ('en','en:hi')) order by radarrId")]
+    queue = order_candidates(movies, watch_list(), handled_titles())
+    log(f"sweep: {len(queue)} movies not yet measured; this tranche is up to {n}")
+    tally = {"PASS": 0, "UNVERIFIABLE": 0, "needs review": 0, "replaced": 0, "unresolved": 0, "skipped": 0, "errors": 0}
+    started, stopped = time.time(), ""
+    for mv in queue:
+        if sum(tally[k] for k in tally if k != "skipped") >= n or time.time() - started > max_minutes * 60:
+            break
+        if os.path.exists(PAUSE):
+            stopped = "PAUSE file appeared"; break
+        try:
+            r.guard()
+            row = r.ro_db().execute("select radarrId,title,path from table_movies where radarrId=?", (mv["rid"],)).fetchone()
+            m = r._movie(*row)
+            if not (os.path.isfile(m["sub"]) and os.path.isfile(m["video"])):
+                tally["skipped"] += 1; r.ledger({"title": m["title"], "event": "sweep", "state": "missing-file"}); continue
+            rec, state, why = r.measure_one(m["sub_c"], m["video_c"])
+        except SystemExit as e:
+            stopped = str(e)[:100]; break
+        except Exception as e:
+            tally["errors"] += 1; log(f"{mv['title']}: error {type(e).__name__}: {str(e)[:100]}"); continue
+        if rec is None:
+            tally["skipped"] += 1; continue
+        fake = {"table": "movies", "state": state, "reasons": why}
+        action = classify(fake)
+        r.ledger({"title": m["title"], "event": "sweep", "state": state, "why": why})
+        if action == "ignore":
+            tally["PASS" if state == "PASS" else "UNVERIFIABLE"] += 1
+            log(f"{m['title']}: {state}"); continue
+        if action == "review-coverage":
+            tally["needs review"] += 1
+            say(f"**Subtitle sweep, needs review:** {m['title']}: the only problem is where the last cue ends ({why[0]}).", False); continue
+        ok, note = audio_ok(probe_audio(m["video"]))
+        if not ok:
+            tally["needs review"] += 1
+            say(f"**Subtitle sweep, needs review:** {m['title']}: {note}. Not replaced.", False); continue
+        res = do_replace(st, m, f"sweep|{m['title']}")
+        save_state(st)
+        if res == "guard":
+            stopped = "movie stream started"; break
+        if res == "done":
+            tally["replaced" if st.get("last_outcome") == "replaced" else "unresolved"] += 1
+        elif res == "error":
+            tally["errors"] += 1
+    summary = ", ".join(f"{k} {v}" for k, v in tally.items() if v)
+    say(f"**Subtitle sweep tranche done:** {summary or 'nothing measured'}." + (f" Stopped early: {stopped}." if stopped else "")
+        + f" {max(len(queue) - sum(tally.values()), 0)} movies still to measure.", False)
+
+
 def status():
     st = load_state()
     print("PAUSED: " + open(PAUSE).read().strip() if os.path.exists(PAUSE) else "not paused")
@@ -313,8 +429,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--look-back-hours", type=float, default=0, help="with --dry-run only: pretend go-live was this long ago")
     ap.add_argument("--status", action="store_true")
-    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true"); ap.add_argument("--test-title", metavar="TITLE", help="run one movie through the real replace-and-report path now"); ap.add_argument("--test-post", action="store_true", help="send one clearly-labelled TEST message to Discord")
+    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true"); ap.add_argument("--sweep", type=int, metavar="N", help="measure the next N library movies (watch list first) and fix the FAILs"); ap.add_argument("--sweep-minutes", type=int, default=300); ap.add_argument("--test-title", metavar="TITLE", help="run one movie through the real replace-and-report path now"); ap.add_argument("--test-post", action="store_true", help="send one clearly-labelled TEST message to Discord")
     a = ap.parse_args()
+    if a.sweep:
+        return sweep(a.sweep, a.sweep_minutes)
     if a.test_title:
         return test_title(a.test_title)
     if a.test_post:
