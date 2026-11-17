@@ -1496,8 +1496,11 @@ def _strip_safe_suffix(title):
     """Normalized title without a trailing "(freestyle)"-style tag: MusicBrainz
     lists "Despicable (freestyle)" and "Despicable" as separate recordings."""
     match = re.match(r"^(.*?)\s*[(\[]([^)\]]*)[)\]]\s*$", title or "")
-    if match and _norm_title(match.group(2)) in _SAFE_SUFFIXES:
-        title = match.group(1)
+    if match:
+        tag = _norm_title(match.group(2))
+        # "(freestyle)"-style tags, or a session date like "(April 2, 1953)"
+        if tag in _SAFE_SUFFIXES or re.fullmatch(r"(?:[a-z]+ \d{1,2} )?\d{4}", tag):
+            title = match.group(1)
     return _norm_title(title)
 
 
@@ -2369,9 +2372,17 @@ def _download_tracks(
 
         if accepted:
             _drop_held_fallback()
-        elif held_fallback and best_unverified_candidate is None:
+        elif held_fallback and (
+            best_unverified_candidate is None
+            # AcoustID heard this very song (another recording): better evidence
+            # than an upload with no fingerprint data at all, which would
+            # otherwise win and then fail min_match_score, discarding this.
+            or held_fallback["note"].startswith("different recording of the same song")
+        ):
             fb = held_fallback
             held_fallback = None
+            best_unverified_candidate = None
+            _drop_held_unverified()
             candidate_attempts_buf.append(
                 _build_candidate_attempt(
                     fb["candidate"],
