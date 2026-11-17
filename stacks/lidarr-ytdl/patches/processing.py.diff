@@ -1,5 +1,5 @@
---- processing.py.orig	2026-10-15 12:13:50.000000000 -0500
-+++ processing.py	2026-11-16 18:03:47.098608561 -0600
+--- patches/processing.py.orig	2026-10-15 12:13:50.000000000 -0500
++++ patches/processing.py	2026-11-16 18:54:16.799522472 -0600
 @@ -11,8 +11,10 @@
  import os
  import re
@@ -61,7 +61,7 @@
      audio_ext = load_config().get("audio_format", "mp3")
      actual_file = attempt_temp + f".{audio_ext}"
      if not os.path.exists(actual_file):
-@@ -1345,6 +1367,139 @@
+@@ -1345,6 +1367,155 @@
      return dl_result, actual_file
  
  
@@ -183,6 +183,22 @@
 +    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 +
 +
++# Parenthetical tags that name the same song (never remix/instrumental/acoustic/cover).
++_SAFE_SUFFIXES = {
++    "freestyle", "remastered", "remaster", "explicit", "clean", "radio edit",
++    "album version", "single version", "bonus track", "demo",
++}
++
++
++def _strip_safe_suffix(title):
++    """Normalized title without a trailing "(freestyle)"-style tag: MusicBrainz
++    lists "Despicable (freestyle)" and "Despicable" as separate recordings."""
++    match = re.match(r"^(.*?)\s*[(\[]([^)\]]*)[)\]]\s*$", title or "")
++    if match and _norm_title(match.group(2)) in _SAFE_SUFFIXES:
++        title = match.group(1)
++    return _norm_title(title)
++
++
 +def _same_song(track_title, matched_title, artist, candidate):
 +    """AcoustID heard a different MusicBrainz recording; is it still this song?
 +
@@ -190,8 +206,8 @@
 +    results carry no artist here). A cover or namesake by someone else fails the
 +    artist cue; a different title always fails.
 +    """
-+    want = _norm_title(track_title)
-+    if not want or want != _norm_title(matched_title):
++    want = _strip_safe_suffix(track_title)
++    if not want or want != _strip_safe_suffix(matched_title):
 +        return False
 +    artist = _norm_title(artist)
 +    hay = _norm_title(f"{candidate.get('title', '')} {candidate.get('channel', '')}")
@@ -201,7 +217,7 @@
  def _build_candidate_attempt(
      candidate, outcome, expected_recording_id,
      fp_data=None, error_message="",
-@@ -1770,6 +1925,31 @@
+@@ -1770,6 +1941,31 @@
                  _cleanup_temp_files(held_unverified[2])
              held_unverified = None
  
@@ -233,7 +249,7 @@
          for ci, candidate in _iter_candidates():
              if _skip_check():
                  _drop_held_unverified()
-@@ -1807,6 +1987,37 @@
+@@ -1807,6 +2003,37 @@
                  f"temp_{track_num:02d}_{uuid.uuid4().hex[:8]}",
              )
  
@@ -271,7 +287,7 @@
              dl_out = _download_candidate_threaded(
                  candidate, attempt_temp, progress_hook,
                  _skip_check, track_state,
-@@ -1837,6 +2048,54 @@
+@@ -1837,6 +2064,54 @@
              dl_result, actual_file = dl_out
  
              any_downloaded = True
@@ -326,14 +342,15 @@
              track_state["status"] = "tagging"
              track_state["youtube_url"] = dl_result.get(
                  "youtube_url", "",
-@@ -1910,6 +2169,30 @@
+@@ -1910,6 +2185,31 @@
                      )
                  elif vresult["status"] == "mismatch":
                      mismatch_fp = vresult["fp_data"]
 +                    if (
-+                        expected_sec
-+                        and abs(real_sec - expected_sec)
-+                        <= expected_sec * SHORT_FALLBACK_FRACTION
++                        # unknown MusicBrainz length (0) has nothing to disagree with
++                        (not expected_sec
++                         or abs(real_sec - expected_sec)
++                         <= expected_sec * SHORT_FALLBACK_FRACTION)
 +                        and float(mismatch_fp.get("acoustid_score", 0.0)) >= 0.9
 +                        and _same_song(
 +                            track_title,
@@ -349,7 +366,7 @@
 +                            f" ({str(mismatch_fp.get('acoustid_recording_id', ''))[:8]}),"
 +                            f" file is {real_sec:.0f}s vs expected"
 +                            f" {expected_sec:.0f}s",
-+                            abs(real_sec - expected_sec),
++                            abs(real_sec - expected_sec) if expected_sec else 0,
 +                        )
 +                        track_state["youtube_url"] = ""
 +                        track_state["youtube_title"] = ""
@@ -357,7 +374,7 @@
                      with _results_lock:
                          verify_stats["mismatch_count"] += 1
                          mismatch_score = float(
-@@ -2030,7 +2313,18 @@
+@@ -2030,7 +2330,18 @@
                          fp_data=fp_data,
                      )
                  )
@@ -376,7 +393,7 @@
              _drop_held_unverified()
              file_size, td_id = _accept_track_file(
                  actual_file, track_num, sanitized_track,
-@@ -2056,6 +2350,60 @@
+@@ -2056,6 +2367,60 @@
              accepted = True
              break
  
@@ -437,7 +454,7 @@
          low_score_fallback = False
          # Note: best_unverified_candidate is only ever assigned in the
          # AcoustID "unverified" branch (where no fingerprint match exists).
-@@ -2130,6 +2478,10 @@
+@@ -2130,6 +2495,10 @@
                              expected_recording_id,
                          )
                      )
@@ -448,7 +465,7 @@
                      track_state["status"] = "tagging"
                      track_state["youtube_url"] = fb_result.get(
                          "youtube_url", "",
-@@ -2341,6 +2693,32 @@
+@@ -2341,6 +2710,32 @@
      return lines
  
  
@@ -481,7 +498,7 @@
  def _verify_summary_lines(verify_stats, verified_total):
      """Build (plain_field_value, md2_lines) describing AcoustID stats.
  
-@@ -2354,7 +2732,9 @@
+@@ -2354,7 +2749,9 @@
      best_rejected = verify_stats.get("best_rejected_score", 0.0)
      scores = verify_stats.get("accepted_acoustid_scores", [])
  
@@ -492,7 +509,7 @@
          return None, []
  
      parts = []
-@@ -2367,6 +2747,17 @@
+@@ -2367,6 +2764,17 @@
          parts.append(f"{mismatches} auto-banned")
      if best_rejected > 0:
          parts.append(f"best rejected {best_rejected:.2f}")

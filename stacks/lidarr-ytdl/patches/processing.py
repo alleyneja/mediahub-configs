@@ -1485,6 +1485,22 @@ def _norm_title(text):
     return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
 
 
+# Parenthetical tags that name the same song (never remix/instrumental/acoustic/cover).
+_SAFE_SUFFIXES = {
+    "freestyle", "remastered", "remaster", "explicit", "clean", "radio edit",
+    "album version", "single version", "bonus track", "demo",
+}
+
+
+def _strip_safe_suffix(title):
+    """Normalized title without a trailing "(freestyle)"-style tag: MusicBrainz
+    lists "Despicable (freestyle)" and "Despicable" as separate recordings."""
+    match = re.match(r"^(.*?)\s*[(\[]([^)\]]*)[)\]]\s*$", title or "")
+    if match and _norm_title(match.group(2)) in _SAFE_SUFFIXES:
+        title = match.group(1)
+    return _norm_title(title)
+
+
 def _same_song(track_title, matched_title, artist, candidate):
     """AcoustID heard a different MusicBrainz recording; is it still this song?
 
@@ -1492,8 +1508,8 @@ def _same_song(track_title, matched_title, artist, candidate):
     results carry no artist here). A cover or namesake by someone else fails the
     artist cue; a different title always fails.
     """
-    want = _norm_title(track_title)
-    if not want or want != _norm_title(matched_title):
+    want = _strip_safe_suffix(track_title)
+    if not want or want != _strip_safe_suffix(matched_title):
         return False
     artist = _norm_title(artist)
     hay = _norm_title(f"{candidate.get('title', '')} {candidate.get('channel', '')}")
@@ -2170,9 +2186,10 @@ def _download_tracks(
                 elif vresult["status"] == "mismatch":
                     mismatch_fp = vresult["fp_data"]
                     if (
-                        expected_sec
-                        and abs(real_sec - expected_sec)
-                        <= expected_sec * SHORT_FALLBACK_FRACTION
+                        # unknown MusicBrainz length (0) has nothing to disagree with
+                        (not expected_sec
+                         or abs(real_sec - expected_sec)
+                         <= expected_sec * SHORT_FALLBACK_FRACTION)
                         and float(mismatch_fp.get("acoustid_score", 0.0)) >= 0.9
                         and _same_song(
                             track_title,
@@ -2188,7 +2205,7 @@ def _download_tracks(
                             f" ({str(mismatch_fp.get('acoustid_recording_id', ''))[:8]}),"
                             f" file is {real_sec:.0f}s vs expected"
                             f" {expected_sec:.0f}s",
-                            abs(real_sec - expected_sec),
+                            abs(real_sec - expected_sec) if expected_sec else 0,
                         )
                         track_state["youtube_url"] = ""
                         track_state["youtube_title"] = ""
