@@ -243,6 +243,7 @@ def tick(dry, look_back_h=0):
         fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return log("another subtitle run holds the lock; skipping this tick")
+    r.recover()
     st = load_state()
     if st is None:
         st = {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
@@ -346,6 +347,7 @@ def sweep(n, max_minutes):
         fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         return log("another subtitle run holds the lock")
+    r.recover()
     st = load_state() or {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
     db = r.ro_db()
     movies = [{"rid": a, "title": b, "year": c} for a, b, c in db.execute(

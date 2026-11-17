@@ -88,3 +88,13 @@ Black Panther (whisperai) reviewed by Jay: in sync, with gaps on made-up words a
 is right but invented names are not. Every whisperai replacement post now says so. Idea parked, not built: re-check whisperai-fixed titles every
 few months, and swap in a community sub if one has appeared that passes rule v1 (names are usually right in a human-made sub).
 Jay's overall impression after the first batches: about 98% of what he has watched is in good shape.
+
+## Crash recovery: a killed run puts its backup back (2026-11-17)
+Found: the nightly maintenance window (production, Tuesday 02:00, Docker update) rebooted the machine in the middle of a Tier B title
+(The Hobbit: Battle of the Five Armies). A reboot kills the process outright, so the "interrupted: snapshot restored" handler never ran and
+the English file was missing until restored by hand. Only that title was affected; the ledger showed no others.
+Fix (Jay, 2026-11-17): `recover()` in `subtitle-replace.py` runs once the lock is held, from the replace tool, the enforce tick and the sweep.
+A title with a `start` row and no later `end`, `interrupted`, `restored` or `recovered` row, and no candidate that PASSed, gets its newest backup
+put back if the library file is missing or differs from it. If a candidate had passed, it is left alone. Either way a `recovered` row closes it.
+Tests: `test_subtitle_replace.py` (3). Not done, on purpose: making the maintenance window wait while the subtitle lock is held (needs Jay's go,
+it is a fleet-wide root cron script; revisit before the nightly sweep runs inside the 02:00-04:30 window).

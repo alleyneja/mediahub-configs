@@ -519,6 +519,45 @@ def run_title(m, tier, rec, apply_, direct=False):
     return outcome
 
 
+def dangling_titles(rows):
+    """Titles whose newest 'start' has no later end/interrupted/restored/recovered row, mapped to (start row, a candidate PASSed)."""
+    open_ = {}
+    for e in rows:
+        t, ev = e.get("title"), e.get("event")
+        if ev == "start":
+            open_[t] = [e, False]
+        elif t in open_ and ev == "candidate" and e.get("state") == "PASS":
+            open_[t][1] = True
+        elif t in open_ and ev in ("end", "interrupted", "restored", "recovered"):
+            open_.pop(t)
+    return {t: (v[0], v[1]) for t, v in open_.items()}
+
+
+def recover():
+    """Run once the lock is held, so nothing is in flight. A run killed outright (reboot, power cut, kill -9) never reaches
+    its 'interrupted' handler. If the title started but never finished and no candidate PASSed, the library file may be an
+    unvetted candidate or missing: put the backup back. If a candidate PASSed, the replacement stands; just close the row."""
+    try:
+        rows = [json.loads(l) for l in open(LEDGER)]
+    except OSError:
+        return
+    for t, (start, passed) in dangling_titles(rows).items():
+        base = os.path.join(ROOT, "backups")
+        dirs = sorted((dp for dp, _, fs in os.walk(base) if "manifest.json" in fs
+                       and json.load(open(os.path.join(dp, "manifest.json"))).get("title") == t), key=os.path.getmtime)
+        if passed or not dirs:
+            log(f"recover: {t}: {'a candidate had passed; leaving it' if passed else 'no backup found; needs a look'}")
+            ledger({"title": t, "event": "recovered", "action": "left" if passed else "no-backup"}); continue
+        man = json.load(open(dirs[-1] + "/manifest.json"))
+        bak = os.path.join(dirs[-1], os.path.basename(man["orig_path"]))
+        if not os.path.exists(man["orig_path"]) or os.path.getsize(man["orig_path"]) != os.path.getsize(bak):
+            put_back(bak, man["orig_path"]); action = "restored"
+        else:
+            action = "unchanged"
+        log(f"recover: {t}: run died before finishing; {action}")
+        ledger({"title": t, "event": "recovered", "action": action, "from": dirs[-1]})
+
+
 def main():
     ap = argparse.ArgumentParser()
     g = ap.add_mutually_exclusive_group(required=True)
@@ -536,6 +575,7 @@ def main():
         fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
         sys.exit("another subtitle-replace run holds the lock")
+    recover()
     if a.phase0:
         phase0(a.phase0); return
     if a.phase1:
