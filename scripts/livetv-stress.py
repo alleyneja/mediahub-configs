@@ -47,8 +47,8 @@ class Viewer(threading.Thread):
             key = None
             for _ in range(20):
                 for m in req("/livetv/sessions", cid=self.cid)["MediaContainer"].get("Metadata", []):
-                    for me in m["Media"]:
-                        for p in me["Part"]:
+                    for me in m.get("Media", []):
+                        for p in me.get("Part", []):          # Part can be missing for a moment right after tune
                             if "/" + self.cid + "/" in p["key"]:
                                 key = p["key"]
                 if key: break
@@ -58,7 +58,12 @@ class Viewer(threading.Thread):
             self.first = time.time() - t0
             seen, last = set(), time.time()
             while not self.stop.is_set() and time.time() - self.started < self.hold:
-                pl = req(key, cid=self.cid, raw=True, timeout=20).decode(errors="ignore")
+                try:
+                    pl = req(key, cid=self.cid, raw=True, timeout=20).decode(errors="ignore")
+                except urllib.error.HTTPError as e:
+                    if e.code == 404 and time.time() - self.started < 25 and not self.segs:
+                        time.sleep(2); continue            # playlist not ready yet right after tune: retry, don't give up
+                    raise
                 base = key.rsplit("/", 1)[0]
                 for l in pl.split("\n"):
                     l = l.strip()
@@ -128,6 +133,31 @@ def phase_orphan():
     cleanup([a, b, c])
 
 
+def phase_hold(hold, post):
+    """Fill both slots with 2 synthetic viewers for `hold` s so a REAL client can try a 3rd channel,
+    then drop them abruptly (no stop call) and keep logging for `post` s while the real client retries."""
+    a, b = Viewer("A", 1509, 99999), Viewer("B", 1021, 99999)
+    a.start(); time.sleep(12); b.start()
+    for _ in range(25):
+        if a.segs and b.segs: break
+        time.sleep(2)
+    t_drop = time.time() + hold
+    print("%s READY: A(ESPN 1509) + B(WESH 1021) streaming, conns %d, segs %d/%d. Real client: try a 3rd channel until %s" % (
+        time.strftime("%H:%M:%S"), conns(), a.segs, b.segs, time.strftime("%H:%M:%S", time.localtime(t_drop))), flush=True)
+    while time.time() < t_drop:
+        time.sleep(10)
+        print("%s hold  conns %d plex %s segs A %d%s B %d%s" % (time.strftime("%H:%M:%S"), conns(), sessions_ok(), a.segs,
+              (" [A ended: %s]" % (a.err or "no error")) if not a.is_alive() else "", b.segs,
+              (" [B ended: %s]" % (b.err or "no error")) if not b.is_alive() else ""), flush=True)
+    a.stop.set(); b.stop.set()
+    print("%s DROP: viewers vanished abruptly (no stop). Real client: retry now, within 2 minutes" % time.strftime("%H:%M:%S"), flush=True)
+    t0 = time.time()
+    while time.time() - t0 < post:
+        time.sleep(5)
+        print("%s after-drop +%3ds conns %d plex %s" % (time.strftime("%H:%M:%S"), time.time() - t0, conns(), sessions_ok()), flush=True)
+    print("%s end. conns %d plex %s" % (time.strftime("%H:%M:%S"), conns(), sessions_ok()), flush=True)
+
+
 def phase_churn(cycles):
     chans = [1509, 1021, 1018, 1020, 1019]
     print("== churn phase: %d cycles, 2 viewers at a time, alternating abandon / clean stop" % cycles)
@@ -147,7 +177,7 @@ def phase_churn(cycles):
 if __name__ == "__main__":
     ph = sys.argv[1]
     try:
-        {"cap": lambda: phase_cap(int(sys.argv[2])), "orphan": phase_orphan, "churn": lambda: phase_churn(int(sys.argv[2]))}[ph]()
+        {"cap": lambda: phase_cap(int(sys.argv[2])), "orphan": phase_orphan, "hold": lambda: phase_hold(int(sys.argv[2]), int(sys.argv[3])), "churn": lambda: phase_churn(int(sys.argv[2]))}[ph]()
     except KeyboardInterrupt:
         pass
     print("final: plex", sessions_ok(), "conns", conns())
