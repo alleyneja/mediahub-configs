@@ -1,0 +1,13 @@
+[Unit]
+Description=Passive record of who watches Live TV, on what device (#87)
+After=network-online.target docker.service
+
+[Service]
+User=jay
+ExecStart=/usr/bin/python3 -I /home/jay/mediahub-configs/scripts/livetv-viewer-log.py
+Restart=always
+RestartSec=5
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
