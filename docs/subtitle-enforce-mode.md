@@ -98,3 +98,12 @@ A title with a `start` row and no later `end`, `interrupted`, `restored` or `rec
 put back if the library file is missing or differs from it. If a candidate had passed, it is left alone. Either way a `recovered` row closes it.
 Tests: `test_subtitle_replace.py` (3). Not done, on purpose: making the maintenance window wait while the subtitle lock is held (needs Jay's go,
 it is a fleet-wide root cron script; revisit before the nightly sweep runs inside the 02:00-04:30 window).
+
+## Empire Strikes Back: kept, judged good by eye (Jay, 2026-11-17)
+Sweep flagged the existing sub (one window +2.2 s, windows disagree by 2.3 s). Two attempts, 15 candidates each, none passed (the whisperai
+transcript also failed: +9.9 s, windows disagree by 10.0 s), so the original stayed. Jay then watched it and found it good. Read this as a
+mild FAIL (a 2-second constant-ish offset) that is hard to see by eye, not a bad sub; it counts against the 2% false-positive bar only if a
+2 s offset is judged acceptable, which Jay did here. Whisperai has now failed on both Star Wars films tried (Phantom Menace ~+55 s, Empire +9.9 s)
+after passing 6 of 6 before. Cause not established (whisper timestamp drift after a long non-speech opening, or the measurer losing alignment as
+on The Nun). A read-only experiment (transcribe Empire into a scratch folder on r9, measure per window) is parked: the title is fine, so it only
+matters if whisperai is leaned on for more films.
