@@ -48,6 +48,18 @@ class T(unittest.TestCase):
             rep.recover()
             self.assertEqual(open(orig, "rb").read(), b"accepted-new-sub")
 
+    def test_guard_per_title(self):
+        d = rep.parse_sessions('{"files": ["Shrek (2001).mkv"], "movies": 1, "all": 3}')
+        self.assertIsNone(rep.guard_decision(d, "Other (2000).mkv"))                       # another movie is playing: go ahead
+        self.assertTrue(rep.guard_decision(d, "Shrek (2001).mkv").startswith(rep.THIS_MOVIE_MSG))
+        self.assertIn("1 movie stream", rep.guard_decision(d, None))                        # nothing picked yet: any movie stream stops
+        self.assertIsNone(rep.guard_decision(d, "Shrek (2001).mkv", allow=True))            # Jay's one-off override
+        unknown = rep.parse_sessions('{"files": [], "movies": 1, "all": 1}')               # a movie session with no readable file
+        self.assertTrue(rep.guard_decision(unknown, "Other (2000).mkv").startswith("STOP"))
+        self.assertIsNone(rep.guard_decision(rep.parse_sessions('{"files": [], "movies": 0, "all": 2}'), "X.mkv"))   # only episodes
+        self.assertIsNone(rep.parse_sessions("garbage"))
+        self.assertIsNone(rep.parse_sessions('{"files": []}'))
+
 
 if __name__ == "__main__":
     unittest.main()

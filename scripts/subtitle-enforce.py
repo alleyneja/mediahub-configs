@@ -363,9 +363,15 @@ def sweep(n, max_minutes):
         if os.path.exists(PAUSE):
             stopped = "PAUSE file appeared"; break
         try:
-            r.guard()
             row = r.ro_db().execute("select radarrId,title,path from table_movies where radarrId=?", (mv["rid"],)).fetchone()
             m = r._movie(*row)
+            r.CURRENT_VIDEO = os.path.basename(m["video"])
+            try:
+                r.guard()                      # per title: only a stream of THIS movie blocks it
+            except SystemExit as e:
+                if str(e).startswith(r.THIS_MOVIE_MSG):
+                    tally["skipped"] += 1; log(f"{m['title']}: being watched right now; left for a later tranche"); continue
+                raise
             if not (os.path.isfile(m["sub"]) and os.path.isfile(m["video"])):
                 tally["skipped"] += 1; r.ledger({"title": m["title"], "event": "sweep", "state": "missing-file"}); continue
             rec, state, why = r.measure_one(m["sub_c"], m["video_c"])

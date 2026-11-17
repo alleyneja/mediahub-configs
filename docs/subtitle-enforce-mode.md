@@ -107,3 +107,12 @@ mild FAIL (a 2-second constant-ish offset) that is hard to see by eye, not a bad
 after passing 6 of 6 before. Cause not established (whisper timestamp drift after a long non-speech opening, or the measurer losing alignment as
 on The Nun). A read-only experiment (transcribe Empire into a scratch folder on r9, measure per window) is parked: the title is fine, so it only
 matters if whisperai is leaned on for more films.
+
+## Guard is now per title (Jay, 2026-11-17)
+Jay: block only when someone opens that particular movie, not any movie. The replace tool's guard now asks Plex for the file name of each
+VOD movie session (paused ones included) and stops only if the movie it is working on is among them. A movie session whose file cannot be
+identified, or an unreadable answer, still stops the run (conservative). With no title picked yet, any movie stream still stops. In the sweep,
+a title being watched is skipped and left for a later tranche instead of ending the tranche. Episodes and live TV never block. The gate's
+own measuring guard (any active playback, paused ignored) is unchanged: it only reads files. Tests in `test_subtitle_replace.py`; the
+decision logic is the pure function `guard_decision`. Live query checked against r9 (no stream at the time), and the query's file-name
+extraction checked against synthetic session data; not yet seen against a real stream.

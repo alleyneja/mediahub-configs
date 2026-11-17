@@ -96,25 +96,59 @@ def tier_of(rec):
     return "A" if (cov < 0.5 or cues < 20) else "B"
 
 
-# Movie guard: counts VOD movie sessions, paused ones too (a paused movie still has its file open), and returns "movies all".
-MOVIE_QUERY = gate.PLEX_QUERY_TMPL % ('print(sum(1 for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\" and x.get(\\"live\\")!=\\"1\\" and not str(x.get(\\"key\\",\\"\\")).startswith(\\"/livetv\\")), m.get(\\"size\\",0))')
+# Movie guard (per title, Jay 2026-11-17): the tool stops only when the movie it is working on is being watched, not for any movie.
+# The query returns JSON: the file name of every VOD movie session (paused ones too, a paused movie still has its file open),
+# how many movie sessions there are, and the total session count. Live TV is excluded (type "movie", live=1, /livetv key).
+MOVIE_QUERY = gate.PLEX_QUERY_TMPL % (
+    'v=[x for x in m.get(\\"Metadata\\",[]) if x.get(\\"type\\")==\\"movie\\" and x.get(\\"live\\")!=\\"1\\" '
+    'and not str(x.get(\\"key\\",\\"\\")).startswith(\\"/livetv\\")]; '
+    'print(json.dumps({\\"files\\":[p[\\"file\\"].split(\\"/\\")[-1] for x in v for md in x.get(\\"Media\\",[]) for p in md.get(\\"Part\\",[])],'
+    '\\"movies\\":len(v),\\"all\\":m.get(\\"size\\",0)}))')
 
 
 ALLOW_MOVIE_STREAMS = False     # one-off, by Jay's explicit say-so (--allow-movie-streams); an unknown stream count still stops the run
+CURRENT_VIDEO = None            # file name of the movie being worked on; set by process() and by the sweep before each title
+THIS_MOVIE_MSG = "STOP: this movie is being watched"
+
+
+def parse_sessions(out):
+    """Parse MOVIE_QUERY output into {"files": [...], "movies": n, "all": n}, or None when unreadable."""
+    try:
+        d = json.loads(out)
+        if isinstance(d.get("files"), list) and isinstance(d.get("movies"), int) and isinstance(d.get("all"), int):
+            return d
+    except (ValueError, AttributeError):
+        pass
+    return None
+
+
+def guard_decision(d, current, allow=False):
+    """None = go ahead, otherwise the STOP message. Pure, so it is unit-tested.
+    With a current title: stop only if its file is being streamed, or a movie session's file cannot be identified.
+    With no current title (nothing picked yet): any movie stream stops, as before."""
+    if allow:
+        return None
+    if current is None:
+        return f"STOP: {d['movies']} movie stream(s) active ({d['all']} stream(s) in all); nothing further done" if d["movies"] > 0 else None
+    if current in d["files"]:
+        return THIS_MOVIE_MSG + "; nothing further done on it"
+    if d["movies"] > len(d["files"]):
+        return "STOP: a movie stream's file could not be identified; nothing further done"
+    return None
 
 
 def guard():
-    """Stop only for a VOD MOVIE stream (this tool touches movie files only). Episodes and live TV do not block it
-    (Plex reports Live TV as type "movie" with live=1 and a /livetv key, so those are excluded explicitly).
+    """Stop only when the movie being worked on is being watched (see guard_decision). Episodes and live TV never block.
     An unreadable answer counts as busy. If r9 does not answer ping at all, nobody is watching."""
     import subprocess
     try:
         r = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "jay@192.168.0.22", MOVIE_QUERY],
                            capture_output=True, text=True, timeout=30)
-        parts = r.stdout.split()
-        if len(parts) == 2 and all(x.isdigit() for x in parts):
-            if int(parts[0]) > 0 and not ALLOW_MOVIE_STREAMS:
-                sys.exit(f"STOP: {parts[0]} movie stream(s) active ({parts[1]} stream(s) in all); nothing further done")
+        d = parse_sessions(r.stdout)
+        if d is not None:
+            msg = guard_decision(d, CURRENT_VIDEO, ALLOW_MOVIE_STREAMS)
+            if msg:
+                sys.exit(msg)
             return
     except (subprocess.TimeoutExpired, OSError):
         pass
@@ -598,6 +632,8 @@ def main():
 
 def process(m, plan_only, direct):
     """Measure the current sub, decide the tier, and (unless plan_only) replace. Returns the outcome string or None."""
+    global CURRENT_VIDEO
+    CURRENT_VIDEO = os.path.basename(m["video"])
     guard()
     rec, st, why = measure_one(m["sub_c"], m["video_c"])
     if rec is None:
