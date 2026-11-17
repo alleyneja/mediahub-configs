@@ -484,7 +484,22 @@ def _track_number(track, album_tracks=(), fallback=0):
     """
     keys = ("trackNumber", "absoluteTrackNumber")
     if _is_multi_disc(album_tracks):
-        keys = keys[::-1]
+        absolute = [_int_or(t.get("absoluteTrackNumber"), 0) for t in album_tracks]
+        if len(set(absolute)) == len(absolute) and min(absolute) > 0:
+            keys = keys[::-1]
+        else:
+            # Some releases (Ed Sheeran "5") report absoluteTrackNumber per disc, so it
+            # is not album-wide and two discs share "02 - Homeless.mp3": the second file
+            # overwrites the first and one track stays Wanted forever. Number by position.
+            ordered = sorted(
+                album_tracks,
+                key=lambda t: (_int_or(t.get("mediumNumber"), 1),
+                               _int_or(t.get("trackNumber"), 0)))
+            for position, other in enumerate(ordered):
+                if other is track or (
+                    track.get("id") is not None and other.get("id") == track.get("id")
+                ):
+                    return position + 1
     for key in keys:
         try:
             number = int(track.get(key))

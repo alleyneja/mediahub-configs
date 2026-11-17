@@ -25,6 +25,10 @@ CASES = {
     "good track": ((312, 311, 312, 0.96), "ok"),
     "good track within tolerance": ((276, 271, 0, 0.0), "ok"),
     "source padded, file matches MusicBrainz": ((379, 379, 395, 0.97), "ok"),
+    # MusicBrainz has no length (0) = unknown, never "100% off"
+    "sinatra sunflower (MB unknown, matches its source)": ((200, 0, 201, 0.0), "review"),
+    "russ paddington (MB unknown, no source length)": ((152, 0, 0, 0.0), "review"),
+    "MB unknown but truncated vs its source": ((150, 0, 250, 0.0), "delete"),
 }
 
 
@@ -47,7 +51,23 @@ class Decide(unittest.TestCase):
         self.assertEqual(audit.decide(63, 189, 0, 0.0, identity_ok=False)[0], "unverifiable")
 
     def test_no_mb_length_is_not_a_crash(self):
-        self.assertIn(audit.decide(100, 0, 0, 0.0)[0], ("delete", "review"))
+        self.assertEqual(audit.decide(100, 0, 0, 0.0)[0], "review")
+
+
+class TrackNumber(unittest.TestCase):
+    def test_per_disc_absolute_numbers_get_unique_positions(self):
+        # Ed Sheeran "5": absoluteTrackNumber restarts each disc, two tracks called Homeless
+        tr = [{"id": 10 * d + n, "mediumNumber": d, "trackNumber": n, "absoluteTrackNumber": n}
+              for d in (1, 2, 3) for n in (1, 2, 3)]
+        nums = [audit.track_file_number(x, tr) for x in tr]
+        self.assertEqual(sorted(nums), list(range(1, 10)))
+        self.assertEqual(audit.track_file_number(tr[4], tr), 5)  # disc 2 track 2
+
+    def test_album_wide_absolute_and_single_disc_unchanged(self):
+        tr = [{"id": i, "mediumNumber": 1 + i // 2, "trackNumber": 1 + i % 2, "absoluteTrackNumber": i + 1} for i in range(4)]
+        self.assertEqual([audit.track_file_number(x, tr) for x in tr], [1, 2, 3, 4])
+        one = [{"id": i, "mediumNumber": 1, "trackNumber": i + 1, "absoluteTrackNumber": i + 1} for i in range(3)]
+        self.assertEqual([audit.track_file_number(x, one) for x in one], [1, 2, 3])
 
 
 class Identity(unittest.TestCase):

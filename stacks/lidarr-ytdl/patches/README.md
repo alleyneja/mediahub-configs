@@ -54,3 +54,8 @@ came from the official album playlist, a YT Music hit, or the artist's own/Topic
 Rory Penland)" to the album's Discord AcoustID field. Report only: nothing is rejected on
 this signal yet (decide after a few days of reports). Also added to forbidden_words_custom
 (app config, not the repo): "covered by", "cover by", "cover version".
+
+**Nov 16 fixes (#80):**
+- `processing.py` `_track_number`: on a multi-disc album whose `absoluteTrackNumber` repeats per disc (Ed Sheeran "5"), number by (disc, track) position. Before, two "Homeless" tracks both wrote `02 - Homeless.mp3`, the second overwrote the first and one track stayed Wanted, re-downloaded every 72h.
+- `scheduler.py` retry cap: `scheduler_max_attempts` (default 3, 0 = unlimited) counts `download_started` logs per album; capped albums are skipped and announced once ("Scheduler: retry cap reached"). Queue by hand to retry.
+- Audit (`scripts/lidarr-ytdl-audit.py`): MusicBrainz length 0 = unknown, never "100% off" (it deleted 74 files, Sinatra/Russ looped); track lookup uses the same numbering as the downloader.

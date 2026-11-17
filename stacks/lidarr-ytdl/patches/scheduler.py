@@ -86,6 +86,60 @@ def _scheduled_check():
         )
         new_albums = fresh_albums
 
+    # Retry cap: an album attempted scheduler_max_attempts times and still
+    # missing tracks (hopeless: no YouTube match, or a loop) stops being
+    # retried. One notice the first tick it would otherwise have been retried.
+    # 0 = unlimited. Set to 3 by default.
+    max_attempts = int(config.get("scheduler_max_attempts", 3))
+    if max_attempts > 0:
+        conn = models.db.get_db()
+        stats = {
+            row[0]: (row[1], row[2])
+            for row in conn.execute(
+                "SELECT album_id, COUNT(*), MAX(timestamp) FROM download_logs"
+                " WHERE type='download_started' GROUP BY album_id"
+            )
+        }
+        capped, kept = [], []
+        for album in new_albums:
+            count, last = stats.get(album["id"], (0, 0))
+            if count >= max_attempts:
+                capped.append((album, last))
+            else:
+                kept.append(album)
+        if capped:
+            window = interval_minutes * 60
+            fresh = [
+                a for a, last in capped
+                if cooldown + 0 <= now - last < cooldown + window
+            ]
+            logger.info(
+                f"Scheduler: skipping {len(capped)} albums that hit the"
+                f" {max_attempts}-attempt retry cap"
+            )
+            if fresh:
+                names = "\n".join(
+                    f"- {a.get('artist', {}).get('artistName', '')} -"
+                    f" {a.get('title', '')}" for a in fresh[:15]
+                )
+                send_notifications(
+                    f"Scheduler: {len(fresh)} albums gave up after"
+                    f" {max_attempts} attempts",
+                    log_type="album_error",
+                    embed_data={
+                        "title": "Scheduler: retry cap reached",
+                        "description": (
+                            f"Still missing tracks after {max_attempts}"
+                            " attempts; no longer retried automatically"
+                            " (queue by hand to retry):\n" + names
+                        ),
+                        "color": 0xE67E22,
+                    },
+                )
+        new_albums = kept
+        if not new_albums:
+            return
+
     max_albums = int(config.get("scheduler_max_albums", 0))
     if max_albums > 0:
         new_albums = new_albums[:max_albums]

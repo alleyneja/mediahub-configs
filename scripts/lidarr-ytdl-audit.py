@@ -114,16 +114,33 @@ def decide(actual, mb, yt, ac, tol=10.0, identity_ok=True, last_resort=False):
 def _decide(actual, mb, yt, ac, tol, identity_ok):
     if not identity_ok:
         return "unverifiable", "linked file is not the one the downloader wrote"
-    if abs(actual - mb) <= tol:
+    if mb > 0 and abs(actual - mb) <= tol:
         return "ok", ""
     if yt > 0 and actual < yt - tol:
         return "delete", f"truncated: file is {actual:.0f}s but its YouTube source was {yt:.0f}s"
-    rel = abs(actual - mb) / mb if mb else 1.0
+    if mb <= 0:
+        # MusicBrainz has no length for this track: unknown, not "100% off". Without a
+        # reference there is nothing to judge against, so keep the file and report it
+        # (deleting it only re-queues the track and loops the download every 72h).
+        return "review", "MusicBrainz has no length for this track; kept, nothing to compare against"
+    rel = abs(actual - mb) / mb
     if rel > GROSS_FRACTION and ac < VERIFIED_SCORE:
         return "delete", f"{rel:.0%} off MusicBrainz and AcoustID did not verify it"
     if ac >= VERIFIED_SCORE:
         return "review", f"AcoustID verified the song; length differs from MusicBrainz ({rel:.0%})"
     return "review", f"length differs from MusicBrainz by {rel:.0%}, unverified"
+
+
+def track_file_number(track, tracks):
+    """The number the downloader used in this track's file name (its processing.py
+    _track_number): absoluteTrackNumber when that is album-wide, otherwise, on a
+    multi-disc release whose absolute numbers repeat per disc, the (disc, track) position."""
+    absolute = [int(t.get("absoluteTrackNumber") or 0) for t in tracks]
+    multi = len({int(t.get("mediumNumber") or 1) for t in tracks}) > 1
+    if not multi or (len(set(absolute)) == len(absolute) and min(absolute) > 0):
+        return int(track.get("absoluteTrackNumber") or 0)
+    ordered = sorted(tracks, key=lambda t: (int(t.get("mediumNumber") or 1), int(t.get("trackNumber") or 0)))
+    return next(i + 1 for i, t in enumerate(ordered) if t["id"] == track["id"])
 
 
 def is_downloaders_file(path, row):
@@ -232,7 +249,7 @@ def main():
         tracks, files = by_album[album_id]
         if not tracks:
             continue
-        t = next((x for x in tracks if x["absoluteTrackNumber"] == tno and x.get("trackFileId")), None)
+        t = next((x for x in tracks if x.get("trackFileId") and track_file_number(x, tracks) == tno), None)
         f = files.get(t["trackFileId"]) if t else None
         if not f:
             pending += 1
