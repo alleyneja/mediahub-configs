@@ -28,6 +28,7 @@ CASES = {
     # MusicBrainz has no length (0) = unknown, never "100% off"
     "sinatra sunflower (MB unknown, matches its source)": ((200, 0, 201, 0.0), "review"),
     "russ paddington (MB unknown, no source length)": ((152, 0, 0, 0.0), "review"),
+    "MB unknown, AcoustID verified": ((182, 0, 182, 0.96), "ok"),
     "MB unknown but truncated vs its source": ((150, 0, 250, 0.0), "delete"),
 }
 
@@ -80,6 +81,18 @@ class Identity(unittest.TestCase):
             self.assertTrue(audit.is_downloaders_file(p, row))
             self.assertFalse(audit.is_downloaders_file(p, {**row, "track_number": 3}))
             self.assertFalse(audit.is_downloaders_file(p, {**row, "timestamp": time.time() + 3600}))
+
+
+    def test_lidarr_renamed_file_still_identified(self):
+        import tempfile, time
+        row = {"track_number": 2, "timestamp": time.time() - 30}
+        with tempfile.TemporaryDirectory() as d:
+            for name, want in (("Ed Sheeran - 5 - 02 - So.mp3", True),
+                               ("Frank Sinatra - The Complete Hits 1943-62 - 132 - Granada.mp3", False),
+                               ("03 - Other.mp3", False)):
+                p = os.path.join(d, name)
+                open(p, "w").close()
+                self.assertEqual(audit.is_downloaders_file(p, row), want, name)
 
 
 if __name__ == "__main__":

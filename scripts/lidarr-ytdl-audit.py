@@ -118,6 +118,8 @@ def _decide(actual, mb, yt, ac, tol, identity_ok):
         return "ok", ""
     if yt > 0 and actual < yt - tol:
         return "delete", f"truncated: file is {actual:.0f}s but its YouTube source was {yt:.0f}s"
+    if mb <= 0 and ac >= VERIFIED_SCORE:
+        return "ok", ""  # right song per AcoustID, MusicBrainz has no length to disagree with
     if mb <= 0:
         # MusicBrainz has no length for this track: unknown, not "100% off". Without a
         # reference there is nothing to judge against, so keep the file and report it
@@ -147,7 +149,9 @@ def is_downloaders_file(path, row):
     """The Lidarr-linked file must be the one this row's download produced: right track
     number in its name, and written after the download (not an older file)."""
     base = os.path.basename(path)
-    if not base.startswith(f"{row['track_number']:02d} - "):
+    num = f"{row['track_number']:02d} - "
+    # the downloader writes "NN - Title"; after Lidarr's rename it is "Artist - Album - NN - Title"
+    if not (base.startswith(num) or f" - {num}" in base):
         return False
     try:
         return os.path.getmtime(path) >= row["timestamp"] - 120
