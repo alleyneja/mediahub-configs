@@ -39,3 +39,31 @@ median (Hunter x Hunter S01E01 and S01E10 about 1.1 s; Suits S01E01 0.7 s). The 
 different translation or segmentation. They need the audio measurement before they are labelled either way. Labels: `~/subtitle-sweep/tv-bench/labels.json`
 (library titles, not committed).
 Next: a TV measurer (shorter windows, two window lengths compared), run on the agreeing episodes plus the 17 corruptions used for movies, then score.
+
+## Benchmark step 2: TV measurer results (2026-11-17, read-only)
+`scripts/subtitle-gate-benchmark/tv/` (`measure_tv.py` runs in the bazarr container, `score_tv.py` scores, `tv_label.py` labels). 8 known-good episodes
+(6 Suits, 2 Hunter x Hunter, all agreeing with their embedded track) x 18 variants (untouched + the 17 corruptions used for movies) = 144 measurements per
+window configuration. About 2 minutes per episode for 18 variants.
+
+| | A: 6 windows of 180 s | B: 5 windows of 300 s |
+|---|---|---|
+| False positives on untouched good subs | 0 of 8 | 0 of 8 |
+| Shifts of 5 s or more | 48 of 48 | 48 of 48 |
+| Shifts of 1 s | 16 of 16 | 16 of 16 |
+| Framerate scales | 21 FAIL, 3 UNVERIFIABLE, 0 passed | 17 FAIL, 7 UNVERIFIABLE, 0 passed |
+| Truncation | 16 of 16 | 16 of 16 |
+| 10-minute gap | 8 of 8 | 8 of 8 |
+| Step (different cut) | 8 of 8 | 7 of 8, 1 UNVERIFIABLE |
+| Drift | 16 of 16 | 16 of 16 |
+
+Chosen for the TV rule (working name tv-v1): configuration A, parameters cutoff 10 s, 10+ cues per window, 6 of 6 windows with enough cues,
+5 usable windows to PASS, max offset 0.5 s, max spread 1.0 s, last cue at 90% or more. Same consensus rule (3+ windows agreeing on a large offset = FAIL).
+Limits, stated plainly: 8 episodes is a small sample (the 2% false-positive bar cannot be shown at this size, as with movies); the 10-minute gap is
+easier to catch in a 24-minute episode than in a film, so 8 of 8 does not transfer; only 2 anime episodes; no TV-specific real known-bad set yet.
+
+The 8 episodes that differed from their embedded track, measured with A: 2 PASS (Hunter x Hunter S02E06 and S02E15: five windows within 0.1 s, one
+window thrown by something near the start, so the embedded track is just a different translation), 6 FAIL. Not all 6 are bad:
+- Suits S04E05 FAILs by 0.02 s (one window reads -0.52 s; the rest within 0.45 s). A false positive from the 0.5 s limit, the same effect as The Empire Strikes Back (+2.2 s, looked fine to Jay).
+- Hunter x Hunter S02E33: four windows near 0, one reads +1.6 s and one -35 s. Unclear.
+- Suits S01E01 (an 81-minute pilot), Hunter x Hunter S01E01, S01E10, S02E24: windows read -60 to +60 s in no pattern, i.e. a different cut or a subtitle that does not belong to this video, or the measurer lost alignment. These four need Jay's eyes before any label.
+Open question for the rule: the 0.5 s limit. Raising it to 1.0 s would stop false flags like S04E05 but lets subs 1 s off pass. Decide after the review.
