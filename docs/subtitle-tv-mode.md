@@ -26,6 +26,16 @@
 4. Pilot on 2 shows Jay picks, review by eye, then a tranche of 25 episodes, then the same go-ahead sequence as movies.
 
 ## Open questions for Jay
-- Which two shows for the pilot?
-- Plex guard: block only the show being watched, or all episode streams?
-- Anime without an English audio stream: measure against the original-language track, or leave as "needs review"?
+- ~~Which two shows for the pilot?~~ Decided 2026-11-17: Suits (134 episodes, live action) and Hunter x Hunter (2011) (148, anime).
+- ~~Plex guard~~ Decided: block only the show being watched. (Movies now work the same way per title, see subtitle-enforce-mode.md.)
+- ~~Anime without an English audio stream~~ Decided: "needs review" for now, to be revisited with a better plan (Jay: whisperai on Japanese is too many moving parts; it matters most for shows he cannot follow by ear).
+
+## Benchmark step 1: known-good labels (2026-11-17, read-only)
+Survey of the two pilot shows: every episode has an English `.srt`, and in a sample of 12 per show every file has an embedded English
+subtitle track, which gives a timing reference independent of the audio (the movie benchmark needed a second signal the same way).
+`scripts/subtitle-gate-benchmark/tv/tv_label.py` compares each sampled `.srt` with its embedded track (nearest cue start): 16 episodes sampled
+(8 per show, spread across the run), **8 agree closely** (median under 0.25 s, 90% or more of cues within 0.5 s) and 8 differ by 0.2-1.1 s
+median (Hunter x Hunter S01E01 and S01E10 about 1.1 s; Suits S01E01 0.7 s). The 8 that differ are not known bad: the embedded track may be a
+different translation or segmentation. They need the audio measurement before they are labelled either way. Labels: `~/subtitle-sweep/tv-bench/labels.json`
+(library titles, not committed).
+Next: a TV measurer (shorter windows, two window lengths compared), run on the agreeing episodes plus the 17 corruptions used for movies, then score.
