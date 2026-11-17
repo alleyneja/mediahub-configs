@@ -82,3 +82,9 @@ to be noise. Conclusion: the sub is almost certainly fine; the weak point is one
 Proposed (not built): when a window reads beyond the 10 s cutoff, retry it about 2 minutes later before counting it as unusable. Requires the benchmark
 to be re-run (96/96 shifts caught, 0 false positives) before adoption. UNVERIFIABLE stays "never replaced" until then. Expected payoff: small
 (about 1 in 20 titles is UNVERIFIABLE).
+
+## Whisperai results: what to expect (Jay, 2026-11-16)
+Black Panther (whisperai) reviewed by Jay: in sync, with gaps on made-up words and names. Expected: whisperai transcribes the audio, so timing
+is right but invented names are not. Every whisperai replacement post now says so. Idea parked, not built: re-check whisperai-fixed titles every
+few months, and swap in a community sub if one has appeared that passes rule v1 (names are usually right in a human-made sub).
+Jay's overall impression after the first batches: about 98% of what he has watched is in good shape.

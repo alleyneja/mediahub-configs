@@ -187,6 +187,7 @@ def do_replace(st, m, key):
         if spot:
             st["spot"].append(m["title"])
         say(f"**Subtitle replaced:** {m['title']}\nHow: {how}\nBackup: `{backup}`\nUndo: `subtitle-replace.py --restore \"{m['title']}\"`"
+            + ("\n:warning: Transcribed from the audio, so names and made-up words may be wrong. The timing passed the check. The original is in the backup." if "whisperai" in how else "")
             + ("\n:eyes: **Spot-check this one** when you can, then `subtitle-enforce.py --spot \"" + m["title"] + "\" good|bad`." if spot else ""), False)
     else:
         say(f"**Subtitle unresolved:** {m['title']}: no candidate passed the check. Backup: `{backup}`. "
