@@ -120,3 +120,4 @@ Takeaways: the stray-window allowance did its job here and is worth keeping; a m
 
 ### Suits S02E16: third TV replacement (2026-11-17), awaiting Jay's eyes
 Tier B, current sub failed (windows -48 to +53 s, last cue at 112% of the runtime, i.e. longer than the video). 37 candidates + 1 whisperai were available; candidates 1-5 failed (two families reading [-4, -2.5, +2, -50, +33, +9.5] and one at +6), candidate 6 PASSED after 6 tries and 8 minutes: subdl "Suits.S02.1080p.BluRay.x265-YAWNiX", windows [+0.01, 0.0, +0.01, 0.0, 0.0, -0.02], 889 cues, 0 overlapping, no markup, ends at 42.7 minutes of a 43.1-minute video. Whisperai was not needed. The BluRay cut matched where the HDTV releases did not.
+**Jay's review of Suits S02E16 (Plex, 2026-11-17):** subtitles line up. Accepted. Three TV replacements are now reviewed and accepted (Suits S06E15, Hunter x Hunter S01E02, Suits S02E16), each with the original backed up, no whisperai needed.
