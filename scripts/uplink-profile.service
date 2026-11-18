@@ -1,0 +1,9 @@
+[Unit]
+Description=One upload-only speedtest for the uplink time-of-day profile (#87)
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=jay
+ExecStart=/usr/bin/python3 -I /home/jay/mediahub-configs/scripts/uplink-profile.py
+Nice=10

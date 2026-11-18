@@ -1,0 +1,11 @@
+[Unit]
+Description=Uplink time-of-day profile every 45 minutes (#87)
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=45min
+RandomizedDelaySec=120
+Persistent=false
+
+[Install]
+WantedBy=timers.target
