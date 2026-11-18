@@ -56,3 +56,17 @@ where HDTV-era subtitles fail).
    `docs/subtitle-tv-mode.md`.
 2. Decide: suggestion only, or suggestion plus an offer to send a PR for an opt-in `verify after download` step.
 3. Post on featureupvote with your account; I cannot and will not. Then add the link to #88.
+
+## Update 2026-11-18 (evening): what featureupvote already has (Jay pasted the list; my fetch was blocked with 403)
+Closest existing suggestions:
+- **"Auto blacklist downloaded subtitle if sub synchronization fails"** (Potato quality, Sep 2020): 20 votes, Under consideration, 0 comments. Body: "If subtitle synchronization fails (offset higher then 600) blacklist the subtitle automatically." This is the same idea in its smallest form.
+- "Mass sync all subtitles" (262 votes, **Won't happen**): shows how many people have out-of-sync libraries, but it is a bulk action, not a check, and it cannot fix a subtitle timed to another cut.
+- "Be able to choose between Audio and Sub synchronisation or both" (23 votes), "Add alass as subtitle sync tool" (48), "Add LAPSE as a subtitle sync engine option" (25): sync engines, not verification.
+Not seen: anything about wrong-episode, wrong-cut or truncated subtitles, or a check on files that were not synced. The list I was given may be only the first page (about 50 items, ordered by votes).
+What Bazarr does now (PR #3625, merged 2026-09-30, fixes #3608): when ffsubsync rejects an alignment, Bazarr keeps the original subtitle and logs a warning. It does not blacklist the subtitle or try another one. That is exactly the gap the 2020 suggestion describes.
+
+**Recommendation:** do not open a new suggestion. Upvote the 2020 one and add a comment that extends it (our standard says to add to an existing request rather than duplicate). Comment text:
+
+> Voting for this, and adding what's changed since 2020. Since 1.6.2 (PR #3625) a rejected sync keeps the original file and logs a warning, but the subtitle is not blacklisted, so the next search can pick the same one again, and nothing checks files that never went through sync (wrong episode or cut, truncated file, a signs-only forced track saved as the full English subtitle). A provider score is metadata only; in my library a 53-cue file scored 94%.
+> I run an external check that measures a downloaded subtitle against the audio at 5 to 7 points with ffsubsync, fails only on positive evidence (windows disagree, a large consistent shift, truncation, overlapping cues) and leaves it alone as "unverifiable" when there is too little speech. When it fails, the subtitle is blacklisted and the next candidate is tried. Across a library of about 15,000 English subtitles it flagged about 10% (a floor), and on the roughly 65 episodes and the movies I've replaced with it, every one I checked in a player was in sync. Happy to share the method or send a PR for an opt-in version if that would help.
+> (Investigated with the help of an AI assistant, Claude; numbers verified by me.)
