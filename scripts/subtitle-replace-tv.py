@@ -13,7 +13,7 @@ guard stops only while the SHOW being worked on is being watched, no direct subs
 candidates are tried after opensubtitles and subdl (it failed 56% of episodes in the 2026-11-17 survey). Whisperai is the last resort.
 Episodes with no Bazarr download on record (an older or hand-added file) are measured from the file on disk; nothing is blacklisted for them.
 """
-import argparse, datetime, fcntl, importlib.util, json, os, re, shutil, subprocess, sys, tempfile, time
+import argparse, datetime, fcntl, hashlib, importlib.util, json, os, re, shutil, subprocess, sys, tempfile, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 spec = importlib.util.spec_from_file_location("rep", os.path.join(HERE, "subtitle-replace.py"))
@@ -303,7 +303,7 @@ def run_episode(m, tier, rec):
         if os.path.exists(m["sub"]):
             st, _ = delete_sub(m, m["lang"].endswith(":hi"), m["sub_c"])
             log(f"  deleted via API ({st}); gone={not os.path.exists(m['sub'])}")
-    tried, tries, outcome = set(), 0, "unresolved"
+    tried, tries, outcome, seen_text = set(), 0, "unresolved", {}
     normal, whisper = candidates(m, tried)
     log(f"{len(normal)} usable candidates + {len(whisper)} whisperai")
     queue = normal + whisper[:1]
@@ -326,7 +326,14 @@ def run_episode(m, tier, rec):
             if not rep.settle(newpath):
                 log("  file never settled; restoring" if tier == "B" else "  file never settled")
             guard()
-            nrec, nst, why = measure_one(newpath_c, m["video_c"])
+            digest = hashlib.sha1(open(newpath, "rb").read()).hexdigest() if os.path.exists(newpath) else None
+            if digest in seen_text:                 # the same subtitle served under another release name or by another provider
+                nrec, nst, why = seen_text[digest]
+                log(f"  same text as an earlier candidate; not measured again -> {nst}")
+            else:
+                nrec, nst, why = measure_one(newpath_c, m["video_c"])
+                if digest:
+                    seen_text[digest] = (nrec, nst, why)
             log(f"  candidate -> {nst} {why[:2]}")
             ledger({"title": m["title"], "kind": "episode", "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"],
                     "release": str(c["release_info"]).lower(), "uploader": str(c["uploader"]), "state": nst, "why": why, "path": newpath,
