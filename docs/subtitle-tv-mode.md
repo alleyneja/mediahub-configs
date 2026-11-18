@@ -67,3 +67,10 @@ window thrown by something near the start, so the embedded track is just a diffe
 - Hunter x Hunter S02E33: four windows near 0, one reads +1.6 s and one -35 s. Unclear.
 - Suits S01E01 (an 81-minute pilot), Hunter x Hunter S01E01, S01E10, S02E24: windows read -60 to +60 s in no pattern, i.e. a different cut or a subtitle that does not belong to this video, or the measurer lost alignment. These four need Jay's eyes before any label.
 Open question for the rule: the 0.5 s limit. Raising it to 1.0 s would stop false flags like S04E05 but lets subs 1 s off pass. Decide after the review.
+
+### Pilot episodes reviewed by eye (Jay, 2026-11-17)
+The four episodes whose windows read -60 to +60 s in no pattern were all genuinely wrong, so the rule had no false alarm among them:
+- Hunter x Hunter S01E01 and S01E10: subtitles from a different episode of the same show (dialogue about Nen does not match). Wrong-episode subs read as scattered offsets.
+- Suits S01E01: wrong, offset by minutes. Against the embedded track there is no single constant offset: the SRT ends at 72.7 min, the embedded track at 80.7 min, so it is a different cut, not a shift. The measurer searches +-60 s, so anything larger reads as scatter.
+- Hunter x Hunter S02E24: slow drift of about 0.4 s across the episode against the embedded track (+0.37 s early, -0.04 s late), visible by eye. The scanner flagged it, but its window readings (-53 to +20 s) are measurement noise, not the true drift. Rough: the embedded track is segmented differently (360 cues vs 242).
+Takeaways: scattered offsets are a strong sign of a bad sub on these shows; candidates for such files cannot be fixed by a constant shift, only replaced; the 0.5 s limit question (S04E05, S02E24, Empire) remains open.
