@@ -114,6 +114,40 @@ def measure_one(sub_c, video_c):
     return rec, st, why
 
 
+def measure_text(text, video_c):
+    """Measure a subtitle that is not in the library (a shifted candidate): copy to the container's /tmp, measure, remove."""
+    name = f"tvc_{os.getpid()}_{int(time.time() * 1000) % 10**9}.srt"
+    with tempfile.TemporaryDirectory() as td:
+        host = os.path.join(td, name)
+        open(host, "w", encoding="utf-8").write(text)
+        subprocess.run(["docker", "cp", host, f"{gate.CONTAINER}:/tmp/{name}"], check=True, capture_output=True)
+    try:
+        item = {"sub_c": f"/tmp/{name}", "video_c": video_c, "sub": f"/tmp/{name}"}
+        rec = measure_tv([item]).get(item["sub"])
+        if not rec:
+            return None, None, ["no measurement"]
+        st, why = judge_tv(rec, overlap_share(text))
+        return rec, st, why
+    finally:
+        subprocess.run(["docker", "exec", gate.CONTAINER, "rm", "-f", f"/tmp/{name}"], capture_output=True)
+
+
+def shifted_pass(text, rec, video_c):
+    """If rec is a clean constant shift, correct it in memory and measure again. Tries the measured offset, then its opposite (the sign
+    convention is not assumed). Returns (text, delta, state, why, rec2) for the last try, or None when the shift is not constant."""
+    off = rep.shift_plan(rec)
+    if off is None:
+        return None
+    last = None
+    for delta in (off, -off):
+        txt = rep.shift_srt(text, delta)
+        rec2, st, why = measure_text(txt, video_c)
+        last = (txt, delta, st, why, rec2)
+        if st == "PASS":
+            return last
+    return last
+
+
 # ---------------------------------------------------------------- guard: only the show being watched blocks
 def norm_show(s):
     return re.sub(r"[^a-z0-9]+", "", re.sub(r"\s*\(\d{4}\)\s*$", "", (s or "").lower()))
@@ -296,6 +330,23 @@ def run_episode(m, tier, rec):
             log(f"  candidate -> {nst} {why[:2]}")
             ledger({"title": m["title"], "kind": "episode", "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"],
                     "release": str(c["release_info"]).lower(), "uploader": str(c["uploader"]), "state": nst, "why": why, "path": newpath})
+            if nst != "PASS" and nrec is not None and rep.shift_plan(nrec) is not None:
+                try:
+                    text = open(newpath, encoding="utf-8", errors="replace").read()
+                    r = shifted_pass(text, nrec, m["video_c"])
+                except OSError:
+                    r = None
+                if r:
+                    stext, delta, nst, why, nrec = r
+                    log(f"  shifted {delta:+.2f}s -> {nst} {why[:2]}")
+                    ledger({"title": m["title"], "kind": "episode", "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"],
+                            "release": str(c["release_info"]).lower(), "uploader": str(c["uploader"]), "state": nst, "why": why,
+                            "path": newpath, "via": "shifted", "delta": delta})
+                    if nst == "PASS":
+                        tmp = newpath + ".shift.tmp"
+                        open(tmp, "w", encoding="utf-8").write(stext)
+                        shutil.copymode(bak, tmp)
+                        os.replace(tmp, newpath)       # the candidate file in the library becomes the corrected text
             if nst == "PASS":
                 if newpath != m["sub"] and tier == "B" and os.path.exists(m["sub"]):
                     os.remove(m["sub"])
