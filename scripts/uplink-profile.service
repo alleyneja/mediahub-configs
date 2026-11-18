@@ -7,3 +7,4 @@ Type=oneshot
 User=jay
 ExecStart=/usr/bin/python3 -I /home/jay/mediahub-configs/scripts/uplink-profile.py
 Nice=10
+Environment=UPLINK_VIEWER_HOST=192.168.0.22
