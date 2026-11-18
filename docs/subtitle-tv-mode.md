@@ -138,3 +138,5 @@ Run 07:35-12:38 (about 5 hours, 12 minutes per episode on average). 21 Suits (S0
 - **Hunter x Hunter S01E06:** shifted attempt. The HorribleSubs "06" text read UNVERIFIABLE (4 usable windows, [-57.4, +47.3, -0.03, 0.03, -0.01, 0.21]); the tool tried a +0.03 s shift and that passed. Weakest anime result: worth an eye.
 - No process stopped; no show was being watched; no PAUSE.
 Total TV replacements so far: 38 (3 + 10 + 25). Reviewed by Jay: 7 plus S09E09. Not reviewed: 30.
+
+**Jay's spot check of batch 3 (Plex, 2026-11-18):** checked the least-confident picks (Suits S04E08, Hunter x Hunter S01E06, Suits S05E01 and S06E02 as whisperai samples, Hunter x Hunter S01E05, Suits S06E08; Jay wrote "all five", so one of the six may not have been opened). Result: all fine. Words line up with what is said, on time or within reason, and legal terms and obscure phrases in the whisperai transcriptions were handled correctly. This clears the stray-window allowance, the shifted-pass path and whisperai as a fallback for continued use. Reviewed by Jay so far: about 14 of 38.
