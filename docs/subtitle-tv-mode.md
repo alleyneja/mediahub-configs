@@ -95,3 +95,8 @@ Takeaways: scattered offsets are a strong sign of a bad sub on these shows; cand
 - **Candidates:** Bazarr episode endpoints (`/providers/episodes`, `/episodes/blacklist`, `/episodes/subtitles`); subsource is tried after opensubtitles and subdl; whisperai last; no direct-subsource path (no IMDb id per episode).
 - **No Bazarr download on record** (older or hand-added file): measured from the file on disk, nothing blacklisted for it.
 - **First plan run:** Suits S05E02 PASS (not a target, as seen by eye); Suits S04E02 FAIL (+2.0 s), Tier B, 29 candidates + 1 whisperai.
+
+### First live run: Suits S04E02 (2026-11-17), stopped by hand, nothing changed
+Tier B, current sub reads +2.0 s. Seven candidates were downloaded and measured (opensubtitles x2, subdl x5); all seven FAILED with the same reading (+2.0 to +2.3 s). Every source agrees with every other source and disagrees with this video, so a different candidate cannot fix it: the video itself is about 2 s off the usual release timing, and the fix is a constant shift, not a new subtitle. Stopped after 7 of 29 candidates (SIGINT); the Tier B backup was put back byte for byte.
+**Problem found and fixed:** a candidate Bazarr wrote under a different name (`.en.srt` while the original was `.en.hi.srt`) was left in the folder when the run was interrupted. The interrupt handler now removes any English subtitle written since the start of the run other than the original, after restoring the backup. The stray file was removed by hand.
+**Lesson for the TV path:** when several candidates all read the same constant offset, try shifting a candidate by that amount (as the movie tool does for subsource), instead of working through every other candidate. To be built; needs Jay's go.

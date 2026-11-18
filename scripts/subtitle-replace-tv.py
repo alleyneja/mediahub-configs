@@ -315,6 +315,11 @@ def run_episode(m, tier, rec):
     except BaseException:
         if tier == "B" and outcome != "replaced":
             rep.put_back(bak, m["sub"]); log("interrupted: Tier B snapshot restored")
+            d = os.path.dirname(m["sub"]); stem = os.path.basename(os.path.splitext(m["video"])[0])
+            for f in os.listdir(d):             # a candidate Bazarr wrote under another name (.en.srt vs .en.hi.srt) and was not yet vetted
+                full = os.path.join(d, f)
+                if f.startswith(stem) and re.search(r"\.en(\.hi)?\.srt$", f) and full != m["sub"] and os.stat(full).st_mtime >= t_start - 2:
+                    os.remove(full); log(f"interrupted: removed unvetted candidate {f}")
         ledger({"title": m["title"], "kind": "episode", "event": "interrupted", "tier": tier, "outcome": outcome})
         raise
     ledger({"title": m["title"], "kind": "episode", "event": "end", "tier": tier, "outcome": outcome, "tries": tries})
