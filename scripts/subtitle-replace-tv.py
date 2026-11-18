@@ -214,6 +214,15 @@ def find_episode(text):
             "sub_c": sub_c, "sub": gate.host_path(sub_c), "lang": lang}
 
 
+def find_episode_by_id(eid):
+    """Same record as find_episode(), starting from a Bazarr sonarrEpisodeId (what the wrapper has from the download history)."""
+    row = ro_db().execute("select sh.title, e.season, e.episode from table_episodes e join table_shows sh on sh.sonarrSeriesId=e.sonarrSeriesId "
+                          "where e.sonarrEpisodeId=?", (eid,)).fetchone()
+    if not row:
+        sys.exit(f"episode id {eid}: not in Bazarr")
+    return find_episode(f"{row[0]} S{row[1]:02d}E{row[2]:02d}")
+
+
 def gate_c_path(host):
     return rep.gate_c(host)
 

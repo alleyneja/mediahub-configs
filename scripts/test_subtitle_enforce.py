@@ -18,6 +18,23 @@ class T(unittest.TestCase):
         # coverage plus another reason is a real FAIL
         self.assertEqual(enf.classify(row(reasons=["last cue ends at 60% of the runtime", "a usable window reads +9 s"])), "replace")
 
+    def test_classify_tv(self):
+        self.assertEqual(enf.classify_tv("FAIL", ["a usable window reads +2.0 s"]), "replace")
+        self.assertEqual(enf.classify_tv("FAIL", ["only 5 of 6 windows have enough cues (missing dialogue or truncated)", "last cue ends at 88% of the runtime"]), "replace")
+        self.assertEqual(enf.classify_tv("FAIL", ["last cue ends at 88% of the runtime"]), "review-coverage")
+        self.assertEqual(enf.classify_tv("PASS", []), "ignore")
+        self.assertEqual(enf.classify_tv("UNVERIFIABLE", ["only 4 usable windows; nothing contradicts the subtitle"]), "ignore")
+
+    def test_plan_tv_work(self):
+        rows = [{"id": 5, "eid": 1, "path": "/a.srt", "fp": "1:1"}, {"id": 9, "eid": 1, "path": "/a.srt", "fp": "2:2"},
+                {"id": 7, "eid": 2, "path": "/b.srt", "fp": "3:3"}, {"id": 8, "eid": 3, "path": "/c.srt", "fp": "4:4"}]
+        # newest row per path, oldest first, handled (path|fp) removed
+        self.assertEqual([x["id"] for x in enf.plan_tv_work(rows, [])], [7, 8, 9])
+        self.assertEqual([x["id"] for x in enf.plan_tv_work(rows, ["/b.srt|3:3"])], [8, 9])
+        # a handled older fingerprint does not hide the newer file
+        self.assertEqual([x["id"] for x in enf.plan_tv_work(rows, ["/a.srt|1:1"])], [7, 8, 9])
+        self.assertEqual(enf.plan_tv_work(rows, ["/a.srt|2:2", "/b.srt|3:3", "/c.srt|4:4"]), [])
+
     def test_audio_guard(self):
         mk = lambda *streams: json.dumps({"streams": [{"tags": x} for x in streams]})
         self.assertTrue(enf.audio_ok(mk({"language": "eng", "title": "Opus 7.1"}))[0])

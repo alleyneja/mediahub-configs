@@ -112,11 +112,13 @@ def host_path(p):
     return HOST_PREFIX + p[len(CONTAINER_PREFIX):] if p and p.startswith(CONTAINER_PREFIX) else p
 
 
-def candidates(conn, state, now=None):
+def candidates(conn, state, now=None, movies_only=False):
     """New English (regular + HI) downloads/upgrades since the checkpoints, newest row per subtitle path, settled on disk."""
     now = now or time.time()
     out, skipped = [], []
     for table, key in (("table_history", "episodes"), ("table_history_movie", "movies")):
+        if movies_only and key == "episodes":
+            continue                      # TV is measured by the enforce wrapper with its own rule (tv-v1.1)
         since = state["since"].get(key, 0)
         rows = conn.execute(
             f"select id,action,timestamp,video_path,language,provider,score,subtitles_path from {table} "
@@ -216,6 +218,7 @@ def main():
     ap.add_argument("--backfill-days", type=int, default=0)
     ap.add_argument("--max-minutes", type=int, default=120)
     ap.add_argument("--no-discord", action="store_true", help="the enforce wrapper posts its own messages")
+    ap.add_argument("--movies-only", action="store_true", help="do not measure TV episodes (the enforce wrapper does that with the TV rule)")
     ap.add_argument("--ignore-plex", action="store_true", help="testing only, when you know nobody is watching")
     a = ap.parse_args()
     os.makedirs(STATE_DIR, exist_ok=True)
@@ -252,7 +255,7 @@ def main():
                          for k, t in (("episodes", "table_history"), ("movies", "table_history_movie"))}
             state = {"since": since}
             log(f"first run: starting after history ids {since}")
-        todo, skipped = candidates(conn, state)
+        todo, skipped = candidates(conn, state, movies_only=a.movies_only)
         seen = {(r["path"], r["fp"]) for r in read_ledger()}
         todo = [t for t in todo if (t["sub"], t["fp"]) not in seen]
         if len(todo) > MAX_QUEUE and not a.dry_run:
@@ -286,6 +289,8 @@ def main():
         # advance the checkpoints only past ids whose files were fully handled this run, never past a still-settling file
         waiting = [s[0] for s in skipped if s[1] == "still settling"] + [t for t in todo if t["sub"] not in {r["path"] for r in results}]
         for key in ("episodes", "movies"):
+            if key not in state.get("maxseen", {}):
+                continue
             floor = min([w["history_id"] for w in waiting if w["table"] == key], default=None)
             state["since"][key] = (floor - 1) if floor else state["maxseen"][key]
         json.dump({"since": state["since"]}, open(STATE, "w"))
