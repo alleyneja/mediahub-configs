@@ -1232,6 +1232,9 @@ def _owned_key(title):
     "2- " track number and safe tags like "(Remastered)". Live/remix/mix/feat
     tags stay in the key, so only an identical title counts as owned."""
     title = re.sub(r"^\s*\d+\s*-\s+", "", title or "")
+    # Curly vs straight apostrophes ("She’s" / "She's") must compare equal;
+    # _norm_title would drop one and space the other.
+    title = re.sub(r"[\u2018\u2019\u02bc`\u00b4']", "", title)
     return _strip_safe_suffix(title)
 
 
