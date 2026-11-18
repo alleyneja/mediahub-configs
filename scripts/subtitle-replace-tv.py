@@ -329,7 +329,8 @@ def run_episode(m, tier, rec):
             nrec, nst, why = measure_one(newpath_c, m["video_c"])
             log(f"  candidate -> {nst} {why[:2]}")
             ledger({"title": m["title"], "kind": "episode", "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"],
-                    "release": str(c["release_info"]).lower(), "uploader": str(c["uploader"]), "state": nst, "why": why, "path": newpath})
+                    "release": str(c["release_info"]).lower(), "uploader": str(c["uploader"]), "state": nst, "why": why, "path": newpath,
+                    "offsets": [round(w["offset"], 2) if w else None for w in (nrec or {}).get("windows", [])]})
             if nst != "PASS" and nrec is not None and rep.shift_plan(nrec) is not None:
                 try:
                     text = open(newpath, encoding="utf-8", errors="replace").read()
