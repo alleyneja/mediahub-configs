@@ -745,8 +745,12 @@ def process_album_download(
             {} if (force or ignore_backoff)
             else _compute_deferred_tracks(album_id, tracks, cfg)
         )
+        owned_elsewhere = (
+            {} if (force or ignore_backoff)
+            else _owned_title_matches(artist_id, album_id, tracks, cfg)
+        )
         tracks_to_download = _filter_tracks(
-            tracks, force, album_path, deferred,
+            tracks, force, album_path, deferred, owned_elsewhere,
         )
 
         if len(tracks_to_download) == 0:
@@ -1223,7 +1227,63 @@ def _track_retry_at(failures, last_failure, cfg):
     return last_failure + wait
 
 
-def _filter_tracks(tracks, force, album_path, deferred=None):
+def _owned_key(title):
+    """Comparison key for "same song already owned": drops a junk leading
+    "2- " track number and safe tags like "(Remastered)". Live/remix/mix/feat
+    tags stay in the key, so only an identical title counts as owned."""
+    title = re.sub(r"^\s*\d+\s*-\s+", "", title or "")
+    return _strip_safe_suffix(title)
+
+
+def _owned_title_matches(artist_id, album_id, tracks, cfg=None):
+    """Wanted tracks whose song the artist already owns on another album.
+
+    Lidarr treats each edition as its own album, so an anniversary edition or
+    a greatest-hits compilation shows tracks "missing" that we have as files
+    from the original album. Returns {track_title: owning_album_title}.
+    Skipped by manual queueing / force; ``skip_owned_titles`` false disables.
+    """
+    if cfg is None:
+        cfg = load_config()
+    if not cfg.get("skip_owned_titles", True) or not artist_id:
+        return {}
+    res = lidarr_request(f"track?artistId={artist_id}")
+    if not isinstance(res, list):
+        return {}  # lookup failed: fail open, download as before
+    owned = {}
+    for t in res:
+        if not t.get("hasFile") or t.get("albumId") == album_id:
+            continue
+        key = _owned_key(t.get("title", ""))
+        if key:
+            owned.setdefault(key, t.get("albumId"))
+    if not owned:
+        return {}
+    titles = {}
+    try:
+        for a in lidarr_request(f"album?artistId={artist_id}") or []:
+            titles[a.get("id")] = a.get("title", "")
+    except Exception:
+        pass
+    matches = {}
+    for t in tracks:
+        if t.get("hasFile"):
+            continue
+        key = _owned_key(t.get("title", ""))
+        if key and key in owned:
+            matches[t.get("title", "")] = titles.get(owned[key], "another album")
+    if matches:
+        logger.info(
+            "Skipping %d track(s) already owned on another album (set"
+            " skip_owned_titles=false or queue by hand to override): %s",
+            len(matches),
+            "; ".join(f"'{k}' <- {v}" for k, v in list(matches.items())[:8])
+            + (" ..." if len(matches) > 8 else ""),
+        )
+    return matches
+
+
+def _filter_tracks(tracks, force, album_path, deferred=None, owned=None):
     """Filter tracks that need downloading.
 
     ``deferred`` is an optional map from _compute_deferred_tracks of tracks
@@ -1237,6 +1297,8 @@ def _filter_tracks(tracks, force, album_path, deferred=None):
             if t.get("hasFile", False):
                 continue
             if deferred and t.get("title", "") in deferred:
+                continue
+            if owned and t.get("title", "") in owned:
                 continue
             track_num = _track_number(t, tracks)
             track_title = t["title"]

@@ -1,5 +1,5 @@
---- patches/processing.py.orig	2026-10-15 12:13:50.000000000 -0500
-+++ patches/processing.py	2026-11-16 20:13:05.772335716 -0600
+--- processing.py.orig	2026-10-15 12:13:50.000000000 -0500
++++ processing.py	2026-11-17 21:46:50.460361506 -0600
 @@ -11,8 +11,10 @@
  import os
  import re
@@ -46,7 +46,95 @@
      for key in keys:
          try:
              number = int(track.get(key))
-@@ -1327,12 +1347,14 @@
+@@ -725,8 +745,12 @@
+             {} if (force or ignore_backoff)
+             else _compute_deferred_tracks(album_id, tracks, cfg)
+         )
++        owned_elsewhere = (
++            {} if (force or ignore_backoff)
++            else _owned_title_matches(artist_id, album_id, tracks, cfg)
++        )
+         tracks_to_download = _filter_tracks(
+-            tracks, force, album_path, deferred,
++            tracks, force, album_path, deferred, owned_elsewhere,
+         )
+ 
+         if len(tracks_to_download) == 0:
+@@ -1203,7 +1227,63 @@
+     return last_failure + wait
+ 
+ 
+-def _filter_tracks(tracks, force, album_path, deferred=None):
++def _owned_key(title):
++    """Comparison key for "same song already owned": drops a junk leading
++    "2- " track number and safe tags like "(Remastered)". Live/remix/mix/feat
++    tags stay in the key, so only an identical title counts as owned."""
++    title = re.sub(r"^\s*\d+\s*-\s+", "", title or "")
++    return _strip_safe_suffix(title)
++
++
++def _owned_title_matches(artist_id, album_id, tracks, cfg=None):
++    """Wanted tracks whose song the artist already owns on another album.
++
++    Lidarr treats each edition as its own album, so an anniversary edition or
++    a greatest-hits compilation shows tracks "missing" that we have as files
++    from the original album. Returns {track_title: owning_album_title}.
++    Skipped by manual queueing / force; ``skip_owned_titles`` false disables.
++    """
++    if cfg is None:
++        cfg = load_config()
++    if not cfg.get("skip_owned_titles", True) or not artist_id:
++        return {}
++    res = lidarr_request(f"track?artistId={artist_id}")
++    if not isinstance(res, list):
++        return {}  # lookup failed: fail open, download as before
++    owned = {}
++    for t in res:
++        if not t.get("hasFile") or t.get("albumId") == album_id:
++            continue
++        key = _owned_key(t.get("title", ""))
++        if key:
++            owned.setdefault(key, t.get("albumId"))
++    if not owned:
++        return {}
++    titles = {}
++    try:
++        for a in lidarr_request(f"album?artistId={artist_id}") or []:
++            titles[a.get("id")] = a.get("title", "")
++    except Exception:
++        pass
++    matches = {}
++    for t in tracks:
++        if t.get("hasFile"):
++            continue
++        key = _owned_key(t.get("title", ""))
++        if key and key in owned:
++            matches[t.get("title", "")] = titles.get(owned[key], "another album")
++    if matches:
++        logger.info(
++            "Skipping %d track(s) already owned on another album (set"
++            " skip_owned_titles=false or queue by hand to override): %s",
++            len(matches),
++            "; ".join(f"'{k}' <- {v}" for k, v in list(matches.items())[:8])
++            + (" ..." if len(matches) > 8 else ""),
++        )
++    return matches
++
++
++def _filter_tracks(tracks, force, album_path, deferred=None, owned=None):
+     """Filter tracks that need downloading.
+ 
+     ``deferred`` is an optional map from _compute_deferred_tracks of tracks
+@@ -1218,6 +1298,8 @@
+                 continue
+             if deferred and t.get("title", "") in deferred:
+                 continue
++            if owned and t.get("title", "") in owned:
++                continue
+             track_num = _track_number(t, tracks)
+             track_title = t["title"]
+             sanitized_track = sanitize_filename(track_title)
+@@ -1327,12 +1409,14 @@
  
      if not dl_result.get("success"):
          track_state["last_download_error"] = dl_result.get("error_message", "")
@@ -61,7 +149,7 @@
      audio_ext = load_config().get("audio_format", "mp3")
      actual_file = attempt_temp + f".{audio_ext}"
      if not os.path.exists(actual_file):
-@@ -1345,6 +1367,158 @@
+@@ -1345,6 +1429,158 @@
      return dl_result, actual_file
  
  
@@ -220,7 +308,7 @@
  def _build_candidate_attempt(
      candidate, outcome, expected_recording_id,
      fp_data=None, error_message="",
-@@ -1770,6 +1944,31 @@
+@@ -1770,6 +2006,31 @@
                  _cleanup_temp_files(held_unverified[2])
              held_unverified = None
  
@@ -252,7 +340,7 @@
          for ci, candidate in _iter_candidates():
              if _skip_check():
                  _drop_held_unverified()
-@@ -1807,6 +2006,37 @@
+@@ -1807,6 +2068,37 @@
                  f"temp_{track_num:02d}_{uuid.uuid4().hex[:8]}",
              )
  
@@ -290,7 +378,7 @@
              dl_out = _download_candidate_threaded(
                  candidate, attempt_temp, progress_hook,
                  _skip_check, track_state,
-@@ -1837,6 +2067,54 @@
+@@ -1837,6 +2129,54 @@
              dl_result, actual_file = dl_out
  
              any_downloaded = True
@@ -345,7 +433,7 @@
              track_state["status"] = "tagging"
              track_state["youtube_url"] = dl_result.get(
                  "youtube_url", "",
-@@ -1910,6 +2188,31 @@
+@@ -1910,6 +2250,31 @@
                      )
                  elif vresult["status"] == "mismatch":
                      mismatch_fp = vresult["fp_data"]
@@ -377,7 +465,7 @@
                      with _results_lock:
                          verify_stats["mismatch_count"] += 1
                          mismatch_score = float(
-@@ -2030,7 +2333,18 @@
+@@ -2030,7 +2395,18 @@
                          fp_data=fp_data,
                      )
                  )
@@ -396,7 +484,7 @@
              _drop_held_unverified()
              file_size, td_id = _accept_track_file(
                  actual_file, track_num, sanitized_track,
-@@ -2056,6 +2370,68 @@
+@@ -2056,6 +2432,68 @@
              accepted = True
              break
  
@@ -465,7 +553,7 @@
          low_score_fallback = False
          # Note: best_unverified_candidate is only ever assigned in the
          # AcoustID "unverified" branch (where no fingerprint match exists).
-@@ -2130,6 +2506,10 @@
+@@ -2130,6 +2568,10 @@
                              expected_recording_id,
                          )
                      )
@@ -476,7 +564,7 @@
                      track_state["status"] = "tagging"
                      track_state["youtube_url"] = fb_result.get(
                          "youtube_url", "",
-@@ -2341,6 +2721,32 @@
+@@ -2341,6 +2783,32 @@
      return lines
  
  
@@ -509,7 +597,7 @@
  def _verify_summary_lines(verify_stats, verified_total):
      """Build (plain_field_value, md2_lines) describing AcoustID stats.
  
-@@ -2354,7 +2760,9 @@
+@@ -2354,7 +2822,9 @@
      best_rejected = verify_stats.get("best_rejected_score", 0.0)
      scores = verify_stats.get("accepted_acoustid_scores", [])
  
@@ -520,7 +608,7 @@
          return None, []
  
      parts = []
-@@ -2367,6 +2775,17 @@
+@@ -2367,6 +2837,17 @@
          parts.append(f"{mismatches} auto-banned")
      if best_rejected > 0:
          parts.append(f"best rejected {best_rejected:.2f}")
