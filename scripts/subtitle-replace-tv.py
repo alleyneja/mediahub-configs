@@ -23,6 +23,7 @@ log, ledger, api, ro_db = rep.log, rep.ledger, rep.api, rep.ro_db
 
 MEASURER = os.path.join(HERE, "subtitle-gate-benchmark", "tv", "measure_tv.py")
 TV = {"cutoff": 10.0, "min_cues": 10, "windows": 6, "min_usable": 5, "max_off": 0.75, "spread": 1.0, "coverage": 0.9, "overlap_share": 0.05}
+MAX_DISTINCT_FAILS = 8      # after this many different subtitle texts have failed, stop working through the rest and try whisperai
 CURRENT_SHOW = None
 CURRENT_VIDEO = None
 THIS_SHOW_MSG = "STOP: this show is being watched"
@@ -303,7 +304,7 @@ def run_episode(m, tier, rec):
         if os.path.exists(m["sub"]):
             st, _ = delete_sub(m, m["lang"].endswith(":hi"), m["sub_c"])
             log(f"  deleted via API ({st}); gone={not os.path.exists(m['sub'])}")
-    tried, tries, outcome, seen_text = set(), 0, "unresolved", {}
+    tried, tries, outcome, seen_text, distinct_fails = set(), 0, "unresolved", {}, 0
     normal, whisper = candidates(m, tried)
     log(f"{len(normal)} usable candidates + {len(whisper)} whisperai")
     queue = normal + whisper[:1]
@@ -312,6 +313,10 @@ def run_episode(m, tier, rec):
         for c in queue:
             if c["provider"] != "whisperai" and time.time() - t_start > rep.NORMAL_BUDGET_S:
                 log("  time budget for regular candidates used up; skipping to whisperai"); continue
+            if c["provider"] != "whisperai" and distinct_fails >= MAX_DISTINCT_FAILS:
+                if distinct_fails == MAX_DISTINCT_FAILS:
+                    log(f"  {MAX_DISTINCT_FAILS} different subtitle texts have failed; skipping to whisperai"); distinct_fails += 1
+                continue
             guard()
             tries += 1
             tried.add((c["provider"], c["subtitle"]))
@@ -334,6 +339,8 @@ def run_episode(m, tier, rec):
                 nrec, nst, why = measure_one(newpath_c, m["video_c"])
                 if digest:
                     seen_text[digest] = (nrec, nst, why)
+                if nst != "PASS":
+                    distinct_fails += 1
             log(f"  candidate -> {nst} {why[:2]}")
             ledger({"title": m["title"], "kind": "episode", "event": "candidate", "provider": c["provider"], "subs_id": c["subtitle"],
                     "release": str(c["release_info"]).lower(), "uploader": str(c["uploader"]), "state": nst, "why": why, "path": newpath,
