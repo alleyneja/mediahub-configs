@@ -109,6 +109,32 @@ class T(unittest.TestCase):
         else:
             self.assertEqual(len(st["backlog"]["digest"]), 2)
 
+    def test_watched_show_is_skipped_for_the_pass(self):
+        class TV:
+            THIS_SHOW_MSG = "STOP: this show is being watched"
+            CURRENT_SHOW = CURRENT_VIDEO = None
+            guards = []
+            def find_episode_by_id(self, eid):
+                show = "Alpha" if eid < 10 else "Beta"
+                return {"show": show, "title": f"{show} {eid}", "video": "/v.mkv", "video_c": "/v.mkv", "sub": "/s", "sub_c": "/s", "lang": "en", "hist": (None,) * 5}
+            def guard(self):
+                self.guards.append(self.CURRENT_SHOW)
+                if self.CURRENT_SHOW == "Alpha":
+                    raise SystemExit(self.THIS_SHOW_MSG + "; nothing further done on it")
+            def measure_one(self, a, b):
+                return {"x": 1}, "PASS", []
+        tv = TV(); tvs = enf.new_tv_state(0)
+        saved = (enf.audio_ok, enf.probe_audio)
+        enf.audio_ok, enf.probe_audio = (lambda j: (True, "")), (lambda v: "")
+        try:
+            work = [{"eid": i, "path": None, "fp": None, "key": f"eid:{i}"} for i in (1, 2, 3, 11, 12)]
+            measured, replaced = enf.tv_core({}, "backlog_tv", tvs, tv, work, False, 40, 2, 40, 600)
+        finally:
+            enf.audio_ok, enf.probe_audio = saved
+        self.assertEqual((measured, replaced), (2, 0))             # Beta's two episodes measured; Alpha skipped after one guard check
+        self.assertEqual(tv.guards.count("Alpha"), 1)
+        self.assertEqual(sorted(tvs["handled"]), ["eid:11", "eid:12"])
+
     def test_audio_guard(self):
         mk = lambda *streams: json.dumps({"streams": [{"tags": x} for x in streams]})
         self.assertTrue(enf.audio_ok(mk({"language": "eng", "title": "Opus 7.1"}))[0])

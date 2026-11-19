@@ -311,7 +311,7 @@ def tv_core(st, slot, tvs, tv, work, dry, cap_measure, cap_replace, daily_cap, b
     today = datetime.date.today().isoformat()
     if tvs["day"] != today:
         tvs["day"], tvs["day_count"] = today, 0
-    t0, measured, replaced = time.time(), 0, 0
+    t0, measured, replaced, blocked = time.time(), 0, 0, set()
     for row in work:
         if time.time() - t0 > budget_s or measured >= cap_measure:
             log("TV: per-pass cap reached; the rest wait"); break
@@ -326,12 +326,14 @@ def tv_core(st, slot, tvs, tv, work, dry, cap_measure, cap_replace, daily_cap, b
             log(f"TV: episode {row['eid']}: {str(e)[:100]}; dropped"); tvs["handled"].append(key); continue
         if row.get("path") and (m["sub"] != row["path"] or current_fp(m["sub"]) != row["fp"]):
             log(f"TV: {m['title']}: the sub changed since the download; dropped"); tvs["handled"].append(key); continue
+        if _norm(m["show"]) in blocked:
+            continue                             # this show is being watched: leave all its episodes for a later pass
         tv.CURRENT_SHOW, tv.CURRENT_VIDEO = m["show"], os.path.basename(m["video"])
         try:
             tv.guard()
         except SystemExit as e:
             if str(e).startswith(tv.THIS_SHOW_MSG):
-                log(f"TV: {m['title']}: show is being watched; stays queued"); continue
+                blocked.add(_norm(m["show"])); log(f"TV: {m['show']} is being watched; its episodes stay queued this pass"); continue
             log(f"TV: {str(e)[:100]}; TV work stops for this pass"); break
         ok, note = audio_ok(probe_audio(m["video"]))
         if not ok:
@@ -436,7 +438,7 @@ def watch_shows():
 def enable_backlog(on):
     st = load_state() or {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
     if on:
-        st["backlog"] = {"enabled": True, "digest": [], "digest_day": "", "measured_tv": 0, "since": datetime.datetime.now().isoformat(timespec="seconds")}
+        st["backlog"] = {"enabled": True, "digest": [], "digest_day": datetime.date.today().isoformat(), "measured_tv": 0, "since": datetime.datetime.now().isoformat(timespec="seconds")}
         st.setdefault("backlog_tv", new_tv_state(0))
         save_state(st)
         print("backlog lane ON: after new downloads each tick it works through old TV episodes and movies (watched shows first)")
@@ -512,7 +514,7 @@ def backlog_lane(st, dry, t_tick):
         try:
             tv = _load("replace_tv", "subtitle-replace-tv.py")
             ordered = order_tv_backlog(tv_backlog_items(), watch_shows(), set(tvb["handled"]))
-            work = [{"eid": x["eid"], "path": None, "fp": None, "key": f"eid:{x['eid']}"} for x in ordered[:40]]
+            work = [{"eid": x["eid"], "path": None, "fp": None, "key": f"eid:{x['eid']}"} for x in ordered[:600]]
             log(f"backlog: {len(ordered)} TV episodes still to look at")
             m1, _ = tv_core(st, "backlog_tv", tvb, tv, work, False, 40, BL_PASS_REPLACE, BL_DAILY_REPLACE, BL_TV_SECONDS)
             bl["measured_tv"] = bl.get("measured_tv", 0) + m1
