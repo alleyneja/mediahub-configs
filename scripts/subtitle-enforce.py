@@ -21,7 +21,7 @@ A show that is being watched stays queued. A coverage-only FAIL or a file with n
   subtitle-enforce.py --enable-tv / --disable-tv   switch TV on (from the newest download onward) or off
   subtitle-enforce.py --tv-dry-run HOURS           measure TV downloads of the last HOURS and say what a tick would do; changes nothing
 """
-import argparse, datetime, fcntl, importlib.util, json, os, subprocess, sys, time
+import argparse, datetime, fcntl, importlib.util, json, os, re, subprocess, sys, time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
@@ -42,6 +42,10 @@ MAX_ATTEMPTS = 2      # a title that raises errors twice is dropped and reported
 KEEP_HANDLED = 3000
 GATE_MINUTES = 20
 TV_CAP_MEASURE, TV_CAP_REPLACE, TV_DAILY_REPLACE, TV_BUDGET_S = 6, 2, 12, 25 * 60
+# Backlog lane (old library content), off until --enable-backlog. Per tick, after new downloads: 5 min of TV, 5 min of movies, at most
+# 2 replacements per pass, 40 replacements per day (TV and movies together), one Discord digest a day instead of a post per replacement.
+BL_TV_SECONDS, BL_MOVIE_MINUTES, BL_PASS_REPLACE, BL_DAILY_REPLACE = 5 * 60, 5, 2, 40
+BL_MAX_TICK_ELAPSED, BL_DIGEST_HOUR, BL_SPOT_N = 8 * 60, 8, 5
 
 
 def log(msg):
@@ -181,8 +185,31 @@ def method_of(title, since_iso):
     return how, backup
 
 
+DIGEST = None      # a list while the backlog lane runs: its messages are collected for the daily digest instead of posted
+
+
+def digest_entry(msg):
+    """A message, as a digest record: {"kind": replaced|unresolved|review, "title", "how", "text"}."""
+    lines = msg.split("\n")
+    how = next((x[4:].strip() for x in lines if x.startswith("How:")), "")
+    m = re.match(r"\*\*Subtitle (replaced|unresolved)(?: \(TV\))?:\*\* (.+?)(?:: no candidate.*)?$", lines[0])
+    if m:
+        return {"kind": m.group(1), "title": m.group(2), "how": how, "text": lines[0].replace("**", "")}
+    return {"kind": "review", "title": "", "how": "", "text": lines[0].replace("**", "")}
+
+
+def margin(offsets):
+    """How loose a pass was: the largest window offset after setting aside the one stray window. None when there are no offsets."""
+    a = sorted((abs(o) for o in offsets if o is not None), reverse=True)
+    return None if not a else (a[1] if len(a) > 1 else a[0])
+
+
 def say(msg, quiet):
     log(msg.replace("\n", " | "))
+    if DIGEST is not None and ", failed:" not in msg.split("\n")[0]:
+        if "tranche done" not in msg:
+            DIGEST.append(digest_entry(msg))
+        return
     if not quiet:
         gate.discord(msg)
 
@@ -211,7 +238,7 @@ def do_replace(st, m, key):
     how, backup = method_of(m["title"], started)
     if outcome == "replaced":
         st["replaced"] += 1
-        spot = spot_due(st["replaced"])
+        spot = spot_due(st["replaced"]) and DIGEST is None
         if spot:
             st["spot"].append(m["title"])
         say(f"**Subtitle replaced:** {m['title']}\nHow: {how}\nBackup: `{backup}`\nUndo: `subtitle-replace.py --restore \"{m['title']}\"`"
@@ -266,7 +293,7 @@ def do_replace_tv(tvs, tv, m, key):
     if outcome == "replaced":
         tvs["replaced"] += 1
         tvs["day_count"] += 1
-        spot = spot_due(tvs["replaced"])
+        spot = spot_due(tvs["replaced"]) and DIGEST is None
         if spot:
             tvs["spot"].append(m["title"])
         say(f"**Subtitle replaced (TV):** {m['title']}\nHow: {how}\nBackup: `{backup}`\nUndo: `subtitle-replace-tv.py --restore \"{m['title']}\"`"
@@ -278,36 +305,26 @@ def do_replace_tv(tvs, tv, m, key):
     return "done"
 
 
-def tv_step(st, dry, look_back_h=0):
-    """Measure new episode downloads and replace the FAILs. dry = measure and report only (nothing replaced, posted or saved)."""
-    tvs = st.get("tv")
-    if dry and look_back_h:
-        cutoff = (datetime.datetime.now() - datetime.timedelta(hours=look_back_h)).strftime("%Y-%m-%d %H:%M:%S")
-        first = r.ro_db().execute("select min(id) from table_history where timestamp>=?", (cutoff,)).fetchone()[0]
-        tvs = new_tv_state((first - 1) if first else 10**12)
-    elif not tvs or not tvs.get("enabled"):
-        return
-    try:
-        tv = _load("replace_tv", "subtitle-replace-tv.py")
-    except Exception as e:
-        return log(f"TV: could not load subtitle-replace-tv.py ({type(e).__name__}); skipped")
+def tv_core(st, slot, tvs, tv, work, dry, cap_measure, cap_replace, daily_cap, budget_s):
+    """Work through rows [{"eid","path","fp"[,"key"]}]: measure each episode subtitle, replace the FAILs. Used for new downloads (slot "tv")
+    and for the backlog (slot "backlog_tv"); tvs is that slot's state. Returns (measured, replaced). dry = nothing replaced, posted or saved."""
     today = datetime.date.today().isoformat()
     if tvs["day"] != today:
         tvs["day"], tvs["day_count"] = today, 0
-    work = plan_tv_work(tv_rows(tvs["since_id"]), tvs["handled"])
-    log(f"TV: {len(work)} new episode subtitles to look at")
     t0, measured, replaced = time.time(), 0, 0
     for row in work:
-        if time.time() - t0 > TV_BUDGET_S or measured >= TV_CAP_MEASURE:
-            log("TV: per-tick cap reached; the rest wait for the next tick"); break
+        if time.time() - t0 > budget_s or measured >= cap_measure:
+            log("TV: per-pass cap reached; the rest wait"); break
         if not dry and os.path.exists(PAUSE):
             break
-        key = f"{row['path']}|{row['fp']}"
+        if not dry and tvs["day_count"] >= daily_cap:
+            log("TV: daily replacement cap reached"); break
+        key = row.get("key") or f"{row['path']}|{row['fp']}"
         try:
             m = tv.find_episode_by_id(row["eid"])
         except SystemExit as e:
             log(f"TV: episode {row['eid']}: {str(e)[:100]}; dropped"); tvs["handled"].append(key); continue
-        if m["sub"] != row["path"] or current_fp(m["sub"]) != row["fp"]:
+        if row.get("path") and (m["sub"] != row["path"] or current_fp(m["sub"]) != row["fp"]):
             log(f"TV: {m['title']}: the sub changed since the download; dropped"); tvs["handled"].append(key); continue
         tv.CURRENT_SHOW, tv.CURRENT_VIDEO = m["show"], os.path.basename(m["video"])
         try:
@@ -315,7 +332,7 @@ def tv_step(st, dry, look_back_h=0):
         except SystemExit as e:
             if str(e).startswith(tv.THIS_SHOW_MSG):
                 log(f"TV: {m['title']}: show is being watched; stays queued"); continue
-            log(f"TV: {str(e)[:100]}; TV step stops for this tick"); break
+            log(f"TV: {str(e)[:100]}; TV work stops for this pass"); break
         ok, note = audio_ok(probe_audio(m["video"]))
         if not ok:
             say(f"**Subtitle check (TV), needs review:** {m['title']}: {note}. Not measured, not replaced.", dry)
@@ -336,7 +353,7 @@ def tv_step(st, dry, look_back_h=0):
             tvs["handled"].append(key); continue
         if dry:
             log(f"TV: WOULD replace {m['title']}"); continue
-        if replaced >= TV_CAP_REPLACE or tvs["day_count"] >= TV_DAILY_REPLACE:
+        if replaced >= cap_replace:
             log("TV: replacement cap reached; this one waits"); break
         res = do_replace_tv(tvs, tv, m, key)
         if res == "guard":
@@ -350,10 +367,188 @@ def tv_step(st, dry, look_back_h=0):
                 pass
         if res in ("done", "noop"):
             tvs["handled"].append(key)
-        st["tv"] = tvs; save_state(st)
+        st[slot] = tvs; save_state(st)
     if not dry:
-        st["tv"] = tvs
+        st[slot] = tvs
+    return measured, replaced
+
+
+def tv_step(st, dry, look_back_h=0):
+    """New episode downloads: measure and replace the FAILs. dry = measure and report only (nothing replaced, posted or saved)."""
+    tvs = st.get("tv")
+    if dry and look_back_h:
+        cutoff = (datetime.datetime.now() - datetime.timedelta(hours=look_back_h)).strftime("%Y-%m-%d %H:%M:%S")
+        first = r.ro_db().execute("select min(id) from table_history where timestamp>=?", (cutoff,)).fetchone()[0]
+        tvs = new_tv_state((first - 1) if first else 10**12)
+    elif not tvs or not tvs.get("enabled"):
+        return
+    try:
+        tv = _load("replace_tv", "subtitle-replace-tv.py")
+    except Exception as e:
+        return log(f"TV: could not load subtitle-replace-tv.py ({type(e).__name__}); skipped")
+    work = plan_tv_work(tv_rows(tvs["since_id"]), tvs["handled"])
+    log(f"TV: {len(work)} new episode subtitles to look at")
+    measured, replaced = tv_core(st, "tv", tvs, tv, work, dry, TV_CAP_MEASURE, TV_CAP_REPLACE, TV_DAILY_REPLACE, TV_BUDGET_S)
     log(f"TV: step done: {measured} measured, {replaced} replaced")
+
+
+def _norm(s):
+    return re.sub(r"[^a-z0-9]+", "", re.sub(r"\s*\(\d{4}\)\s*$", "", (s or "").lower()))
+
+
+def order_tv_backlog(items, watch, done):
+    """items: [{"eid","show",...}] in library order; watch: show names, most recently watched first; done: set of keys already handled.
+    Shows Jay watches come first (most recent first), everything else after in library order. A show is never split."""
+    rank = {}
+    for i, name in enumerate(watch):
+        rank.setdefault(_norm(name), i)
+    far = len(rank) + 1
+    todo = [x for x in items if f"eid:{x['eid']}" not in done]
+    return sorted(todo, key=lambda x: rank.get(_norm(x["show"]), far))     # stable: library order is kept inside a rank
+
+
+def tv_backlog_items():
+    return [{"eid": e, "show": t, "season": se, "episode": ep} for e, t, se, ep in r.ro_db().execute(
+        "select e.sonarrEpisodeId, sh.title, e.season, e.episode from table_episodes e "
+        "join table_shows sh on sh.sonarrSeriesId=e.sonarrSeriesId order by sh.sonarrSeriesId, e.season, e.episode")]
+
+
+def _watch_cmd_tv():
+    return WATCH_CMD.replace('x.get(\\"type\\")==\\"movie\\"', 'x.get(\\"type\\")==\\"episode\\"').replace(
+        'x.get(\\"title\\",\\"\\"), x.get(\\"year\\",\\"\\")', 'x.get(\\"grandparentTitle\\",\\"\\"), \\"\\"')
+
+
+def watch_shows():
+    """Shows Jay (Plex account 1) has watched, most recently watched first. Empty list if Plex cannot be asked."""
+    try:
+        out = subprocess.run(["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5", "jay@192.168.0.22", _watch_cmd_tv()],
+                             capture_output=True, text=True, timeout=60).stdout
+    except (subprocess.TimeoutExpired, OSError):
+        return []
+    seen, res = set(), []
+    for line in out.splitlines():
+        t = line.partition("\t")[0]
+        if t and t not in seen:
+            seen.add(t); res.append(t)
+    return res
+
+
+def enable_backlog(on):
+    st = load_state() or {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
+    if on:
+        st["backlog"] = {"enabled": True, "digest": [], "digest_day": "", "measured_tv": 0, "since": datetime.datetime.now().isoformat(timespec="seconds")}
+        st.setdefault("backlog_tv", new_tv_state(0))
+        save_state(st)
+        print("backlog lane ON: after new downloads each tick it works through old TV episodes and movies (watched shows first)")
+    else:
+        if st.get("backlog"):
+            st["backlog"]["enabled"] = False
+        save_state(st)
+        print("backlog lane OFF")
+
+
+def post_digest(st, force=False):
+    bl = st["backlog"]
+    today = datetime.date.today().isoformat()
+    if not force and (bl.get("digest_day") == today or datetime.datetime.now().hour < BL_DIGEST_HOUR):
+        return
+    ent, since = bl.get("digest", []), bl.get("since_digest") or bl["since"]
+    bl["digest_day"], bl["digest"], bl["since_digest"] = today, [], datetime.datetime.now().isoformat(timespec="seconds")
+    rep_ = [e for e in ent if e["kind"] == "replaced"]
+    if not ent and not bl.get("measured_tv") and not bl.get("measured_movies"):
+        return
+    ranked = []
+    for e in rep_:                      # the loosest passes, from the ledger offsets of the accepted candidate
+        best = None
+        with open(r.LEDGER) as fh:
+            for l in fh:
+                x = json.loads(l)
+                if x.get("title") == e["title"] and x.get("event") == "candidate" and x.get("state") == "PASS" and x.get("offsets") and x.get("ts", "") >= since:
+                    best = margin(x["offsets"])
+        ranked.append((best if best is not None else -1, e))
+    ranked.sort(key=lambda t: -t[0])
+    weakest = [e for mg, e in ranked[:BL_SPOT_N] if mg >= 0]
+    tvb, tvl = st.get("backlog_tv", {}), st.setdefault("backlog_tv", new_tv_state(0)).setdefault("spot", [])
+    for e in weakest:
+        lst = tvl if re.search(r"S\d+E\d+", e["title"]) else st["spot"]
+        if e["title"] not in lst:
+            lst.append(e["title"])
+    unres = [e for e in ent if e["kind"] == "unresolved"]
+    rev = [e for e in ent if e["kind"] == "review"]
+    lines = [f"**Subtitle backlog, digest {today}:** measured {bl.get('measured_tv', 0)} TV episodes and {bl.get('measured_movies', 0)} movies since the last digest; "
+             f"replaced {len(rep_)}, unresolved {len(unres)}, needs review {len(rev)}."]
+    if weakest:
+        lines.append("Looser passes to eyeball (then `subtitle-enforce.py --spot \"TITLE\" good|bad`): " + "; ".join(
+            f"{e['title']} ({e['how'] or 'n/a'})" for e in weakest))
+    if any("whisperai" in e["how"] for e in rep_):
+        lines.append(f":warning: {sum(1 for e in rep_ if 'whisperai' in e['how'])} of the replacements are transcriptions from the audio: timing passed the check, names may be misheard.")
+    if unres:
+        lines.append("Unresolved (original kept): " + "; ".join(e["title"] for e in unres[:12]) + (f" and {len(unres) - 12} more" if len(unres) > 12 else ""))
+    if rev:                              # the same reason across many episodes of one show is one line with a count
+        groups = {}
+        for e in rev:
+            k = re.sub(r"S\d+E\d+", "SxxExx", e["text"]); groups[k] = groups.get(k, 0) + 1
+        lines.append("Needs review: " + "; ".join(f"{k}" + (f" (x{n})" if n > 1 else "") for k, n in list(groups.items())[:8]) + (f" and {len(groups) - 8} more" if len(groups) > 8 else ""))
+    bl["measured_tv"] = bl["measured_movies"] = 0
+    say("\n".join(lines), False)
+
+
+def backlog_lane(st, dry, t_tick):
+    """Old library content, after the new-download work. TV for 5 minutes (watched shows first), then movies for 5 minutes."""
+    global DIGEST
+    bl = st.get("backlog")
+    if dry or not bl or not bl.get("enabled") or os.path.exists(PAUSE):
+        return
+    if time.time() - t_tick > BL_MAX_TICK_ELAPSED:
+        return log("backlog: this tick already ran long; skipped")
+    tvb = st.setdefault("backlog_tv", new_tv_state(0))
+    today = datetime.date.today().isoformat()
+    if tvb.get("day") != today:
+        tvb["day"], tvb["day_count"] = today, 0
+    if tvb["day_count"] >= BL_DAILY_REPLACE:
+        log("backlog: daily replacement cap reached"); post_digest(st); return
+    DIGEST = []
+    try:
+        try:
+            tv = _load("replace_tv", "subtitle-replace-tv.py")
+            ordered = order_tv_backlog(tv_backlog_items(), watch_shows(), set(tvb["handled"]))
+            work = [{"eid": x["eid"], "path": None, "fp": None, "key": f"eid:{x['eid']}"} for x in ordered[:40]]
+            log(f"backlog: {len(ordered)} TV episodes still to look at")
+            m1, _ = tv_core(st, "backlog_tv", tvb, tv, work, False, 40, BL_PASS_REPLACE, BL_DAILY_REPLACE, BL_TV_SECONDS)
+            bl["measured_tv"] = bl.get("measured_tv", 0) + m1
+        except Exception as e:
+            log(f"backlog: TV pass failed ({type(e).__name__}: {str(e)[:100]}); continuing")
+        left = BL_DAILY_REPLACE - tvb["day_count"]
+        if left > 0 and not os.path.exists(PAUSE):
+            before = st["replaced"]
+            try:
+                tally = sweep(12, BL_MOVIE_MINUTES, st=st, max_replace=min(BL_PASS_REPLACE, left))
+            except Exception as e:
+                tally = None; log(f"backlog: movie pass failed ({type(e).__name__}: {str(e)[:100]}); continuing")
+            tvb["day_count"] += st["replaced"] - before
+            if tally:
+                bl["measured_movies"] = bl.get("measured_movies", 0) + sum(v for k, v in tally.items() if k in ("PASS", "UNVERIFIABLE", "needs review", "replaced", "unresolved"))
+    finally:
+        got, DIGEST = DIGEST, None
+    bl["digest"] = bl.get("digest", []) + got
+    post_digest(st)
+
+
+def backlog_dry_run():
+    ordered = order_tv_backlog(tv_backlog_items(), watch_shows(), set((load_state() or {}).get("backlog_tv", {}).get("handled", [])))
+    print(f"{len(ordered)} TV episodes in the queue. First ten:")
+    for x in ordered[:10]:
+        print(f"  {x['show']} S{x['season']:02d}E{x['episode']:02d}")
+    lk = open(r.LOCK, "w")
+    try:
+        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        return log("another subtitle run holds the lock; not measuring")
+    tv = _load("replace_tv", "subtitle-replace-tv.py")
+    tvb = new_tv_state(0)
+    work = [{"eid": x["eid"], "path": None, "fp": None, "key": f"eid:{x['eid']}"} for x in ordered[:3]]
+    m1, _ = tv_core({}, "backlog_tv", tvb, tv, work, True, 3, 0, 0, 600)
+    print(f"measured {m1} (nothing replaced, posted or saved)")
 
 
 def enable_tv(on):
@@ -419,6 +614,7 @@ def order_candidates(movies, watch, done):
 
 def tick(dry, look_back_h=0):
     os.makedirs(ROOT, exist_ok=True)
+    t_tick = time.time()
     if os.path.exists(PAUSE):
         return log("PAUSED (" + (open(PAUSE).read().strip()[:120] or "no reason given") + "); nothing done")
     lk = open(r.LOCK, "w")
@@ -482,6 +678,7 @@ def tick(dry, look_back_h=0):
             mark(st, row)
         save_state(st)
     tv_step(st, dry)
+    backlog_lane(st, dry, t_tick)
     if tv_flags and not (st.get("tv") or {}).get("enabled"):
         say(f"**Subtitle gate (TV, report-only):** {len(tv_flags)} new episode subs flagged; nothing was changed.\n" + "\n".join(tv_flags[:10]), dry)
     if not dry:
@@ -521,19 +718,20 @@ def handled_titles():
     return done
 
 
-def sweep(n, max_minutes):
+def sweep(n, max_minutes, st=None, max_replace=None):
     """Measure the next n library movies (watch list first) and replace the FAILs through the same path a tick uses.
-    A tranche is run by hand with Jay's go; it is not scheduled."""
+    By hand: a tranche with Jay's go. From the backlog lane: st is the tick's state and the tick already holds the lock."""
     os.makedirs(ROOT, exist_ok=True)
     if os.path.exists(PAUSE):
         return log("PAUSED; nothing done")
-    lk = open(r.LOCK, "w")
-    try:
-        fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except OSError:
-        return log("another subtitle run holds the lock")
-    r.recover()
-    st = load_state() or {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
+    if st is None:
+        lk = open(r.LOCK, "w")
+        try:
+            fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            return log("another subtitle run holds the lock")
+        r.recover()
+        st = load_state() or {"since_ts": time.time(), "handled": [], "replaced": 0, "attempts": {}, "spot": []}
     db = r.ro_db()
     movies = [{"rid": a, "title": b, "year": c} for a, b, c in db.execute(
         "select radarrId, title, year from table_movies where radarrId in (select radarrId from table_history_movie "
@@ -547,6 +745,8 @@ def sweep(n, max_minutes):
             break
         if os.path.exists(PAUSE):
             stopped = "PAUSE file appeared"; break
+        if max_replace is not None and tally["replaced"] + tally["unresolved"] >= max_replace:
+            stopped = "replacement cap for this pass"; break
         try:
             row = r.ro_db().execute("select radarrId,title,path from table_movies where radarrId=?", (mv["rid"],)).fetchone()
             m = r._movie(*row)
@@ -592,6 +792,7 @@ def sweep(n, max_minutes):
         return log(f"sweep: nothing measured" + (f" ({stopped})" if stopped else ""))
     say(f"**Subtitle sweep tranche done:** {summary or 'nothing measured'}." + (f" Stopped early: {stopped}." if stopped else "")
         + f" {max(len(queue) - sum(tally.values()), 0)} movies still to measure.", False)
+    return tally
 
 
 def status():
@@ -601,6 +802,8 @@ def status():
         return print("no enforce state yet (the first tick sets the go-live time)")
     print(f"live since {datetime.datetime.fromtimestamp(st['since_ts']):%Y-%m-%d %H:%M}; replacements {st['replaced']}; "
           f"handled rows {len(st['handled'])}; spot-checks waiting: {st['spot'] or 'none'}")
+    b, tb = st.get("backlog"), st.get("backlog_tv", {})
+    print("backlog lane: " + (f"ON since {b['since']}; TV episodes handled {len(tb.get('handled', []))}; replaced today {tb.get('day_count', 0)}/{BL_DAILY_REPLACE}; digest entries waiting {len(b.get('digest', []))}; spot-checks waiting: {tb.get('spot') or 'none'}" if b and b.get("enabled") else "off"))
     t = st.get("tv")
     print("TV: " + (f"ON since history id {t['since_id']}; replaced {t['replaced']} ({t['day_count']} today); spot-checks waiting: {t['spot'] or 'none'}" if t and t.get("enabled") else "off"))
 
@@ -611,11 +814,11 @@ def spot(title, verdict):
     st = load_state()
     if not st:
         sys.exit("no enforce state yet")
-    tvl = (st.get("tv") or {}).get("spot", [])
-    hits = [t for t in st["spot"] + tvl if title.lower() in t.lower()]
+    lists = [st["spot"], (st.get("tv") or {}).get("spot", []), (st.get("backlog_tv") or {}).get("spot", [])]
+    hits = [t for l in lists for t in l if title.lower() in t.lower()]
     if len(hits) != 1:
         sys.exit(f"{len(hits)} waiting spot-checks match {title!r}: {hits}")
-    (st["spot"] if hits[0] in st["spot"] else tvl).remove(hits[0]); save_state(st)
+    next(l for l in lists if hits[0] in l).remove(hits[0]); save_state(st)
     r.ledger({"title": hits[0], "event": "spot-check", "by": "Jay", "verdict": verdict})
     print(f"recorded {verdict}: {hits[0]}")
     if verdict == "bad":
@@ -628,8 +831,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dry-run", action="store_true"); ap.add_argument("--look-back-hours", type=float, default=0, help="with --dry-run only: pretend go-live was this long ago")
     ap.add_argument("--status", action="store_true")
-    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true"); ap.add_argument("--enable-tv", action="store_true"); ap.add_argument("--disable-tv", action="store_true"); ap.add_argument("--tv-dry-run", type=float, metavar="HOURS"); ap.add_argument("--sweep", type=int, metavar="N", help="measure the next N library movies (watch list first) and fix the FAILs"); ap.add_argument("--sweep-minutes", type=int, default=300); ap.add_argument("--test-title", metavar="TITLE", help="run one movie through the real replace-and-report path now"); ap.add_argument("--test-post", action="store_true", help="send one clearly-labelled TEST message to Discord")
+    ap.add_argument("--spot", nargs=2, metavar=("TITLE", "VERDICT")); ap.add_argument("--resume", action="store_true"); ap.add_argument("--enable-tv", action="store_true"); ap.add_argument("--enable-backlog", action="store_true"); ap.add_argument("--disable-backlog", action="store_true"); ap.add_argument("--backlog-dry-run", action="store_true"); ap.add_argument("--digest-now", action="store_true"); ap.add_argument("--disable-tv", action="store_true"); ap.add_argument("--tv-dry-run", type=float, metavar="HOURS"); ap.add_argument("--sweep", type=int, metavar="N", help="measure the next N library movies (watch list first) and fix the FAILs"); ap.add_argument("--sweep-minutes", type=int, default=300); ap.add_argument("--test-title", metavar="TITLE", help="run one movie through the real replace-and-report path now"); ap.add_argument("--test-post", action="store_true", help="send one clearly-labelled TEST message to Discord")
     a = ap.parse_args()
+    if a.enable_backlog or a.disable_backlog:
+        return enable_backlog(a.enable_backlog)
+    if a.backlog_dry_run:
+        return backlog_dry_run()
+    if a.digest_now:
+        st = load_state(); post_digest(st, True); return save_state(st)
     if a.enable_tv or a.disable_tv:
         return enable_tv(a.enable_tv)
     if a.tv_dry_run:
