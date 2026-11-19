@@ -404,6 +404,8 @@ def run_episode(m, tier, rec):
 def process(m, plan_only):
     global CURRENT_SHOW, CURRENT_VIDEO
     CURRENT_SHOW, CURRENT_VIDEO = m["show"], os.path.basename(m["video"])
+    if rep.is_skipped(m["show"], m["title"]):
+        log(f"{m['title']}: on the never-touch list; nothing done"); return None
     guard()
     rec, st, why = measure_one(m["sub_c"], m["video_c"])
     if rec is None:

@@ -135,6 +135,28 @@ class T(unittest.TestCase):
         self.assertEqual(tv.guards.count("Alpha"), 1)
         self.assertEqual(sorted(tvs["handled"]), ["eid:11", "eid:12"])
 
+    def test_never_touch_list(self):
+        import tempfile
+        f = os.path.join(tempfile.mkdtemp(), "skip.txt")
+        open(f, "w").write("# comment\nDestinos: An Introduction To Spanish   # learning show\nHeat (1995)\nAliens\n")
+        old, enf.r.SKIP_FILE = enf.r.SKIP_FILE, f
+        try:
+            sk = enf.r.is_skipped
+            self.assertTrue(sk("destinos an introduction to spanish"))
+            self.assertTrue(sk("Destinos: An Introduction To Spanish"))
+            self.assertTrue(sk("Heat (1995)"))
+            self.assertFalse(sk("Heat (2013)"))                 # a line with a year needs that year
+            self.assertTrue(sk("Aliens (1986)")); self.assertTrue(sk("Aliens (2099)"))   # a line without a year matches any year
+            self.assertFalse(sk("Suits", "Suits S01E01"))
+            self.assertTrue(sk("Unrelated", "Aliens"))
+        finally:
+            enf.r.SKIP_FILE = old
+        enf.r.SKIP_FILE = os.path.join(tempfile.mkdtemp(), "missing.txt")
+        try:
+            self.assertFalse(enf.r.is_skipped("Anything"))      # no file means nothing is skipped
+        finally:
+            enf.r.SKIP_FILE = old
+
     def test_audio_guard(self):
         mk = lambda *streams: json.dumps({"streams": [{"tags": x} for x in streams]})
         self.assertTrue(enf.audio_ok(mk({"language": "eng", "title": "Opus 7.1"}))[0])

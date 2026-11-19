@@ -326,6 +326,8 @@ def tv_core(st, slot, tvs, tv, work, dry, cap_measure, cap_replace, daily_cap, b
             log(f"TV: episode {row['eid']}: {str(e)[:100]}; dropped"); tvs["handled"].append(key); continue
         if row.get("path") and (m["sub"] != row["path"] or current_fp(m["sub"]) != row["fp"]):
             log(f"TV: {m['title']}: the sub changed since the download; dropped"); tvs["handled"].append(key); continue
+        if r.is_skipped(m["show"], m["title"]):
+            continue                             # on the never-touch list: not measured, not marked, so removing it from the list brings it back
         if _norm(m["show"]) in blocked:
             continue                             # this show is being watched: leave all its episodes for a later pass
         tv.CURRENT_SHOW, tv.CURRENT_VIDEO = m["show"], os.path.basename(m["video"])
@@ -513,7 +515,7 @@ def backlog_lane(st, dry, t_tick):
     try:
         try:
             tv = _load("replace_tv", "subtitle-replace-tv.py")
-            ordered = order_tv_backlog(tv_backlog_items(), watch_shows(), set(tvb["handled"]))
+            ordered = [x for x in order_tv_backlog(tv_backlog_items(), watch_shows(), set(tvb["handled"])) if not r.is_skipped(x["show"])]
             work = [{"eid": x["eid"], "path": None, "fp": None, "key": f"eid:{x['eid']}"} for x in ordered[:600]]
             log(f"backlog: {len(ordered)} TV episodes still to look at")
             m1, _ = tv_core(st, "backlog_tv", tvb, tv, work, False, 40, BL_PASS_REPLACE, BL_DAILY_REPLACE, BL_TV_SECONDS)
@@ -663,6 +665,11 @@ def tick(dry, look_back_h=0):
             if not dry:
                 mark(st, row)
             continue
+        if r.is_skipped(m["title"]):
+            log(f"{m['title']}: on the never-touch list; dropped")
+            if not dry:
+                mark(st, row)
+            continue
         ok, note = audio_ok(probe_audio(m["video"]))
         if not ok:
             say(f"**Subtitle check, needs review:** {m['title']}: {note}. Not replaced.", dry)
@@ -738,7 +745,7 @@ def sweep(n, max_minutes, st=None, max_replace=None):
     movies = [{"rid": a, "title": b, "year": c} for a, b, c in db.execute(
         "select radarrId, title, year from table_movies where radarrId in (select radarrId from table_history_movie "
         "where action in (1,2,3) and language in ('en','en:hi')) order by radarrId")]
-    queue = order_candidates(movies, watch_list(), handled_titles())
+    queue = [x for x in order_candidates(movies, watch_list(), handled_titles()) if not r.is_skipped(x["title"], f"{x['title']} ({x['year']})")]
     log(f"sweep: {len(queue)} movies not yet measured; this tranche is up to {n}")
     tally = {"PASS": 0, "UNVERIFIABLE": 0, "needs review": 0, "replaced": 0, "unresolved": 0, "skipped": 0, "errors": 0}
     started, stopped = time.time(), ""

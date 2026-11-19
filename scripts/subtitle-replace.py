@@ -22,6 +22,27 @@ gate = importlib.util.module_from_spec(spec); spec.loader.exec_module(gate)
 
 ROOT = os.path.expanduser("~/subtitle-sweep")
 LEDGER, LOCK = os.path.join(ROOT, "ledger.jsonl"), os.path.join(ROOT, "lock")
+SKIP_FILE = os.path.join(ROOT, "skip-titles.txt")      # one show or movie per line; "#" starts a comment. Lives outside the repo.
+
+
+def _skip_key(s):
+    s = (s or "").strip().lower()
+    return s if re.search(r"\(\d{4}\)\s*$", s) else re.sub(r"[^a-z0-9]+", "", s)
+
+
+def is_skipped(*names):
+    """True if any of the names (a show title, a movie title, "Title (Year)") is on the never-touch list. A line with a year must match the
+    year; a line without one matches the title in any year. Spanish-style punctuation and case do not matter."""
+    try:
+        lines = [l.split("#")[0].strip() for l in open(SKIP_FILE, encoding="utf-8")]
+    except OSError:
+        return False
+    keys = {_skip_key(l) for l in lines if l}
+    for n in names:
+        n = n or ""
+        if _skip_key(n) in keys or re.sub(r"[^a-z0-9]+", "", re.sub(r"\s*\(\d{4}\)\s*$", "", n.lower())) in keys:
+            return True
+    return False
 BAZARR_CFG = "/srv/docker/bazarr/config/config.yaml"
 API = "http://127.0.0.1:6767/api"
 NORMAL_BUDGET_S, SETTLE_S, SETTLE_MAX_S = 1200, 45, 1500   # time spent on regular candidates before whisperai
