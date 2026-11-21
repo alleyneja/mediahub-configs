@@ -44,8 +44,9 @@ GATE_MINUTES = 20
 TV_CAP_MEASURE, TV_CAP_REPLACE, TV_DAILY_REPLACE, TV_BUDGET_S = 6, 2, 12, 25 * 60
 # Backlog lane (old library content), off until --enable-backlog. Per tick, after new downloads: 5 min of TV, 5 min of movies, at most
 # 2 replacements per pass, 40 replacements per day (TV and movies together), one Discord digest a day instead of a post per replacement.
-BL_TV_SECONDS, BL_MOVIE_MINUTES, BL_PASS_REPLACE, BL_DAILY_REPLACE = 5 * 60, 5, 2, 40
+BL_TV_SECONDS, BL_MOVIE_MINUTES, BL_PASS_REPLACE, BL_DAILY_REPLACE = 5 * 60, 5, 2, 10_000  # daily cap lifted by Jay 2026-11-21 (was 40); the per-pass cap of 2 still applies
 BL_MAX_TICK_ELAPSED, BL_DIGEST_HOUR, BL_SPOT_N = 8 * 60, 8, 5
+BL_HUNT_S = 12 * 60   # backlog titles get 12 min of regular candidates (new downloads keep 20), so one stubborn title cannot hold the lane for an hour
 
 
 def log(msg):
@@ -512,9 +513,13 @@ def backlog_lane(st, dry, t_tick):
     if tvb["day_count"] >= BL_DAILY_REPLACE:
         log("backlog: daily replacement cap reached"); post_digest(st); return
     DIGEST = []
+    old_budget = r.NORMAL_BUDGET_S
+    r.NORMAL_BUDGET_S = BL_HUNT_S
     try:
         try:
             tv = _load("replace_tv", "subtitle-replace-tv.py")
+            if getattr(tv, "rep", None) is not None:
+                tv.rep.NORMAL_BUDGET_S = BL_HUNT_S
             ordered = [x for x in order_tv_backlog(tv_backlog_items(), watch_shows(), set(tvb["handled"])) if not r.is_skipped(x["show"])]
             work = [{"eid": x["eid"], "path": None, "fp": None, "key": f"eid:{x['eid']}"} for x in ordered[:600]]
             log(f"backlog: {len(ordered)} TV episodes still to look at")
@@ -533,6 +538,7 @@ def backlog_lane(st, dry, t_tick):
             if tally:
                 bl["measured_movies"] = bl.get("measured_movies", 0) + sum(v for k, v in tally.items() if k in ("PASS", "UNVERIFIABLE", "needs review", "replaced", "unresolved"))
     finally:
+        r.NORMAL_BUDGET_S = old_budget
         got, DIGEST = DIGEST, None
     bl["digest"] = bl.get("digest", []) + got
     post_digest(st)
