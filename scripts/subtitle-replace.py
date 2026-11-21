@@ -84,12 +84,22 @@ def _movie(rid, title, path):
                         "and action in (1,2,3) and language in ('en','en:hi') order by id desc limit 1", (rid,)).fetchone()
     if not h:
         sys.exit(f"{title}: no English download in Bazarr history")
+    sub_c = h[4]
+    if not os.path.exists(gate.host_path(sub_c)):
+        # an older history row can carry a retired mount prefix (/movies/...); use the file beside the video instead
+        stem = path.rsplit(".", 1)[0]
+        for ext in (".en.srt", ".en.hi.srt"):
+            if os.path.exists(gate.host_path(stem + ext)):
+                sub_c = stem + ext; break
     return {"rid": rid, "title": title, "video_c": path, "video": gate.host_path(path), "hist": h,
-            "sub_c": h[4], "sub": gate.host_path(h[4]), "lang": h[3]}
+            "sub_c": sub_c, "sub": gate.host_path(sub_c), "lang": h[3]}
 
 
 def find_movie(text):
     rows = ro_db().execute("select radarrId,title,path from table_movies where title like ?", (f"%{text}%",)).fetchall()
+    exact = [x for x in rows if x[1].lower() == text.lower()]
+    if len(rows) != 1 and len(exact) == 1:
+        rows = exact   # "Spider-Man" is also a substring of ten other titles
     if len(rows) != 1:
         sys.exit(f"'{text}' matches {len(rows)} movies: {[r[1] for r in rows]}")
     return _movie(*rows[0])
@@ -127,6 +137,7 @@ MOVIE_QUERY = gate.PLEX_QUERY_TMPL % (
     '\\"movies\\":len(v),\\"all\\":m.get(\\"size\\",0)}))')
 
 
+UNVERIFIABLE_AS_FAIL = False
 ALLOW_MOVIE_STREAMS = False     # one-off, by Jay's explicit say-so (--allow-movie-streams); an unknown stream count still stops the run
 CURRENT_VIDEO = None            # file name of the movie being worked on; set by process() and by the sweep before each title
 THIS_MOVIE_MSG = "STOP: this movie is being watched"
@@ -618,10 +629,12 @@ def main():
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--plan", nargs="+"); g.add_argument("--run", nargs="+"); g.add_argument("--restore"); g.add_argument("--phase0", nargs="+"); g.add_argument("--phase1", nargs="+")
     ap.add_argument("--direct-subsource", action="store_true")
+    ap.add_argument("--treat-unverifiable-as-fail", action="store_true", help="one-off, Jay's call: a current sub that measures UNVERIFIABLE (no usable window, e.g. a commentary track) is replaced like a FAIL")
     ap.add_argument("--allow-movie-streams", action="store_true", help="one-off: do not stop for a movie stream (Jay said so for this run); unknown count still stops")
     a = ap.parse_args()
-    global ALLOW_MOVIE_STREAMS
+    global ALLOW_MOVIE_STREAMS, UNVERIFIABLE_AS_FAIL
     ALLOW_MOVIE_STREAMS = a.allow_movie_streams
+    UNVERIFIABLE_AS_FAIL = a.treat_unverifiable_as_fail
     if ALLOW_MOVIE_STREAMS:
         log("NOTE: movie streams will not stop this run (--allow-movie-streams, Jay's call)")
     os.makedirs(ROOT, exist_ok=True)
@@ -659,6 +672,8 @@ def process(m, plan_only, direct):
     rec, st, why = measure_one(m["sub_c"], m["video_c"])
     if rec is None:
         log(f"{m['title']}: could not measure; skipped"); return None
+    if UNVERIFIABLE_AS_FAIL and st == "UNVERIFIABLE":
+        log(f"{m['title']}: current is UNVERIFIABLE; treated as FAIL by --treat-unverifiable-as-fail (Jay's call)"); st = "FAIL"
     tier = tier_of(rec)
     log(f"{m['title']}: current {st} {why[:2]} | cues {rec['cues']} cov {rec['last_cue_end'] / rec['dur']:.0%} -> Tier {tier}"
         if st == "FAIL" else f"{m['title']}: current is {st}; not a replacement target")
