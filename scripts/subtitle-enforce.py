@@ -820,6 +820,17 @@ def status():
 def spot(title, verdict):
     if verdict not in ("good", "bad"):
         sys.exit("verdict must be good or bad")
+    # A running tick loads the state at its start and saves it at its end, so a verdict written meanwhile is overwritten.
+    # Wait for the shared lock, then read and write the state while holding it.
+    lk = open(r.LOCK, "w")
+    waited = False
+    while True:
+        try:
+            fcntl.flock(lk, fcntl.LOCK_EX | fcntl.LOCK_NB); break
+        except OSError:
+            if not waited:
+                print("a subtitle run is in progress; waiting for it to finish so the verdict is not overwritten..."); waited = True
+            time.sleep(10)
     st = load_state()
     if not st:
         sys.exit("no enforce state yet")
