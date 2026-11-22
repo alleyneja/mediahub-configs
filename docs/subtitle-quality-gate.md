@@ -273,3 +273,9 @@ tranches are still reviewed in full (sweep record); UNVERIFIABLE is reported and
 condition is unchanged: every flag reviewed by Jay, precision judged against section 3, coverage-only FAILs and UNVERIFIABLE never
 auto-replaced, movie-stream guard, spot-check sample, and fall back to report-only if a spot-check finds a bad replacement.
 Reason given: the review is thorough but time-consuming; the replace path already has backups, restore and a never-worse rule.
+
+
+## 2026-11-22: rule v1.1 for movies, "dense text that matches nothing" is a FAIL
+Spider-Man (2002) carried the director's commentary as its English subtitle. Every one of its 7 windows read a large, scattered offset (about -60 to +60 s) and none was usable, so rule v1 said UNVERIFIABLE ("low-speech film") and never replaced it. The lane's own ledger showed ten more movies with the same signature (0 or 1 usable windows, 25 to 177 cues per window, scattered offsets, last cue often at 100% to 113% of the runtime): Hobbit 2, Fellowship of the Ring, Lion King 1.5, Batman Begins, Lego Movie 2, X-Men Origins: Wolverine, Kingdom of Heaven, Terminator Salvation, Aliens, and one Lion King entry. All have English audio.
+New rule in `judge()`: FAIL when the measurer recorded a real English, non-commentary audio track (`audio_en`), at most one window is usable, at least 6 windows have cues and the median cue count per window is 20 or more. Without `audio_en` (foreign audio, untagged tracks, records measured before this change) or with sparse cues it stays UNVERIFIABLE, so quiet films and subtitled foreign films are not touched. A FAIL still only changes a file when a candidate passes the full check; Tier B restores the original otherwise.
+Also: `subtitle-replace.py --treat-unverifiable-as-fail` (one-off, Jay's call), exact-title preference in `find_movie`, and a fallback to the subtitle beside the video when an old history row carries the retired `/movies/` prefix.

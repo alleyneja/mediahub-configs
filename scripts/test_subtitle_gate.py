@@ -34,6 +34,25 @@ class Rule(unittest.TestCase):
     def test_low_speech_is_unverifiable_not_fail(self):
         self.assertEqual(gate.judge(rec([43.9, 0.0, 0.1, 56.9, 55.0, 23.2, 0.0]))[0], "UNVERIFIABLE")
 
+    def test_dense_text_matching_nothing_is_a_fail_with_english_audio(self):
+        r = rec([44.4, 59.4, -35.6, -28.1, -42.0, 57.6, -43.9]); r["audio_en"] = True
+        self.assertEqual(gate.judge(r)[0], "FAIL")
+        r["windows"][1]["offset"] = 0.2   # one window lines up: still no better than one usable window
+        self.assertEqual(gate.judge(r)[0], "FAIL")
+        r["windows"][2]["offset"] = 0.1   # two usable windows: back to "cannot tell"
+        self.assertEqual(gate.judge(r)[0], "UNVERIFIABLE")
+
+    def test_same_pattern_without_english_audio_stays_unverifiable(self):
+        r = rec([44.4, 59.4, -35.6, -28.1, -42.0, 57.6, -43.9])
+        self.assertEqual(gate.judge(r)[0], "UNVERIFIABLE")
+        r["audio_en"] = False
+        self.assertEqual(gate.judge(r)[0], "UNVERIFIABLE")
+
+    def test_sparse_cues_with_english_audio_stay_unverifiable(self):
+        r = rec([44.4, 59.4, -35.6, -28.1, -42.0, 57.6, -43.9]); r["audio_en"] = True
+        for w in r["windows"]: w["cues"] = 12
+        self.assertEqual(gate.judge(r)[0], "UNVERIFIABLE")
+
     def test_scattered_artifacts_alone_are_not_a_consensus(self):
         self.assertEqual(gate.judge(rec([0.0, 58.0, -30.0, 0.0, 25.0, 0.0, 0.0]))[0], "UNVERIFIABLE")
 

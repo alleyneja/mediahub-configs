@@ -77,6 +77,10 @@ def judge(rec, p=None):
             break
     if why:
         return "FAIL", why
+    # Dense subtitle text that matches the English audio nowhere is the wrong text (another cut, a commentary track), not a quiet film.
+    # Needs a measurer record that says the audio was a real English track (audio_en); older records never trigger this.
+    if rec.get("audio_en") and len(use) <= 1 and len(ws) >= 6 and sorted(w.get("cues", 0) for w in ws)[len(ws) // 2] >= 20:
+        return "FAIL", ["dense subtitle text but no window lines up with the English audio (wrong text, a different cut or a commentary track)"]
     if len(use) < p["min_usable_windows"]:
         return "UNVERIFIABLE", [f"only {len(use)} usable windows (low-speech film?); nothing contradicts the subtitle"]
     return "PASS", []

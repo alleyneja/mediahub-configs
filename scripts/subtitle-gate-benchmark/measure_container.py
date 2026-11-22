@@ -12,28 +12,28 @@ def parse(p):
 def ts(x):
     x=max(x,0);return '%02d:%02d:%02d,%03d'%(x//3600,x%3600//60,x%60,round(x%1*1000)%1000)
 def pick_audio(video):
-    """Index (among audio streams) of the first English, non-commentary track; 0 if none qualifies. A film whose first track is a
+    """(index among audio streams, found) of the first English, non-commentary track; (0, False) if none qualifies. A film whose first track is a
     dub or a commentary is then measured against the English dialogue. Mirrored by pick_audio_index() in subtitle-enforce.py."""
     try:
         out=subprocess.run(['ffprobe','-v','error','-select_streams','a','-show_entries','stream_tags=language,title','-of','json',video],capture_output=True,text=True,timeout=60).stdout
         st=json.loads(out).get('streams',[])
     except Exception:
-        return 0
+        return 0,False
     for i,x in enumerate(st):
         t={k.lower():str(v) for k,v in (x.get('tags') or {}).items()}
-        if t.get('language','').lower() in ('eng','en') and 'comment' not in t.get('title','').lower(): return i
-    return 0
+        if t.get('language','').lower() in ('eng','en') and 'comment' not in t.get('title','').lower(): return i,True
+    return 0,False
 def video_job(args):
     video,jobs,outp=args
     tag=re.sub(r'\W+','_',os.path.basename(video))[:40]+str(os.getpid()); work='/tmp/bench/'+tag; os.makedirs(work,exist_ok=True)
     dur=float(subprocess.run(['ffprobe','-v','error','-show_entries','format=duration','-of','csv=p=0',video],capture_output=True,text=True).stdout)
-    ai=pick_audio(video); wavs={}
+    ai,aen=pick_audio(video); wavs={}
     for i,f in enumerate(F):
         t0=max(0,dur*f-W/2); wav=f'{work}/w{i}.wav'
         subprocess.run(['nice','-n','19','ffmpeg','-v','error','-y','-ss',str(t0),'-t',str(W),'-i',video,'-map',f'0:a:{ai}','-ac','1','-ar','16000',wav],check=True)
         wavs[i]=(t0,wav)
     for j in jobs:
-        cues=parse(j['srt']); res={'audio':ai,'title':j['title'],'variant':j['variant'],'dur':round(dur),'cues':len(cues),'last_cue_end':round(cues[-1][1]) if cues else 0,'windows':[]}
+        cues=parse(j['srt']); res={'audio':ai,'audio_en':aen,'title':j['title'],'variant':j['variant'],'dur':round(dur),'cues':len(cues),'last_cue_end':round(cues[-1][1]) if cues else 0,'windows':[]}
         for i,(t0,wav) in wavs.items():
             sel=[(s-t0,e-t0,x) for s,e,x in cues if t0<=s<t0+W]
             if len(sel)<10: res['windows'].append(None); continue
