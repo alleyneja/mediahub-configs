@@ -16,8 +16,8 @@ Env: VIEWER_LOGDIR, VIEWER_POLL (seconds, default 10).
 Usage: livetv-viewer-log.py            run forever (systemd)
        livetv-viewer-log.py --summary  who watched what, per session, from the log
 """
-import csv, glob, json, os, re, subprocess, sys, time, urllib.error, urllib.request
-from datetime import datetime
+import collections, csv, glob, json, os, re, shutil, subprocess, sys, time, urllib.error, urllib.request
+from datetime import datetime, timedelta
 
 LOGDIR = os.environ.get("VIEWER_LOGDIR", os.path.expanduser("~/logs/livetv-viewer-log"))
 CSV = os.path.join(LOGDIR, "viewers.csv")
@@ -138,14 +138,169 @@ def write_load(row):
         w.writerow(row)
 
 
+# ---- incident notice: a live session stuck in "buffering" -> snapshot + one Discord line with a verdict ----
+INCIDENT_DIR = os.environ.get("VIEWER_INCIDENTS", os.path.expanduser("~/logs/livetv-incidents"))
+WEBHOOK_ENV = os.environ.get("VIEWER_WEBHOOK_ENV", os.path.expanduser("~/mediahub-configs/scripts/fleet-healthcheck.env"))   # FLEET_HEALTH_WEBHOOK=...
+TAP_CSV = os.path.expanduser("~/logs/livetv-session-tap/tap.csv")
+PLEX_LOG = "/srv/docker/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log"
+STALL_SAMPLES = int(os.environ.get("VIEWER_STALL_SAMPLES", "3"))      # consecutive buffering samples (10 s each) before we call it a stall
+COOLDOWN = int(os.environ.get("VIEWER_COOLDOWN", "900"))              # one notice per device per 15 min
+SECRET = re.compile(r"(X-Plex-Token|token|password|username)=[^&\s\"']+", re.I)
+URLS = re.compile(r"https?://\S+")
+
+
+def redact(line):
+    return URLS.sub("<url>", SECRET.sub(r"\1=***", line))
+
+
+def tail_lines(path, nbytes):
+    try:
+        with open(path, "rb") as f:
+            f.seek(0, 2); size = f.tell(); f.seek(max(0, size - nbytes))
+            return f.read().decode(errors="ignore").splitlines()
+    except Exception:
+        return []
+
+
+def feed_stats(now_dt):
+    """Streams the stream-logger saw in the last 10 min -> [(mean kB/s over last 90 s, longest silent gap s)]. Ignores idle connections (e.g. tailscaled)."""
+    cut90 = (now_dt - timedelta(seconds=90)).isoformat(timespec="seconds")
+    cut600 = (now_dt - timedelta(seconds=600)).isoformat(timespec="seconds")
+    by = collections.defaultdict(list)
+    for l in tail_lines(TAP_CSV, 400000):
+        p = l.split(",")
+        if len(p) >= 3 and p[0] >= cut600:
+            try:
+                by[p[1]].append((p[0], float(p[2])))
+            except ValueError:
+                pass
+    out = []
+    for c, rs in by.items():
+        if sum(k for _, k in rs) < 3000:                    # < ~3 MB in 10 min: not a stream
+            continue
+        recent = [k for t, k in rs if t >= cut90]
+        if len(recent) < 15:
+            continue
+        gap = run = 0
+        for k in recent:
+            run = run + 1 if k < 50 else 0
+            gap = max(gap, run)
+        out.append((sum(recent) / len(recent), gap))
+    return out
+
+
+def snapshot(dev, now_dt):
+    name = now_dt.strftime("%Y%m%d-%H%M%S") + "-" + re.sub(r"\W+", "_", dev)[:20]
+    d = os.path.join(INCIDENT_DIR, name)
+    os.makedirs(d, exist_ok=True)
+    cutoff = now_dt - timedelta(minutes=12)
+    keep, ok = [], False
+    for l in tail_lines(PLEX_LOG, 12 * 1024 * 1024):          # Plex logs rotate in ~45 min: copy the last 12 min now, credentials removed
+        try:
+            ok = datetime.strptime(l[:20], "%b %d, %Y %H:%M:%S") >= cutoff
+        except ValueError:
+            pass                                              # continuation line: keep the previous decision
+        if ok:
+            keep.append(redact(l))
+    with open(os.path.join(d, "plex-log-last12min.txt"), "w") as f:
+        f.write("\n".join(keep[-60000:]))
+    cut4 = (now_dt - timedelta(minutes=4)).isoformat(timespec="seconds")
+    for src, dst, n in ((CSV, "viewers-tail.csv", 200000), (LOAD_CSV, "load-tail.csv", 60000), (TAP_CSV, "stream-tail.csv", 400000)):
+        with open(os.path.join(d, dst), "w") as f:
+            f.write("\n".join(l for l in tail_lines(src, n) if l[:4] != "2026" or l[:19] >= cut4))
+    dirs = sorted(x for x in os.listdir(INCIDENT_DIR) if os.path.isdir(os.path.join(INCIDENT_DIR, x)))
+    for old in dirs[:-40]:
+        shutil.rmtree(os.path.join(INCIDENT_DIR, old), ignore_errors=True)
+    return d
+
+
+def verdict(streams, load_row):
+    try:
+        cpu, gpu, enc = float(load_row[1] or 0), float(load_row[2] or 0), float(load_row[3] or 0)
+    except (ValueError, IndexError):
+        cpu = gpu = enc = 0
+    if not streams:
+        return "no active provider stream was visible to the logger (stream may have dropped)"
+    if any(m < 300 or g >= 20 for m, g in streams):          # 10-15 s gaps are normal for this bursty feed (~20/hour, hidden by Plex's buffer)
+        return "the FEED into r9 stalled (provider side or the route to the provider)"
+    if cpu >= 60 or gpu >= 90 or enc >= 90:
+        return "r9 was BUSY (CPU/GPU high)"
+    return "feed and r9 both look fine, so the problem is between r9 and the viewer (internet or their Wi-Fi/device)"
+
+
+def build_message(m, now_dt, load_row, streams, folder, secs):
+    p, s, t = m.get("Player", {}), m.get("Session", {}), m.get("TranscodeSession", {}) or {}
+    feeds = ", ".join("%.0f kB/s%s" % (mean, "" if gap < 20 else " (%d s gap)" % gap) for mean, gap in streams) or "none seen"
+    return ("Live TV stall: %s (%s) on \"%s\", buffering for %d s+ at %s.\n"
+            "Feed into r9: %s. r9: CPU %s%%, GPU %s%%. Transcode %s x real time.\n"
+            "Verdict: %s.\nSnapshot on r9: %s" % (
+                p.get("title", "?"), "remote" if not p.get("local") else "home network", (m.get("title") or "?")[:40], secs,
+                now_dt.strftime("%H:%M:%S"), feeds, load_row[1] if len(load_row) > 1 else "?", load_row[2] if len(load_row) > 2 and load_row[2] != "" else "?",
+                ("%.1f" % float(t["speed"])) if t.get("speed") not in (None, "") else "?", verdict(streams, load_row), folder.replace(os.path.expanduser("~"), "~")))
+
+
+def post_discord(msg):
+    try:
+        hook = next(l.split("=", 1)[1].strip().strip("\"'") for l in open(WEBHOOK_ENV) if l.startswith("FLEET_HEALTH_WEBHOOK="))
+        req = urllib.request.Request(hook, data=json.dumps({"content": msg[:1900]}).encode(),
+                                     headers={"Content-Type": "application/json", "User-Agent": "livetv-viewer-log/1.0"})
+        urllib.request.urlopen(req, timeout=8)
+        return True
+    except Exception:
+        return False
+
+
+class Incidents:
+    def __init__(self):
+        self.streak, self.last = {}, {}
+
+    def check(self, meta, now_dt, load_row):
+        seen = set()
+        for m in meta:
+            if not m.get("live"):
+                continue
+            k = m.get("Player", {}).get("title", "?")
+            seen.add(k)
+            self.streak[k] = self.streak.get(k, 0) + 1 if m.get("Player", {}).get("state") == "buffering" else 0
+            if self.streak[k] >= STALL_SAMPLES and now_dt.timestamp() - self.last.get(k, 0) > COOLDOWN:
+                self.last[k] = now_dt.timestamp()
+                try:
+                    folder = snapshot(k, now_dt)
+                    msg = build_message(m, now_dt, load_row, feed_stats(now_dt), folder, self.streak[k] * POLL)
+                    with open(os.path.join(INCIDENT_DIR, "incidents.log"), "a") as f:
+                        f.write(now_dt.isoformat(timespec="seconds") + " " + msg.replace("\n", " | ") + "\n")
+                    post_discord(msg)
+                except Exception:
+                    pass                                       # an incident notice must never stop the viewer log
+        for k in list(self.streak):
+            if k not in seen:
+                self.streak.pop(k)
+
+
+def selftest():
+    """Build (and save a snapshot for) a notice from the current state without posting."""
+    now = datetime.now()
+    meta = fetch(token())
+    m = next((x for x in meta if x.get("live")), meta[0] if meta else {"Player": {"title": "(no session)", "local": True}, "title": "(none)"})
+    ld = Load(); time.sleep(2); row_ = ld.sample(now.isoformat(timespec="seconds"))
+    d = snapshot("selftest", now)
+    print(build_message(m, now, row_, feed_stats(now), d, 30))
+    print("snapshot files:", ", ".join("%s %dKB" % (f, os.path.getsize(os.path.join(d, f)) // 1024) for f in sorted(os.listdir(d))))
+    shutil.rmtree(d, ignore_errors=True)
+
+
 def run():
     tok, down = None, False
     load = Load()
+    inc = Incidents()
     while True:
-        now = datetime.now().isoformat(timespec="seconds")
+        now_dt = datetime.now()
+        now = now_dt.isoformat(timespec="seconds")
+        meta = []
         try:
             tok = tok or token()
-            rows = [row(m, now) for m in fetch(tok)]
+            meta = fetch(tok)
+            rows = [row(m, now) for m in meta]
             down = False
         except urllib.error.HTTPError as e:
             tok = None                                    # token may have been rewritten; re-read next time
@@ -154,10 +309,16 @@ def run():
             rows = [pad([now, "-", "-", "API-NO-ANSWER", "-", "-", "-", "-", "-", "-", str(e)[:40]])] if not down else []
             down = True                                   # log the first failure of an outage, not every poll
         write(rows)
+        ld = []
         try:
-            write_load(load.sample(now))
+            ld = load.sample(now)
+            write_load(ld)
         except Exception:
             pass                                              # load stats are a bonus; never let them stop the viewer log
+        try:
+            inc.check(meta, now_dt, ld)
+        except Exception:
+            pass
         time.sleep(POLL)
 
 
@@ -174,4 +335,4 @@ def summary():
 
 
 if __name__ == "__main__":
-    summary() if "--summary" in sys.argv else run()
+    selftest() if "--selftest" in sys.argv else summary() if "--summary" in sys.argv else run()
