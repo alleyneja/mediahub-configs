@@ -21,6 +21,7 @@ Homelab Discord server, guild ID `1522633876550324345`, under one category:
 | `#home-automation` | `1549633463231979715` | *(none yet)* | Reserved for future home-automation notifications — intentionally unwired |
 | `#live-tv` | `1574238263760257054` | `scripts/livetv-viewer-log.py` on r9 | Plex Live TV stall notices with a verdict (feed stalled / r9 busy / between r9 and the viewer). Added 2026-11-22. Webhook name "Live TV", secret in r9's gitignored `scripts/livetv-alerts.env` (`LIVETV_WEBHOOK`); falls back to the `#service-outages` "Fleet Health" webhook if missing. |
 | `#music-discovery` | `1574238265429467317` | discovery bot (`stacks/discovery-bot`) | Weekly album cards with Approve/Reject buttons plus its skip/failure notices. Added 2026-11-22; posts via the bot using `DISCORD_CHANNEL_ID` in `stacks/discovery-bot/discovery-bot.env` (was `#media-alerts`). Older cards in `#media-alerts` still work. |
+| `#music-activity` | `1574256391122587740` | lidarr-downloader (`/srv/docker/lidarr-ytdl/config/config.json` `discord_webhook_url`), `scripts/lidarr-ytdl-audit.py` (`scripts/lidarr-ytdl-audit.env`) | Music downloader cards (Download Started/Failed/Partial, Import Partial), scheduler reports, YouTube-fallback audit. Trial started 2026-11-22 (about a week); `#media-alerts` keeps subtitles and audio mismatches. Webhook name "Music Activity". |
 
 ## Where each webhook secret actually lives
 

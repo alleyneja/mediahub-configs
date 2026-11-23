@@ -91,10 +91,11 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 ## F. Discord channels
 
 `#service-outages` (Kuma, Fleet Health, update restarts, monthly report), `#resource-alerts` (Netdata), `#media-alerts`
-(Lidarr audit, audio mismatch, discovery), `#permissions-issues` (permissions + canary), `#service-logs` (weekly digest),
+(subtitles, audio mismatch), `#music-activity` (music downloader, scheduler, audit; trial from 2026-11-22), `#music-discovery`, `#live-tv`, `#permissions-issues` (permissions + canary), `#service-logs` (weekly digest),
 `#home-automation` (unwired), `#joyboy-alerts` (retired, still receives old Kuma posts).
 
 ## Change log
+- 2026-11-22: `#music-activity` created (id 1574256391122587740) as a one-week trial. lidarr-downloader (`discord_webhook_url` in `/srv/docker/lidarr-ytdl/config/config.json`, re-read live) and `scripts/lidarr-ytdl-audit.env` now post there instead of `#media-alerts`. Before: both used the `#media-alerts` webhook (backups kept in the session scratchpad). To revert: put the old webhook back in both files.
 - 2026-11-15: created. Deleted the Sep 25 D12 leftovers (pilot/sentinel/permlab/reboot-test files in prod `~/logs`, r9 `crontab.bak.2026-09-25`, x51 `scripts.retired-20260925`); D12 is closed and nothing referenced them.
 - 2026-11-15: `pathtest.sh` moved into `scripts/`; `verify-nvfbc.sh` and `sonic-analysis-loop.sh` archived in `scripts/archive/` (Jay approved).
 - 2026-11-15: deleted burn-in leftovers (x51 gpu-burn/logs/thermal-monitor, r9 `~/burnin`), the stale x51 setup.sh diff (OCR seeding is in the repo) and the duplicate home `netcheck.sh`. Kept r9 `~/loadtest`.
