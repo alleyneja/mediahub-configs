@@ -94,7 +94,7 @@ SIDECARS = (".lrc", ".txt")
 DOWNLOADER_NAME = re.compile(r"^\d+ - ")  # what the downloader writes: "NN - Title"
 
 
-def rename_downloader_files(album_id, artist_id, lh, apply):
+def rename_downloader_files(album_id, artist_id, lh, apply, only_downloader_names=True):
     """Give the downloader's "NN - Title" files Lidarr's own naming (and album folder).
 
     The downloader names files and folders its own way (no "Artist - Album -" prefix, colons
@@ -107,7 +107,7 @@ def rename_downloader_files(album_id, artist_id, lh, apply):
     """
     try:
         preview = [x for x in http("GET", f"{LIDARR}/rename?artistId={artist_id}&albumId={album_id}", lh) or []
-                   if DOWNLOADER_NAME.match(os.path.basename(x["existingPath"]))]
+                   if not only_downloader_names or DOWNLOADER_NAME.match(os.path.basename(x["existingPath"]))]
         if not preview:
             return 0
         for x in preview:
@@ -153,6 +153,68 @@ def rename_downloader_files(album_id, artist_id, lh, apply):
     except Exception as e:  # never break the audit over cosmetics
         print(f"rename step skipped for album {album_id}: {e}", file=sys.stderr)
         return 0
+
+
+VANISHED_STATE = os.path.expanduser("~/logs/lidarr-ytdl-vanished.json")
+VANISHED_EVERY = 86400  # the check costs one Lidarr request per downloaded album
+
+
+def stranded_downloads(folder):
+    """Downloader-named audio files still sitting in `folder` (host path)."""
+    try:
+        return sorted(f for f in os.listdir(folder)
+                      if DOWNLOADER_NAME.match(f) and f.lower().endswith((".mp3", ".flac", ".m4a", ".opus", ".ogg")))
+    except OSError:
+        return []
+
+
+def report_vanished_albums(db, lh):
+    """Flag downloaded albums that Lidarr has since dropped, leaving untracked files behind.
+
+    MusicBrainz sometimes merges a deluxe/anniversary release group into the standard
+    album; Lidarr then deletes the extra album (its id starts returning 404) and files the
+    downloader wrote for it are orphaned: invisible to Lidarr, duplicating tracks that are
+    already owned. Nothing noticed this for weeks (Nov 23 2026: 13 albums). This reports
+    each one once, only while downloader-named files are still in its folder (a renamed
+    or re-imported album is fine). Reports only; what to do with the files is a human call.
+    """
+    try:
+        with open(VANISHED_STATE) as f:
+            st = json.load(f)
+    except (OSError, ValueError):
+        st = {}
+    if time.time() - st.get("last", 0) < VANISHED_EVERY:
+        return
+    reported = st.setdefault("reported", {})
+    rows = db.execute("SELECT album_id, MAX(artist_name), MAX(album_title), MAX(lidarr_album_path) "
+                      "FROM track_downloads WHERE success=1 AND deleted=0 AND lidarr_album_path != '' "
+                      "GROUP BY album_id").fetchall()
+    found, seen_dirs = [], set()
+    for aid, artist, title, path in rows:
+        try:
+            http("GET", f"{LIDARR}/album/{aid}", lh)
+            continue
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                continue
+        host = path.replace("/music", PATH_MAP[1], 1)
+        files = stranded_downloads(host)
+        if files and str(aid) not in reported and host not in seen_dirs:
+            seen_dirs.add(host)
+            found.append((aid, f"{artist} - {title}: {len(files)} untracked file(s) in {os.path.relpath(host, PATH_MAP[1])}"))
+    for aid, _ in found:
+        reported[str(aid)] = int(time.time())
+    st["last"] = time.time()
+    os.makedirs(os.path.dirname(VANISHED_STATE), exist_ok=True)
+    with open(VANISHED_STATE, "w") as f:
+        json.dump(st, f)
+    for _, line in found:
+        print("VANISHED " + line)
+    if found:
+        discord("lidarr-ytdl: %d downloaded album(s) no longer exist in Lidarr but their files are still in the "
+                "library, untracked (usually MusicBrainz merged an edition into another album; they likely "
+                "duplicate tracks you own). Review, import or remove:\n%s"
+                % (len(found), "\n".join("- " + x for _, x in found)))
 
 
 VERIFIED_SCORE = 0.90   # AcoustID score that counts as "this is the right song"
@@ -375,6 +437,7 @@ def main():
 
     print(f"checked {checked}, bad {bad}, review {len(reviews)}, pending {pending}, tolerance {a.tolerance}s")
     if a.apply:
+        report_vanished_albums(db, lh)
         # Never advance past a row we could not judge yet.
         # A row that never shows up in Lidarr stops holding the cursor after an hour.
         recent = [t for t in pending_ts if t > time.time() - PENDING_EXPIRY]

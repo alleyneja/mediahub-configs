@@ -105,5 +105,16 @@ class Identity(unittest.TestCase):
             self.assertFalse(audit.is_downloaders_file(p, row, 13))
 
 
+class Stranded(unittest.TestCase):
+    def test_only_downloader_named_audio_counts(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            for n in ("01 - Intro.mp3", "02 - Song.flac", "03 - Song.lrc", "cover.jpg",
+                      "Artist - Album - 01 - Intro.mp3"):
+                open(os.path.join(d, n), "w").close()
+            self.assertEqual(audit.stranded_downloads(d), ["01 - Intro.mp3", "02 - Song.flac"])
+        self.assertEqual(audit.stranded_downloads("/nonexistent/dir"), [])
+
+
 if __name__ == "__main__":
     unittest.main()

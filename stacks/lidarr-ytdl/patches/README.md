@@ -63,3 +63,16 @@ this signal yet (decide after a few days of reports). Also added to forbidden_wo
 - `processing.py` (Nov 16, later): a held same-song last resort now beats an unverified candidate (previously the unverified one won, then failed min_match_score and the held file was discarded: Sinatra Bim Bam Baby/Sunflower/Lean Baby). `_same_song` also ignores a session-date tag like "(April 2, 1953)".
 
 **Owned-title skip (Nov 17, `processing.py`, #80):** Lidarr models each edition as its own album, so an anniversary edition or a greatest-hits compilation lists tracks "missing" that we already own as files from another album by the same artist (Daydream 30th Anniversary: 13 of 28 tracks duplicated owned Daydream songs). `_owned_title_matches()` fetches `track?artistId=`, and any wanted track whose title key equals an owned file's key (on a *different* album) is skipped and logged ("Skipping N track(s) already owned..."). Key = title minus a junk leading "2- " number and safe tags like "(Remastered)"; live/remix/mix/feat tags stay in the key, so those distinct recordings are still downloaded. Fails open if the Lidarr lookup errors. Not applied to manual queueing (`ignore_backoff`) or `force`; `skip_owned_titles: false` in the app config disables. Skipped tracks stay Wanted in Lidarr; an album whose remaining tracks are all skipped logs "Nothing to download" and re-enters the scheduler only after the normal cooldown. Tested live against the Daydream 30th album (tracks forced unowned): 13/28 matched.
+
+**Duplicate-edition guard (Nov 23, `edition_guard.py` + `scheduler.py`):** the scheduler skips a missing
+album when another album by the same artist has the same title once edition words are stripped
+("Daydream (30th Anniversary)" vs "Daydream") and is already >=50% owned, and says so once in
+#media-alerts ("duplicate edition skipped"; queue by hand if wanted). Fails open on any Lidarr error;
+turn off with `scheduler_skip_owned_editions: false` in the app config. Why: MusicBrainz lists
+deluxe/anniversary/"collection" re-releases as separate release groups, Lidarr shows them as separate
+albums, the scheduler fills the one not owned, then MusicBrainz merges them, Lidarr drops the extra
+album and its files are stranded and duplicate owned tracks (13 albums, Oct-Nov 2026). `edition_guard.py`
+is a new bind-mounted file (no .orig): changing it needs `docker compose restart`; tests:
+`python3 patches/test_edition_guard.py`. Its companion is the audit's daily "vanished albums" report
+(scripts/lidarr-ytdl-audit.py `report_vanished_albums`): albums Lidarr no longer has whose
+downloader-named files are still on disk are posted once to #media-alerts. Report only.

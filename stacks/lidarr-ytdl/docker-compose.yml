@@ -35,6 +35,8 @@ services:
       # One pass first: scheduler queues never-attempted albums before any retry
       # (patches/README.md). Re-diff against patches/scheduler.py.orig on any bump.
       - ./patches/scheduler.py:/app/scheduler.py:ro
+      # Duplicate-edition guard imported by scheduler.py (patches/edition_guard.py).
+      - ./patches/edition_guard.py:/app/edition_guard.py:ro
     # No login on the web UI: LAN only, never port-forward.
     ports:
       - "5005:5000"

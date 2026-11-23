@@ -11,7 +11,8 @@ import schedule
 
 import models
 from config import load_config, retry_cooldown_seconds
-from lidarr import get_missing_albums
+from edition_guard import owned_sibling
+from lidarr import get_missing_albums, lidarr_request
 from notifications import send_notifications
 from processing import download_process, queue_lock
 
@@ -20,6 +21,61 @@ logger = logging.getLogger(__name__)
 # Albums last reported with auto-download off: nothing gets attempted, so
 # nothing cools down, and the same list would be re-notified every cycle.
 _last_reported_ids = set()
+
+# Albums already announced as skipped duplicate editions (one notice each per
+# process lifetime; the skip itself is re-evaluated every tick).
+_edition_skips_reported = set()
+
+
+def _skip_owned_editions(albums, config):
+    """Drop albums that are another edition of an album Jay already mostly owns.
+
+    See edition_guard.py. Fails open: any Lidarr error keeps the album queued.
+    Disable with scheduler_skip_owned_editions = false in the app config.
+    """
+    if not config.get("scheduler_skip_owned_editions", True):
+        return albums
+    by_artist, kept, skipped = {}, [], []
+    for album in albums:
+        artist_id = (album.get("artist") or {}).get("id")
+        if artist_id is None:
+            kept.append(album)
+            continue
+        if artist_id not in by_artist:
+            resp = lidarr_request("album", params={"artistId": artist_id})
+            by_artist[artist_id] = resp if isinstance(resp, list) else None
+        siblings = by_artist[artist_id]
+        match = owned_sibling(album, siblings) if siblings else None
+        if match:
+            skipped.append((album, match))
+        else:
+            kept.append(album)
+    new = [(a, m) for a, m in skipped if a["id"] not in _edition_skips_reported]
+    for album, match in skipped:
+        logger.info(
+            "Scheduler: skipping %r, another edition of %r which is already"
+            " owned", album.get("title"), match.get("title"),
+        )
+    if new:
+        _edition_skips_reported.update(a["id"] for a, _ in new)
+        names = "\n".join(
+            f"- {a.get('artist', {}).get('artistName', '')} - {a.get('title', '')}"
+            f" (same as owned: {m.get('title', '')})" for a, m in new[:15]
+        )
+        send_notifications(
+            f"Scheduler: skipped {len(new)} duplicate edition(s)",
+            log_type="album_error",
+            embed_data={
+                "title": "Scheduler: duplicate edition skipped",
+                "description": (
+                    "Another edition of an album that is already mostly owned;"
+                    " not queued so the library does not get a second copy."
+                    " Queue by hand if you do want it:\n" + names
+                ),
+                "color": 0x95A5A6,
+            },
+        )
+    return kept
 
 
 def scheduled_check():
@@ -71,6 +127,10 @@ def _scheduled_check():
         and album.get("missingTrackCount", 0) > 0
     ]
 
+    if not new_albums:
+        return
+
+    new_albums = _skip_owned_editions(new_albums, config)
     if not new_albums:
         return
 
