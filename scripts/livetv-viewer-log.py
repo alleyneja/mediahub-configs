@@ -138,15 +138,19 @@ def write_load(row):
         w.writerow(row)
 
 
-# ---- incident notice: a live session stuck in "buffering" -> snapshot + one Discord line with a verdict ----
+# ---- incident notice: a live viewer is struggling -> snapshot + one Discord line with a verdict ----
+# Triggers: (1) a live session buffering for STALL_SAMPLES consecutive 10 s samples; (2) 3+ buffering reports within 2 min in Plex's own
+# log (it timestamps blips to the second; our 10 s poll misses them); (3) the client reports "stopped" within 20 s of a buffering report
+# (the Playback Error screen: Plex logs "Client stopped playback"). One notice per device per kind per 15 min.
 INCIDENT_DIR = os.environ.get("VIEWER_INCIDENTS", os.path.expanduser("~/logs/livetv-incidents"))
 WEBHOOK_ENV = os.environ.get("VIEWER_WEBHOOK_ENV", os.path.expanduser("~/mediahub-configs/scripts/fleet-healthcheck.env"))   # FLEET_HEALTH_WEBHOOK=...
 TAP_CSV = os.path.expanduser("~/logs/livetv-session-tap/tap.csv")
 PLEX_LOG = "/srv/docker/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log"
-STALL_SAMPLES = int(os.environ.get("VIEWER_STALL_SAMPLES", "3"))      # consecutive buffering samples (10 s each) before we call it a stall
-COOLDOWN = int(os.environ.get("VIEWER_COOLDOWN", "900"))              # one notice per device per 15 min
+STALL_SAMPLES = int(os.environ.get("VIEWER_STALL_SAMPLES", "3"))
+COOLDOWN = int(os.environ.get("VIEWER_COOLDOWN", "900"))
 SECRET = re.compile(r"(X-Plex-Token|token|password|username)=[^&\s\"']+", re.I)
 URLS = re.compile(r"https?://\S+")
+TL = re.compile(r"^(\w{3} \d\d, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Client \[([^\]]+)\] reporting timeline state (\w+), progress of (\d+)/\d+ms .*key=(/livetv/\S*)")
 
 
 def redact(line):
@@ -162,14 +166,16 @@ def tail_lines(path, nbytes):
         return []
 
 
-def feed_stats(now_dt):
-    """Streams the stream-logger saw in the last 10 min -> [(mean kB/s over last 90 s, longest silent gap s)]. Ignores idle connections (e.g. tailscaled)."""
-    cut90 = (now_dt - timedelta(seconds=90)).isoformat(timespec="seconds")
-    cut600 = (now_dt - timedelta(seconds=600)).isoformat(timespec="seconds")
+def feed_stats(end_dt, span=90):
+    """Streams the stream-logger saw in the 10 min before end_dt -> [(mean kB/s in [end-span, end+10 s], longest silent gap s, gap start HH:MM:SS)].
+    Ignores idle connections (e.g. tailscaled)."""
+    lo = (end_dt - timedelta(seconds=span)).isoformat(timespec="seconds")
+    hi = (end_dt + timedelta(seconds=10)).isoformat(timespec="seconds")
+    cut600 = (end_dt - timedelta(seconds=600)).isoformat(timespec="seconds")
     by = collections.defaultdict(list)
-    for l in tail_lines(TAP_CSV, 400000):
+    for l in tail_lines(TAP_CSV, 800000):
         p = l.split(",")
-        if len(p) >= 3 and p[0] >= cut600:
+        if len(p) >= 3 and cut600 <= p[0] <= hi:
             try:
                 by[p[1]].append((p[0], float(p[2])))
             except ValueError:
@@ -178,14 +184,20 @@ def feed_stats(now_dt):
     for c, rs in by.items():
         if sum(k for _, k in rs) < 3000:                    # < ~3 MB in 10 min: not a stream
             continue
-        recent = [k for t, k in rs if t >= cut90]
+        recent = [(t, k) for t, k in rs if t >= lo]
         if len(recent) < 15:
             continue
-        gap = run = 0
-        for k in recent:
-            run = run + 1 if k < 50 else 0
-            gap = max(gap, run)
-        out.append((sum(recent) / len(recent), gap))
+        gap = run = 0; gstart = rstart = ""
+        for t, k in recent:
+            if k < 50:
+                if run == 0:
+                    rstart = t
+                run += 1
+                if run > gap:
+                    gap, gstart = run, rstart
+            else:
+                run = 0
+        out.append((sum(k for _, k in recent) / len(recent), gap, gstart[11:19]))
     return out
 
 
@@ -195,7 +207,7 @@ def snapshot(dev, now_dt):
     os.makedirs(d, exist_ok=True)
     cutoff = now_dt - timedelta(minutes=12)
     keep, ok = [], False
-    for l in tail_lines(PLEX_LOG, 12 * 1024 * 1024):          # Plex logs rotate in ~45 min: copy the last 12 min now, credentials removed
+    for l in tail_lines(PLEX_LOG, 12 * 1024 * 1024):          # Plex logs rotate in ~20-45 min: copy the last 12 min now, credentials removed
         try:
             ok = datetime.strptime(l[:20], "%b %d, %Y %H:%M:%S") >= cutoff
         except ValueError:
@@ -221,22 +233,26 @@ def verdict(streams, load_row):
         cpu = gpu = enc = 0
     if not streams:
         return "no active provider stream was visible to the logger (stream may have dropped)"
-    if any(m < 300 or g >= 20 for m, g in streams):          # 10-15 s gaps are normal for this bursty feed (~20/hour, hidden by Plex's buffer)
+    if any(m < 300 or g >= 20 for m, g, _ in streams):
         return "the FEED into r9 stalled (provider side or the route to the provider)"
+    gaps = [(g, gs) for _, g, gs in streams if g >= 8]
+    if gaps:
+        g, gs = max(gaps)
+        return ("the feed had a %d s silent gap at %s: a normal size for this provider, but long enough to starve a viewer who joined live "
+                "recently and has little buffered video" % (g, gs))
     if cpu >= 60 or gpu >= 90 or enc >= 90:
         return "r9 was BUSY (CPU/GPU high)"
     return "feed and r9 both look fine, so the problem is between r9 and the viewer (internet or their Wi-Fi/device)"
 
 
-def build_message(m, now_dt, load_row, streams, folder, secs):
-    p, s, t = m.get("Player", {}), m.get("Session", {}), m.get("TranscodeSession", {}) or {}
-    feeds = ", ".join("%.0f kB/s%s" % (mean, "" if gap < 20 else " (%d s gap)" % gap) for mean, gap in streams) or "none seen"
-    return ("Live TV stall: %s (%s) on \"%s\", buffering for %d s+ at %s.\n"
-            "Feed into r9: %s. r9: CPU %s%%, GPU %s%%. Transcode %s x real time.\n"
-            "Verdict: %s.\nSnapshot on r9: %s" % (
-                p.get("title", "?"), "remote" if not p.get("local") else "home network", (m.get("title") or "?")[:40], secs,
-                now_dt.strftime("%H:%M:%S"), feeds, load_row[1] if len(load_row) > 1 else "?", load_row[2] if len(load_row) > 2 and load_row[2] != "" else "?",
-                ("%.1f" % float(t["speed"])) if t.get("speed") not in (None, "") else "?", verdict(streams, load_row), folder.replace(os.path.expanduser("~"), "~")))
+def build_message(m, now_dt, load_row, streams, folder, headline, extra=""):
+    p, t = m.get("Player", {}), m.get("TranscodeSession", {}) or {}
+    feeds = ", ".join("%.0f kB/s%s" % (mean, (", longest silent gap %d s at %s" % (gap, gs)) if gap >= 8 else "") for mean, gap, gs in streams) or "none seen"
+    spd = ("%.1f" % float(t["speed"])) if t.get("speed") not in (None, "") else "?"
+    return ("Live TV: %s (%s) on \"%s\": %s.%s\nFeed into r9: %s. r9: CPU %s%%, GPU %s%%. Transcode %s x real time.\nVerdict: %s.\nSnapshot on r9: %s" % (
+        p.get("title", "?"), "remote" if not p.get("local") else "home network", (m.get("title") or "?")[:40], headline, extra, feeds,
+        load_row[1] if len(load_row) > 1 else "?", load_row[2] if len(load_row) > 2 and load_row[2] != "" else "?", spd, verdict(streams, load_row),
+        folder.replace(os.path.expanduser("~"), "~")))
 
 
 def post_discord(msg):
@@ -251,30 +267,138 @@ def post_discord(msg):
 
 
 class Incidents:
-    def __init__(self):
-        self.streak, self.last = {}, {}
+    def __init__(self, live=True):
+        self.live = live                                       # False = replay/test: build messages but never snapshot or post
+        self.streak, self.last, self.joined, self.blips, self.alias = {}, {}, {}, {}, {}
+        self.pos = self.ino = None
+        self.out = []
 
-    def check(self, meta, now_dt, load_row):
-        seen = set()
+    def _cool(self, key, ts):
+        if ts - self.last.get(key, 0) <= COOLDOWN:
+            return False
+        self.last[key] = ts
+        return True
+
+    def _aliases(self, meta):
         for m in meta:
+            if not m.get("live"):
+                continue
+            p, s = m.get("Player", {}), m.get("Session", {})
+            ids = {p.get("machineIdentifier"), s.get("id")}
+            try:
+                ids.add(m["Media"][0]["Part"][0]["key"].split("/")[4])      # live client-session id, used by some apps in timeline reports
+            except Exception:
+                pass
+            for i in ids:
+                if i:
+                    self.alias[i] = (p.get("title", "?"), m)
+
+    def _lookup(self, cid):
+        if cid in self.alias:
+            return self.alias[cid]
+        return next((v for k, v in self.alias.items() if k[:8] == cid[:8]), None)
+
+    def _fire(self, dev, m, when, now_dt, ld, headline, extra=""):
+        msg_streams = feed_stats(when)
+        folder = snapshot(dev, now_dt) if self.live else "(not saved)"
+        msg = build_message(m, when, ld, msg_streams, folder, headline, extra)
+        self.out.append(msg)
+        if self.live:
+            try:
+                with open(os.path.join(INCIDENT_DIR, "incidents.log"), "a") as f:
+                    f.write(now_dt.isoformat(timespec="seconds") + " " + msg.replace("\n", " | ") + "\n")
+            except Exception:
+                pass
+            post_discord(msg)
+
+    def check(self, meta, now_dt, ld):
+        now_ts = now_dt.timestamp()
+        self._aliases(meta)
+        seen = set()
+        for m in meta:                                          # (1) 10 s samples: buffering 30 s+ in a row
             if not m.get("live"):
                 continue
             k = m.get("Player", {}).get("title", "?")
             seen.add(k)
+            self.joined.setdefault(k, now_dt)
             self.streak[k] = self.streak.get(k, 0) + 1 if m.get("Player", {}).get("state") == "buffering" else 0
-            if self.streak[k] >= STALL_SAMPLES and now_dt.timestamp() - self.last.get(k, 0) > COOLDOWN:
-                self.last[k] = now_dt.timestamp()
-                try:
-                    folder = snapshot(k, now_dt)
-                    msg = build_message(m, now_dt, load_row, feed_stats(now_dt), folder, self.streak[k] * POLL)
-                    with open(os.path.join(INCIDENT_DIR, "incidents.log"), "a") as f:
-                        f.write(now_dt.isoformat(timespec="seconds") + " " + msg.replace("\n", " | ") + "\n")
-                    post_discord(msg)
-                except Exception:
-                    pass                                       # an incident notice must never stop the viewer log
-        for k in list(self.streak):
-            if k not in seen:
-                self.streak.pop(k)
+            if self.streak[k] >= STALL_SAMPLES and self._cool((k, "long"), now_ts):
+                self._fire(k, m, now_dt, now_dt, ld, "buffering for %d s+ at %s" % (self.streak[k] * POLL, now_dt.strftime("%H:%M:%S")), self._ctx(k, m, meta, now_dt))
+        for d_ in (self.streak, self.joined):
+            for k in list(d_):
+                if k not in seen:
+                    d_.pop(k)
+        self.events(self._new_log_events(), meta, now_dt, ld)
+
+    def _ctx(self, dev, m, meta, now_dt):
+        j = self.joined.get(dev)
+        others = sum(1 for x in meta if x.get("live") and x is not m and x.get("title") == m.get("title"))
+        return " Joined live %s earlier; %d other viewer%s on this program." % (
+            ("%d s" % (now_dt - j).total_seconds()) if j else "?", others, "" if others == 1 else "s")
+
+    def _new_log_events(self):
+        try:
+            st = os.stat(PLEX_LOG)
+        except OSError:
+            return []
+        if self.ino is None:
+            self.ino, self.pos = st.st_ino, st.st_size            # first run: start at the end, never replay history
+            return []
+        if self.ino != st.st_ino or st.st_size < self.pos:
+            self.ino, self.pos = st.st_ino, 0                      # Plex rotated its log
+        with open(PLEX_LOG, "rb") as f:
+            f.seek(self.pos); data = f.read(4000000); self.pos = f.tell()
+        ev = []
+        for l in data.decode(errors="ignore").splitlines():
+            mm = TL.match(l)
+            if mm:
+                ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), mm.group(3), int(mm.group(4))))
+        return ev
+
+    def events(self, evs, meta, now_dt, ld):
+        for ts, cid, state, prog in evs:                         # (2) repeated blips, (3) stop right after a blip
+            hit = self._lookup(cid)
+            dev, m = hit if hit else ("device " + cid[:8], {"Player": {"title": "device " + cid[:8], "local": True}, "title": "?"})
+            L = self.blips.setdefault(cid, [])
+            if state == "buffering":
+                if prog < 15000:
+                    continue                                       # normal start-up buffering in the first 15 s of a stream
+                if not L or (ts - L[-1]).total_seconds() >= 3:
+                    L.append(ts)
+                L[:] = [t for t in L if (ts - t).total_seconds() <= 120]
+                if len(L) >= 3 and self._cool((dev, "repeat"), ts.timestamp()):
+                    self._fire(dev, m, ts, now_dt, ld, "%d buffering blips in %d s (last at %s)" % (len(L), (L[-1] - L[0]).total_seconds(), ts.strftime("%H:%M:%S")),
+                               self._ctx(dev, m, meta, now_dt) if hit else "")
+            elif state == "stopped" and L and (ts - L[-1]).total_seconds() <= 20:
+                if ts.timestamp() - self.last.get((dev, "repeat"), 0) <= 90:
+                    msg = "Live TV: %s then STOPPED playback at %s, right after buffering. That is the Playback Error on screen. Details in the notice above." % (dev, ts.strftime("%H:%M:%S"))
+                    self.out.append(msg)
+                    if self.live:
+                        post_discord(msg)
+                elif self._cool((dev, "stop"), ts.timestamp()):
+                    self._fire(dev, m, ts, now_dt, ld, "playback STOPPED at %s, %d s after buffering (likely the Playback Error screen)" % (ts.strftime("%H:%M:%S"), (ts - L[-1]).total_seconds()),
+                               self._ctx(dev, m, meta, now_dt) if hit else "")
+                L.clear()
+
+
+def replay(start, end):
+    """Replay Plex's log for HH:MM:SS..HH:MM:SS today and print the notices that would have fired. Posts nothing, saves nothing."""
+    files = sorted(glob.glob(os.path.dirname(PLEX_LOG) + "/Plex Media Server*.log*"), key=lambda f: (0 if f.endswith("log") else int(f.rsplit(".", 2)[-2]) if f.rsplit(".", 2)[-2].isdigit() else 99), reverse=True)
+    day = datetime.now().strftime("%b %d, %Y")
+    ev = []
+    for f in files:
+        for l in tail_lines(f, 20 * 1024 * 1024):
+            mm = TL.match(l)
+            if mm and mm.group(1).startswith(day) and start <= mm.group(1)[13:] <= end:
+                ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), mm.group(3), int(mm.group(4))))
+    ev.sort()
+    inc = Incidents(live=False)
+    for row_ in csv.DictReader(open(CSV)):                       # device names from the viewer log (session id prefix = client id prefix)
+        if row_["live"] == "1" and start <= row_["ts"][11:19] <= end:
+            inc.alias.setdefault(row_["session"], (row_["device"], {"Player": {"title": row_["device"], "local": row_["remote"] != "1"}, "title": row_["title"]}))
+    print("%d live timeline events between %s and %s" % (len(ev), start, end))
+    inc.events(ev, [], datetime.now(), ["", "3", "0", "0"])
+    print("\n\n".join(inc.out) if inc.out else "(no notice would have fired)")
 
 
 def selftest():
@@ -284,7 +408,7 @@ def selftest():
     m = next((x for x in meta if x.get("live")), meta[0] if meta else {"Player": {"title": "(no session)", "local": True}, "title": "(none)"})
     ld = Load(); time.sleep(2); row_ = ld.sample(now.isoformat(timespec="seconds"))
     d = snapshot("selftest", now)
-    print(build_message(m, now, row_, feed_stats(now), d, 30))
+    print(build_message(m, now, row_, feed_stats(now), d, "(self-test) buffering for 30 s+ at %s" % now.strftime("%H:%M:%S")))
     print("snapshot files:", ", ".join("%s %dKB" % (f, os.path.getsize(os.path.join(d, f)) // 1024) for f in sorted(os.listdir(d))))
     shutil.rmtree(d, ignore_errors=True)
 
@@ -335,4 +459,7 @@ def summary():
 
 
 if __name__ == "__main__":
-    selftest() if "--selftest" in sys.argv else summary() if "--summary" in sys.argv else run()
+    if "--replay" in sys.argv:
+        i = sys.argv.index("--replay"); replay(sys.argv[i + 1], sys.argv[i + 2])
+    else:
+        selftest() if "--selftest" in sys.argv else summary() if "--summary" in sys.argv else run()
