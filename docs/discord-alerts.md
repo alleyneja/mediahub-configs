@@ -19,6 +19,8 @@ Homelab Discord server, guild ID `1522633876550324345`, under one category:
 | `#resource-alerts` | `1549633460971511938` | Netdata | CPU/mem/swap/disk threshold alarms |
 | `#media-alerts` | `1549633462351175730` | arr-stack `notify-audio-mismatch.sh` | Sonarr/Radarr imports where the actual embedded audio language doesn't match what was grabbed |
 | `#home-automation` | `1549633463231979715` | *(none yet)* | Reserved for future home-automation notifications — intentionally unwired |
+| `#live-tv` | `1574238263760257054` | `scripts/livetv-viewer-log.py` on r9 | Plex Live TV stall notices with a verdict (feed stalled / r9 busy / between r9 and the viewer). Added 2026-11-22. Webhook name "Live TV", secret in r9's gitignored `scripts/livetv-alerts.env` (`LIVETV_WEBHOOK`); falls back to the `#service-outages` "Fleet Health" webhook if missing. |
+| `#music-discovery` | `1574238265429467317` | discovery bot (`stacks/discovery-bot`) | Weekly album cards with Approve/Reject buttons plus its skip/failure notices. Added 2026-11-22; posts via the bot using `DISCORD_CHANNEL_ID` in `stacks/discovery-bot/discovery-bot.env` (was `#media-alerts`). Older cards in `#media-alerts` still work. |
 
 ## Where each webhook secret actually lives
 
@@ -53,7 +55,7 @@ or rotate each one:
 
 The music-discovery approval bot (`stacks/discovery-bot/`, see
 `docs/discovery-bot.md`) also posts to `#media-alerts`: weekly album cards with
-Approve/Reject buttons, plus its own skip/failure notices.
+Approve/Reject buttons, plus its own skip/failure notices (moved to `#music-discovery` on 2026-11-22).
 
 ## The bot
 
@@ -85,3 +87,12 @@ Removed: the cron entry (`cron/jay-crontab`), the script, its config
 (`~/.config/joyboy-watchdog.env`), and its state file. The `joyboy-alerts`
 Discord channel itself was left in place for Jay to archive/delete once the
 new channels are confirmed working.
+
+
+## Note: "Fleet Health" is a webhook name, not a channel
+
+The `FLEET_HEALTH_WEBHOOK` posts under the sender name "Fleet Health" into `#service-outages` (channel ID `1549633459868401704`). There is no channel with that name.
+
+## `#media-alerts` split (in progress)
+
+`#media-alerts` carried ~15-80 messages/day (about 65% Sonarr/Radarr import chatter, 18% music discovery, 11% subtitles, <2% audio mismatch). `#live-tv` and `#music-discovery` are done; a `#media-activity` channel for the import chatter is still to be decided.
