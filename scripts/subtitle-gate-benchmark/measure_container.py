@@ -23,6 +23,18 @@ def pick_audio(video):
         t={k.lower():str(v) for k,v in (x.get('tags') or {}).items()}
         if t.get('language','').lower() in ('eng','en') and 'comment' not in t.get('title','').lower(): return i,True
     return 0,False
+def speech_fraction(wav):
+    """Share of the window's 30 ms frames that WebRTC VAD calls speech (0..1), or None if it cannot be computed.
+    Diagnostic only: tells "little talking here" apart from "talking that the subtitle does not line up with"."""
+    try:
+        import webrtcvad, wave
+        vad=webrtcvad.Vad(2)
+        with wave.open(wav,'rb') as w:
+            raw=w.readframes(w.getnframes())
+        n=int(16000*0.03)*2; frames=[raw[i:i+n] for i in range(0,len(raw)-n,n)]
+        return round(sum(1 for f in frames if vad.is_speech(f,16000))/len(frames),3) if frames else None
+    except Exception:
+        return None
 def video_job(args):
     video,jobs,outp=args
     tag=re.sub(r'\W+','_',os.path.basename(video))[:40]+str(os.getpid()); work='/tmp/bench/'+tag; os.makedirs(work,exist_ok=True)
@@ -32,8 +44,9 @@ def video_job(args):
         t0=max(0,dur*f-W/2); wav=f'{work}/w{i}.wav'
         subprocess.run(['nice','-n','19','ffmpeg','-v','error','-y','-ss',str(t0),'-t',str(W),'-i',video,'-map',f'0:a:{ai}','-ac','1','-ar','16000',wav],check=True)
         wavs[i]=(t0,wav)
+    speech=[speech_fraction(wavs[i][1]) for i in range(len(F))]
     for j in jobs:
-        cues=parse(j['srt']); res={'audio':ai,'audio_en':aen,'title':j['title'],'variant':j['variant'],'dur':round(dur),'cues':len(cues),'last_cue_end':round(cues[-1][1]) if cues else 0,'windows':[]}
+        cues=parse(j['srt']); res={'audio':ai,'audio_en':aen,'title':j['title'],'variant':j['variant'],'dur':round(dur),'cues':len(cues),'last_cue_end':round(cues[-1][1]) if cues else 0,'speech':speech,'windows':[]}
         for i,(t0,wav) in wavs.items():
             sel=[(s-t0,e-t0,x) for s,e,x in cues if t0<=s<t0+W]
             if len(sel)<10: res['windows'].append(None); continue
