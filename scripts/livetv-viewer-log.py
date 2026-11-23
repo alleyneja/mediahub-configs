@@ -143,7 +143,8 @@ def write_load(row):
 # log (it timestamps blips to the second; our 10 s poll misses them); (3) the client reports "stopped" within 20 s of a buffering report
 # (the Playback Error screen: Plex logs "Client stopped playback"). One notice per device per kind per 15 min.
 INCIDENT_DIR = os.environ.get("VIEWER_INCIDENTS", os.path.expanduser("~/logs/livetv-incidents"))
-WEBHOOK_ENV = os.environ.get("VIEWER_WEBHOOK_ENV", os.path.expanduser("~/mediahub-configs/scripts/fleet-healthcheck.env"))   # FLEET_HEALTH_WEBHOOK=...
+WEBHOOKS = [(os.path.expanduser("~/mediahub-configs/scripts/livetv-alerts.env"), "LIVETV_WEBHOOK"),                      # #live-tv (preferred)
+            (os.path.expanduser("~/mediahub-configs/scripts/fleet-healthcheck.env"), "FLEET_HEALTH_WEBHOOK")]       # #service-outages (fallback)
 TAP_CSV = os.path.expanduser("~/logs/livetv-session-tap/tap.csv")
 PLEX_LOG = "/srv/docker/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log"
 STALL_SAMPLES = int(os.environ.get("VIEWER_STALL_SAMPLES", "3"))
@@ -256,14 +257,16 @@ def build_message(m, now_dt, load_row, streams, folder, headline, extra=""):
 
 
 def post_discord(msg):
-    try:
-        hook = next(l.split("=", 1)[1].strip().strip("\"'") for l in open(WEBHOOK_ENV) if l.startswith("FLEET_HEALTH_WEBHOOK="))
-        req = urllib.request.Request(hook, data=json.dumps({"content": msg[:1900]}).encode(),
-                                     headers={"Content-Type": "application/json", "User-Agent": "livetv-viewer-log/1.0"})
-        urllib.request.urlopen(req, timeout=8)
-        return True
-    except Exception:
-        return False
+    for path, var in WEBHOOKS:
+        try:
+            hook = next(l.split("=", 1)[1].strip().strip("\"'") for l in open(path) if l.startswith(var + "="))
+            req = urllib.request.Request(hook, data=json.dumps({"content": msg[:1900]}).encode(),
+                                         headers={"Content-Type": "application/json", "User-Agent": "livetv-viewer-log/1.0"})
+            urllib.request.urlopen(req, timeout=8)
+            return True
+        except Exception:
+            continue                                            # missing file/var or a failed post: try the next destination
+    return False
 
 
 class Incidents:
