@@ -141,7 +141,10 @@ def write_load(row):
 # ---- incident notice: a live viewer is struggling -> snapshot + one Discord line with a verdict ----
 # Triggers: (1) a live session buffering for STALL_SAMPLES consecutive 10 s samples; (2) 3+ buffering reports within 2 min in Plex's own
 # log (it timestamps blips to the second; our 10 s poll misses them); (3) the client reports "stopped" within 20 s of a buffering report
-# (the Playback Error screen: Plex logs "Client stopped playback"). One notice per device per kind per 15 min.
+# (the Playback Error screen: Plex logs "Client stopped playback"); (4) slow resume: after a pause of RESUME_MIN_PAUSE s or more the
+# viewer is not playing again RESUME_SLOW s after resuming. A session that drops out of Plex's list keeps its state for VANISH_GRACE s
+# (the app replaces the session on a re-tune), so a missed poll or a vanished session still counts as "still buffering/not playing yet".
+# One notice per device per kind per 15 min.
 INCIDENT_DIR = os.environ.get("VIEWER_INCIDENTS", os.path.expanduser("~/logs/livetv-incidents"))
 WEBHOOKS = [(os.path.expanduser("~/mediahub-configs/scripts/livetv-alerts.env"), "LIVETV_WEBHOOK"),                      # #live-tv (preferred)
             (os.path.expanduser("~/mediahub-configs/scripts/fleet-healthcheck.env"), "FLEET_HEALTH_WEBHOOK")]       # #service-outages (fallback)
@@ -149,6 +152,9 @@ TAP_CSV = os.path.expanduser("~/logs/livetv-session-tap/tap.csv")
 PLEX_LOG = "/srv/docker/plex/Library/Application Support/Plex Media Server/Logs/Plex Media Server.log"
 STALL_SAMPLES = int(os.environ.get("VIEWER_STALL_SAMPLES", "3"))
 COOLDOWN = int(os.environ.get("VIEWER_COOLDOWN", "900"))
+VANISH_GRACE = int(os.environ.get("VIEWER_VANISH_GRACE", "120"))     # keep a device's state this long after its session leaves /status/sessions
+RESUME_MIN_PAUSE = int(os.environ.get("VIEWER_RESUME_MIN_PAUSE", "30"))
+RESUME_SLOW = int(os.environ.get("VIEWER_RESUME_SLOW", "15"))
 SECRET = re.compile(r"(X-Plex-Token|token|password|username)=[^&\s\"']+", re.I)
 URLS = re.compile(r"https?://\S+")
 TL = re.compile(r"^(\w{3} \d\d, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Client \[([^\]]+)\] reporting timeline state (\w+), progress of (\d+)/\d+ms .*key=(/livetv/\S*)")
@@ -273,6 +279,7 @@ class Incidents:
     def __init__(self, live=True):
         self.live = live                                       # False = replay/test: build messages but never snapshot or post
         self.streak, self.last, self.joined, self.blips, self.alias = {}, {}, {}, {}, {}
+        self.dev = {}                                          # device -> {bstart, pstart, resume, lastseen, m}
         self.pos = self.ino = None
         self.out = []
 
@@ -314,23 +321,52 @@ class Incidents:
                 pass
             post_discord(msg)
 
-    def check(self, meta, now_dt, ld):
+    def check(self, meta, now_dt, ld, api_ok=True):
         now_ts = now_dt.timestamp()
         self._aliases(meta)
         seen = set()
-        for m in meta:                                          # (1) 10 s samples: buffering 30 s+ in a row
+        for m in meta:                                          # (1)+(4) per-device timers; keyed by Player title
             if not m.get("live"):
                 continue
             k = m.get("Player", {}).get("title", "?")
+            state = m.get("Player", {}).get("state")
             seen.add(k)
             self.joined.setdefault(k, now_dt)
-            self.streak[k] = self.streak.get(k, 0) + 1 if m.get("Player", {}).get("state") == "buffering" else 0
-            if self.streak[k] >= STALL_SAMPLES and self._cool((k, "long"), now_ts):
-                self._fire(k, m, now_dt, now_dt, ld, "buffering for %d s+ at %s" % (self.streak[k] * POLL, now_dt.strftime("%H:%M:%S")), self._ctx(k, m, meta, now_dt))
-        for d_ in (self.streak, self.joined):
-            for k in list(d_):
-                if k not in seen:
-                    d_.pop(k)
+            d = self.dev.setdefault(k, {"bstart": None, "pstart": None, "resume": None})
+            d["lastseen"], d["m"] = now_ts, m
+            if state == "paused":
+                d["bstart"], d["resume"] = None, None
+                d["pstart"] = d["pstart"] or now_ts
+            elif state == "buffering":
+                d["bstart"] = d["bstart"] or now_ts
+                if d["pstart"] and not d["resume"] and now_ts - d["pstart"] >= RESUME_MIN_PAUSE:
+                    d["resume"] = (now_ts, int(now_ts - d["pstart"]))   # first non-paused sample after a real pause = the resume
+                d["pstart"] = None
+            else:                                                 # playing: all clear
+                d["bstart"] = d["pstart"] = d["resume"] = None
+        for k in list(self.dev):                                  # devices missing from this poll
+            if k in seen:
+                continue
+            d = self.dev[k]
+            if not api_ok:                                        # Plex did not answer: not a vanished session, hold state
+                d["lastseen"] = now_ts
+            elif now_ts - d["lastseen"] > VANISH_GRACE:
+                for dd in (self.dev, self.joined, self.streak):
+                    dd.pop(k, None)
+        for k, d in self.dev.items():
+            m, gone = d.get("m"), k not in seen
+            if not m or not api_ok:                               # no verdicts while Plex itself is not answering
+                continue
+            if d["bstart"] and now_ts - d["bstart"] >= (STALL_SAMPLES - 1) * POLL and self._cool((k, "long"), now_ts):
+                self._fire(k, m, now_dt, now_dt, ld, "buffering for %d s+ at %s%s" % (now_ts - d["bstart"] + POLL, now_dt.strftime("%H:%M:%S"),
+                           " (then the session dropped out of Plex's list)" if gone else ""), self._ctx(k, m, meta, now_dt))
+                d["resume"] = None                                # one notice covers it
+            elif d["resume"] and now_ts - d["resume"][0] >= RESUME_SLOW:
+                if self._cool((k, "resume"), now_ts):
+                    self._fire(k, m, now_dt, now_dt, ld, "slow resume at %s: paused %d s, still not playing %d s after resuming (%s)" % (
+                        now_dt.strftime("%H:%M:%S"), d["resume"][1], now_ts - d["resume"][0],
+                        "session gone from Plex's list" if gone else "state: %s" % m.get("Player", {}).get("state")), self._ctx(k, m, meta, now_dt))
+                d["resume"] = None
         self.events(self._new_log_events(), meta, now_dt, ld)
 
     def _ctx(self, dev, m, meta, now_dt):
@@ -423,18 +459,18 @@ def run():
     while True:
         now_dt = datetime.now()
         now = now_dt.isoformat(timespec="seconds")
-        meta = []
+        meta, api_ok = [], True
         try:
             tok = tok or token()
             meta = fetch(tok)
             rows = [row(m, now) for m in meta]
             down = False
         except urllib.error.HTTPError as e:
-            tok = None                                    # token may have been rewritten; re-read next time
+            tok, api_ok = None, False                     # token may have been rewritten; re-read next time
             rows = [pad([now, "-", "-", "API-NO-ANSWER", "-", "-", "-", "-", "-", "-", "http %s" % e.code])]
         except Exception as e:
             rows = [pad([now, "-", "-", "API-NO-ANSWER", "-", "-", "-", "-", "-", "-", str(e)[:40]])] if not down else []
-            down = True                                   # log the first failure of an outage, not every poll
+            down, api_ok = True, False                    # log the first failure of an outage, not every poll
         write(rows)
         ld = []
         try:
@@ -443,7 +479,7 @@ def run():
         except Exception:
             pass                                              # load stats are a bonus; never let them stop the viewer log
         try:
-            inc.check(meta, now_dt, ld)
+            inc.check(meta, now_dt, ld, api_ok)
         except Exception:
             pass
         time.sleep(POLL)

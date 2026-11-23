@@ -95,6 +95,7 @@ Archived (not in use, kept for reference): `scripts/archive/verify-nvfbc.sh` (ol
 `#home-automation` (unwired), `#joyboy-alerts` (retired, still receives old Kuma posts).
 
 ## Change log
+- 2026-11-23: livetv-viewer-log notices: a session that drops out of Plex's list keeps its state for 120 s (counts as still buffering / not playing yet); new "slow resume" notice when a viewer paused 30 s+ is not playing 15 s after resuming; stall check is now time-based (20 s of buffering, tolerant of a missed poll); no verdicts while the Plex API is not answering. Found from the Nov 22 20:03 and 20:06 hiccups on Mallory's Fire TV (feed fine, r9 idle, no notice fired). Env knobs: VIEWER_VANISH_GRACE, VIEWER_RESUME_MIN_PAUSE, VIEWER_RESUME_SLOW.
 - 2026-11-22: `#music-activity` created (id 1574256391122587740) as a one-week trial. lidarr-downloader (`discord_webhook_url` in `/srv/docker/lidarr-ytdl/config/config.json`, re-read live) and `scripts/lidarr-ytdl-audit.env` now post there instead of `#media-alerts`. Before: both used the `#media-alerts` webhook (backups kept in the session scratchpad). To revert: put the old webhook back in both files.
 - 2026-11-15: created. Deleted the Sep 25 D12 leftovers (pilot/sentinel/permlab/reboot-test files in prod `~/logs`, r9 `crontab.bak.2026-09-25`, x51 `scripts.retired-20260925`); D12 is closed and nothing referenced them.
 - 2026-11-15: `pathtest.sh` moved into `scripts/`; `verify-nvfbc.sh` and `sonic-analysis-loop.sh` archived in `scripts/archive/` (Jay approved).
