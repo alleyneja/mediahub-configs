@@ -94,6 +94,16 @@ class Identity(unittest.TestCase):
                 open(p, "w").close()
                 self.assertEqual(audit.is_downloaders_file(p, row), want, name)
 
+    def test_multidisc_rename_uses_per_disc_number(self):
+        import tempfile, time
+        row = {"track_number": 28, "timestamp": time.time() - 30}  # downloader's album-wide number
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "Nat King Cole - The Christmas Song - 14 - Silent Night.mp3")
+            open(p, "w").close()
+            self.assertFalse(audit.is_downloaders_file(p, row))
+            self.assertTrue(audit.is_downloaders_file(p, row, 14))
+            self.assertFalse(audit.is_downloaders_file(p, row, 13))
+
 
 if __name__ == "__main__":
     unittest.main()

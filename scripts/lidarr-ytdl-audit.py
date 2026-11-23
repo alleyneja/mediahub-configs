@@ -90,6 +90,71 @@ def link_unlinked(album_id, folder, lh, apply):
     return len(files)
 
 
+SIDECARS = (".lrc", ".txt")
+DOWNLOADER_NAME = re.compile(r"^\d+ - ")  # what the downloader writes: "NN - Title"
+
+
+def rename_downloader_files(album_id, artist_id, lh, apply):
+    """Give the downloader's "NN - Title" files Lidarr's own naming (and album folder).
+
+    The downloader names files and folders its own way (no "Artist - Album -" prefix, colons
+    dropped instead of " - "), unlike a Lidarr download. Lidarr's rename preview is the source
+    of truth for the target path, so this asks it rather than re-implementing the pattern.
+    Only files that still carry the downloader's name are touched. Lidarr leaves sidecars and
+    cover art behind, so they are moved to the audio's new folder, and the old folder is
+    removed once empty. Never raises: a failed rename is retried by the bulk script
+    (lidarr-rename-with-sidecars.py).
+    """
+    try:
+        preview = [x for x in http("GET", f"{LIDARR}/rename?artistId={artist_id}&albumId={album_id}", lh) or []
+                   if DOWNLOADER_NAME.match(os.path.basename(x["existingPath"]))]
+        if not preview:
+            return 0
+        for x in preview:
+            print(("RENAME " if apply else "WOULD RENAME ") + x["existingPath"] + " -> " + x["newPath"])
+        if not apply:
+            return len(preview)
+        cmd = http("POST", f"{LIDARR}/command", lh, {"name": "RenameFiles", "artistId": artist_id,
+                                                      "files": [x["trackFileId"] for x in preview]})
+        for _ in range(60):  # may queue behind a library-wide rescan
+            st = http("GET", f"{LIDARR}/command/{cmd['id']}", lh)
+            if st["status"] in ("completed", "failed"):
+                break
+            time.sleep(5)
+        else:
+            print(f"rename for album {album_id} still queued; later run will retry", file=sys.stderr)
+            return 0
+        if st["status"] != "completed":
+            print(f"rename for album {album_id} failed: {st.get('exception', '')[:200]}", file=sys.stderr)
+            return 0
+        host = lambda p: p.replace(PATH_MAP[0], PATH_MAP[1], 1)
+        olddirs = set()
+        for x in preview:
+            sd, dd = os.path.dirname(host(x["existingPath"])), os.path.dirname(host(x["newPath"]))
+            olddirs.add((sd, dd))
+            old, new = os.path.splitext(os.path.basename(x["existingPath"]))[0], \
+                os.path.splitext(os.path.basename(x["newPath"]))[0]
+            for ext in SIDECARS:
+                s, t = os.path.join(sd, old + ext), os.path.join(dd, new + ext)
+                if os.path.exists(s) and not os.path.exists(t):
+                    os.rename(s, t)
+        for sd, dd in olddirs:
+            if sd == dd or not os.path.isdir(sd):
+                continue
+            for leftover in os.listdir(sd):  # cover.jpg and the like
+                src, dst = os.path.join(sd, leftover), os.path.join(dd, leftover)
+                if os.path.isfile(src) and not os.path.exists(dst) and not DOWNLOADER_NAME.match(leftover):
+                    os.rename(src, dst)
+            try:
+                os.rmdir(sd)
+            except OSError:
+                pass  # still holds something else; leave it
+        return len(preview)
+    except Exception as e:  # never break the audit over cosmetics
+        print(f"rename step skipped for album {album_id}: {e}", file=sys.stderr)
+        return 0
+
+
 VERIFIED_SCORE = 0.90   # AcoustID score that counts as "this is the right song"
 GROSS_FRACTION = 0.25   # deviation from MusicBrainz big enough to mean a different song
 
@@ -145,13 +210,15 @@ def track_file_number(track, tracks):
     return next(i + 1 for i, t in enumerate(ordered) if t["id"] == track["id"])
 
 
-def is_downloaders_file(path, row):
+def is_downloaders_file(path, row, lidarr_track_number=None):
     """The Lidarr-linked file must be the one this row's download produced: right track
     number in its name, and written after the download (not an older file)."""
     base = os.path.basename(path)
     num = f"{row['track_number']:02d} - "
     # the downloader writes "NN - Title"; after Lidarr's rename it is "Artist - Album - NN - Title"
-    if not (base.startswith(num) or f" - {num}" in base):
+    # on a multi-disc release Lidarr's rename uses the per-disc number, not the downloader's
+    alt = f" - {lidarr_track_number:02d} - " if lidarr_track_number else None
+    if not (base.startswith(num) or f" - {num}" in base or (alt and alt in base)):
         return False
     try:
         return os.path.getmtime(path) >= row["timestamp"] - 120
@@ -231,11 +298,17 @@ def main():
         "SELECT DISTINCT track_download_id FROM candidate_attempts "
         "WHERE outcome='accepted_unverified_fallback' AND error_message LIKE 'last resort:%'")}
     lh = {"X-Api-Key": lidarr_key()}
+    artist_of = {}
     for aid in sorted({k[0] for k in latest}):
+        try:
+            artist_of[aid] = http("GET", f"{LIDARR}/album/{aid}", lh)["artistId"]
+        except urllib.error.HTTPError:
+            continue
         folder = next(r["lidarr_album_path"] for k, r in latest.items() if k[0] == aid)
         if folder:
             try:
                 link_unlinked(aid, folder.replace("/music", PATH_MAP[0], 1), lh, a.apply)
+                rename_downloader_files(aid, artist_of[aid], lh, a.apply)
             except urllib.error.HTTPError as e:  # album re-keyed/removed by a Lidarr refresh
                 print(f"link step skipped for album {aid}: HTTP {e.code}", file=sys.stderr)
     by_album = {}
@@ -271,7 +344,7 @@ def main():
         expected = t["duration"] / 1000.0
         verdict, why = decide(actual, expected, float(r["duration_seconds"] or 0),
                               float(r["acoustid_score"] or 0), a.tolerance,
-                              is_downloaders_file(path, r), r["id"] in last_resort_ids)
+                              is_downloaders_file(path, r, int(t.get("trackNumber") or 0)), r["id"] in last_resort_ids)
         if verdict == "unverifiable":
             print(f"unverifiable {r['artist_name']} - {r['track_title']}: {why} ({os.path.basename(path)})")
             pending += 1  # may be a rescan still settling; retried until PENDING_EXPIRY
