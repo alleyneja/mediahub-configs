@@ -50,6 +50,9 @@ services:
       #   needs to be visible to this container.
       - /mnt/media/music:/data/music:ro
       - /mnt/media/downloads/complete/music:/data/downloads/complete/music
+      # Local patch: raise the 120s worker watchdog (library scans livelock on 3.1.0,
+      # upstream lklynet/aurral#2139). See patches/README.md. Re-diff on image bump.
+      - ./patches/backgroundProcessSupervisor.ts:/app/backend/services/backgroundProcessSupervisor.ts:ro
     networks:
       - mediahub_internal
 

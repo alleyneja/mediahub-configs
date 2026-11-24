@@ -1,0 +1,14 @@
+--- patches/backgroundProcessSupervisor.ts.orig	2026-11-23 09:56:42.000000000 -0600
++++ patches/backgroundProcessSupervisor.ts	2026-11-24 09:05:03.932985659 -0600
+@@ -56,7 +56,10 @@
+ const ENTRY = fileURLToPath(new URL("./backgroundWorkerProcess.ts", import.meta.url));
+ const RESTART_BASE_MS = 1000;
+ const RESTART_MAX_MS = 30000;
+-const UNRESPONSIVE_MS = 120000;
++// LOCAL PATCH (mediahub, Nov 24 2026): upstream 120000. Library scans on 3.1.0 block the worker
++// event loop for minutes (reconcileLibraryAlbums write-lock holds; upstream lklynet/aurral#2139),
++// so the 120s watchdog killed every scan before it could finish. See patches/README.md.
++const UNRESPONSIVE_MS = 1800000;
+ const MB = 1024 * 1024;
+ const DEFAULT_HEAP_LIMIT_MB = 2048;
+ 
