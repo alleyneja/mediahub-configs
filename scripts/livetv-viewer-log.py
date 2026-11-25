@@ -242,14 +242,12 @@ def verdict(streams, load_row):
         return "no active provider stream was visible to the logger (stream may have dropped)"
     if any(m < 300 or g >= 20 for m, g, _ in streams):
         return "the FEED into r9 stalled (provider side or the route to the provider)"
-    gaps = [(g, gs) for _, g, gs in streams if g >= 8]
-    if gaps:
-        g, gs = max(gaps)
-        return ("the feed had a %d s silent gap at %s: a normal size for this provider, but long enough to starve a viewer who joined live "
-                "recently and has little buffered video" % (g, gs))
     if cpu >= 60 or gpu >= 90 or enc >= 90:
         return "r9 was BUSY (CPU/GPU high)"
-    return "feed and r9 both look fine, so the problem is between r9 and the viewer (internet or their Wi-Fi/device)"
+    g = max((g for _, g, _ in streams), default=0)
+    note = " (longest feed gap %d s, a routine size: this provider has one about every 2 min)" % g if g >= 8 else ""
+    return ("the feed and r9 look fine%s, so the cause is on the viewer's side: their device or Wi-Fi, or the app restarting the stream "
+            "after a pause or a fresh join" % note)
 
 
 def build_message(m, now_dt, load_row, streams, folder, headline, extra=""):
