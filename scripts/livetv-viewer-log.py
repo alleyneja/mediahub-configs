@@ -159,6 +159,8 @@ SECRET = re.compile(r"(X-Plex-Token|token|password|username)=[^&\s\"']+", re.I)
 URLS = re.compile(r"https?://\S+")
 TL = re.compile(r"^(\w{3} \d\d, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Client \[([^\]]+)\] reporting timeline state (\w+), progress of (\d+)/\d+ms .*key=(/livetv/\S*)")
 
+DEAD = re.compile(r"^(\w{3} \d\d, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Completed: \[[^\]]+\] 404 GET /livetv/sessions/[0-9a-f-]+/([0-9a-f]+)-com-plexapp-\w+/index\.m3u8")
+
 
 def redact(line):
     return URLS.sub("<url>", SECRET.sub(r"\1=***", line))
@@ -281,8 +283,8 @@ class Incidents:
         self.pos = self.ino = None
         self.out = []
 
-    def _cool(self, key, ts):
-        if ts - self.last.get(key, 0) <= COOLDOWN:
+    def _cool(self, key, ts, span=None):
+        if ts - self.last.get(key, 0) <= (COOLDOWN if span is None else span):
             return False
         self.last[key] = ts
         return True
@@ -332,6 +334,8 @@ class Incidents:
             self.joined.setdefault(k, now_dt)
             d = self.dev.setdefault(k, {"bstart": None, "pstart": None, "resume": None})
             d["lastseen"], d["m"] = now_ts, m
+            if state != "paused" and d["pstart"] and now_ts - d["pstart"] >= 10:
+                d["last_pause"] = (now_ts, int(now_ts - d["pstart"]))
             if state == "paused":
                 d["bstart"], d["resume"] = None, None
                 d["pstart"] = d["pstart"] or now_ts
@@ -367,6 +371,12 @@ class Incidents:
                 d["resume"] = None
         self.events(self._new_log_events(), meta, now_dt, ld)
 
+    def _pause_note(self, dev, ts):
+        lp = (self.dev.get(dev) or {}).get("last_pause")
+        if lp and 0 <= ts.timestamp() - lp[0] <= 300:
+            return " It had resumed after a %d s pause %d s earlier." % (lp[1], ts.timestamp() - lp[0])
+        return ""
+
     def _ctx(self, dev, m, meta, now_dt):
         j = self.joined.get(dev)
         others = sum(1 for x in meta if x.get("live") and x is not m and x.get("title") == m.get("title"))
@@ -390,6 +400,10 @@ class Incidents:
             mm = TL.match(l)
             if mm:
                 ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), mm.group(3), int(mm.group(4))))
+                continue
+            mm = DEAD.match(l)
+            if mm:
+                ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), "dead404", 0))
         return ev
 
     def events(self, evs, meta, now_dt, ld):
@@ -397,6 +411,12 @@ class Incidents:
             hit = self._lookup(cid)
             dev, m = hit if hit else ("device " + cid[:8], {"Player": {"title": "device " + cid[:8], "local": True}, "title": "?"})
             L = self.blips.setdefault(cid, [])
+            if state == "dead404":                                 # (5) the stream died for this viewer
+                if self._cool((dev, "dead"), ts.timestamp(), 120):
+                    self._fire(dev, m, ts, now_dt, ld, "STREAM DIED at %s: Plex answered 404 (\"Failed to find consumer\") for this viewer's live session; "
+                               "the app shows Playback Error and Retry will not recover it" % ts.strftime("%H:%M:%S"),
+                               (self._ctx(dev, m, meta, now_dt) if hit else "") + self._pause_note(dev, ts))
+                continue
             if state == "buffering":
                 if prog < 15000:
                     continue                                       # normal start-up buffering in the first 15 s of a stream
