@@ -1,0 +1,13 @@
+[Unit]
+Description=Passive RTT/loss log to the Fire TV devices on the LAN (#87, #63)
+After=network-online.target
+
+[Service]
+User=jay
+ExecStart=/usr/bin/python3 -I /home/jay/mediahub-configs/scripts/livetv-client-ping.py
+Restart=always
+RestartSec=5
+Nice=15
+
+[Install]
+WantedBy=multi-user.target
