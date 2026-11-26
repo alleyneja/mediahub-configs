@@ -414,7 +414,8 @@ class Incidents:
             if state == "dead404":                                 # (5) the stream died for this viewer
                 if self._cool((dev, "dead"), ts.timestamp(), 120):
                     self._fire(dev, m, ts, now_dt, ld, "STREAM DIED at %s: Plex answered 404 (\"Failed to find consumer\") for this viewer's live session; "
-                               "the app shows Playback Error and Retry will not recover it" % ts.strftime("%H:%M:%S"),
+                               "the app shows Playback Error and Retry or re-selecting the same channel will not recover it. "
+                               "What works (tested on the Fire Stick): Close, open a DIFFERENT channel, then come back to this one" % ts.strftime("%H:%M:%S"),
                                (self._ctx(dev, m, meta, now_dt) if hit else "") + self._pause_note(dev, ts))
                 continue
             if state == "buffering":
