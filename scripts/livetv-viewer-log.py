@@ -235,7 +235,29 @@ def snapshot(dev, now_dt):
     return d
 
 
-def verdict(streams, load_row):
+def path_loss(addr):
+    """Read r9's own TCP stats for the biggest media connection to this remote viewer: share of bytes that had to be resent.
+    Cumulative over the connection's life, so it is an average. None when there is no connection to read."""
+    if not addr or addr == "?":
+        return None
+    try:
+        out = subprocess.run(["ss", "-tin", "state", "established", "(", "sport", "=", ":32400", ")", "dst", addr],
+                             capture_output=True, text=True, timeout=5).stdout
+    except Exception:
+        return None
+    best = None
+    for blk in out.split("[::ffff:")[1:]:
+        sent = re.search(r"bytes_sent:(\d+)", blk)
+        if sent and (best is None or int(sent.group(1)) > best[0]):
+            retr = re.search(r"bytes_retrans:(\d+)", blk)
+            rtt = re.search(r" rtt:([\d.]+)", blk)
+            best = (int(sent.group(1)), int(retr.group(1)) if retr else 0, float(rtt.group(1)) if rtt else None)
+    if not best or best[0] < 1_000_000:                      # too little data to say anything
+        return None
+    return {"pct": 100.0 * best[1] / best[0], "rtt": best[2]}
+
+
+def verdict(streams, load_row, remote=False, loss=None):
     try:
         cpu, gpu, enc = float(load_row[1] or 0), float(load_row[2] or 0), float(load_row[3] or 0)
     except (ValueError, IndexError):
@@ -248,6 +270,15 @@ def verdict(streams, load_row):
         return "r9 was BUSY (CPU/GPU high)"
     g = max((g for _, g, _ in streams), default=0)
     note = " (longest feed gap %d s, a routine size: this provider has one about every 2 min)" % g if g >= 8 else ""
+    if remote:
+        if loss is None:
+            ltxt = "no connection stats were available"
+        else:
+            ltxt = "about %.1f%% of the data r9 sent this viewer was lost and had to be resent%s" % (loss["pct"], (" (round trip %.0f ms)" % loss["rtt"]) if loss.get("rtt") else "")
+            if loss["pct"] >= 0.5:
+                ltxt += ", which leaves little headroom for a video stream"
+        return ("the feed and r9 look fine%s, so the cause is the remote internet path to this viewer (their home internet or Wi-Fi), "
+                "not the server. %s" % (note, ltxt[0].upper() + ltxt[1:]))
     return ("the feed and r9 look fine%s, so the cause is on the viewer's side: their device or Wi-Fi, or the app restarting the stream "
             "after a pause or a fresh join" % note)
 
@@ -258,7 +289,7 @@ def build_message(m, now_dt, load_row, streams, folder, headline, extra=""):
     spd = ("%.1f" % float(t["speed"])) if t.get("speed") not in (None, "") else "?"
     return ("Live TV: %s (%s) on \"%s\": %s.%s\nFeed into r9: %s. r9: CPU %s%%, GPU %s%%. Transcode %s x real time.\nVerdict: %s.\nSnapshot on r9: %s" % (
         p.get("title", "?"), "remote" if not p.get("local") else "home network", (m.get("title") or "?")[:40], headline, extra, feeds,
-        load_row[1] if len(load_row) > 1 else "?", load_row[2] if len(load_row) > 2 and load_row[2] != "" else "?", spd, verdict(streams, load_row),
+        load_row[1] if len(load_row) > 1 else "?", load_row[2] if len(load_row) > 2 and load_row[2] != "" else "?", spd, verdict(streams, load_row, not p.get("local"), path_loss(p.get("remotePublicAddress") or p.get("address")) if not p.get("local") else None),
         folder.replace(os.path.expanduser("~"), "~")))
 
 
