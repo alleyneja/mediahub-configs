@@ -225,7 +225,7 @@ def write_rows(rows):
         w.writerows(rows)
 
 
-def compare(pairs, seconds):
+def compare(pairs, seconds, xtreme_busy_ok=0):
     env = load_env()
     xt_user, xt_pw = env["IPTV_USERNAME"], env["IPTV_PASSWORD"]
     dl_user, dl_pw = env["DL_USERNAME"], env["DL_PASSWORD"]
@@ -243,7 +243,7 @@ def compare(pairs, seconds):
             write_rows([{"ts": ts, "label": label, "provider": p, "status": "api_error", "error": str(e)[:120]} for p in ("xtreme", "digitalizard")])
             print(f"{ts} {label}: provider API error {e}")
             continue
-        if xc or dc:
+        if xc > xtreme_busy_ok or dc:
             write_rows([{"ts": ts, "label": label, "provider": p, "status": "skipped_viewer"} for p in ("xtreme", "digitalizard")])
             print(f"{ts} {label}: skipped (xtreme active_cons={xc}, digitalizard={dc})")
             continue
@@ -306,6 +306,9 @@ def main():
     ap.add_argument("mode", choices=["run", "cycle", "summary"])
     ap.add_argument("--seconds", type=int, default=180)
     ap.add_argument("--channels", default="")
+    # Escape hatch for a stale connection Xtreme keeps counting (seen 2026-11-27):
+    # 1 = run even with one Xtreme slot busy, taking the 2nd. Leave 0 for unattended runs.
+    ap.add_argument("--xtreme-busy-ok", type=int, default=0)
     a = ap.parse_args()
     if a.mode == "summary":
         return summary()
@@ -319,7 +322,7 @@ def main():
         i = int(open(st).read()) if os.path.exists(st) else 0
         pairs = [PAIRS[i % len(PAIRS)]]
         open(st, "w").write(str(i + 1))
-    compare(pairs, a.seconds)
+    compare(pairs, a.seconds, a.xtreme_busy_ok)
 
 
 if __name__ == "__main__":
