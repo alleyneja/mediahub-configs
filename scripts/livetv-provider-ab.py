@@ -52,16 +52,20 @@ REBUF = 3.0       # s refilled before resuming after a stall
 GAP_S = 8.0       # silent gap worth counting (same threshold as #87 Nov 23 notes)
 
 # (label, Xtreme name in live_only.m3u, Digitalizard name in dl_live.m3u)
+# Ordered by how often the family actually tunes them (Threadfin log, Nov 2026):
+# ESPN 67, WESH 66, WOFL 57, WKMG 47, NFLN 35, WFTV 34, SEC 29, WNYW 23, FS1 16, ESPN2 9.
+# CNN/FNC/TNT/USA are rarely watched; kept as a non-sports control group.
 PAIRS = [
     ("ESPN", "USA ESPN HD", "DL ESPN 1 HD"),
-    ("ESPN2", "USA ESPN 2", "DL ESPN 2 HD"),
-    ("SEC", "USA ESPN SEC Network", "DL ESPN SEC NETWORK HD"),
-    ("FS1", "USA FOX SPORTS 1 HD", "DL FOX SPORTS 1 HD"),
-    ("NFLN", "USA NFL Network", "DL NFL NETWORK"),
-    ("WOFL", "USA FOX 35 WOFL ORLANDO", "DL FOX 35 (WOFL) ORLANDO"),
     ("WESH", "USA NBC 2 WESH ORLANDO", "DL NBC 02 (WESH) ORLANDO"),
+    ("WOFL", "USA FOX 35 WOFL ORLANDO", "DL FOX 35 (WOFL) ORLANDO"),
     ("WKMG", "USA CBS 6 WKMG ORLANDO", "DL CBS 06 (WKMG) ORLANDO"),
+    ("NFLN", "USA NFL Network", "DL NFL NETWORK"),
     ("WFTV", "USA ABC 9 WFTV ORLANDO", "DL ABC 09 (WFTV) ORLANDO"),
+    ("SEC", "USA ESPN SEC Network", "DL ESPN SEC NETWORK HD"),
+    ("WNYW", "USA FOX 5 WNYW NEW YORK", "DL FOX 05 (WNYW) NEW YORK"),
+    ("FS1", "USA FOX SPORTS 1 HD", "DL FOX SPORTS 1 HD"),
+    ("ESPN2", "USA ESPN 2", "DL ESPN 2 HD"),
     ("CNN", "USA CNN*", "DL CNN FHD"),
     ("FNC", "USA Fox News Channel", "DL FOX NEWS HD"),
     ("TNT", "USA TNT East FHD*", "DL TNT EAST FHD"),
