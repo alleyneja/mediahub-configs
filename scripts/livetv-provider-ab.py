@@ -229,7 +229,7 @@ def write_rows(rows):
         w.writerows(rows)
 
 
-def compare(pairs, seconds, xtreme_busy_ok=0):
+def compare(pairs, seconds, xtreme_busy_ok=0, dl_busy_ok=0):
     env = load_env()
     xt_user, xt_pw = env["IPTV_USERNAME"], env["IPTV_PASSWORD"]
     dl_user, dl_pw = env["DL_USERNAME"], env["DL_PASSWORD"]
@@ -247,7 +247,7 @@ def compare(pairs, seconds, xtreme_busy_ok=0):
             write_rows([{"ts": ts, "label": label, "provider": p, "status": "api_error", "error": str(e)[:120]} for p in ("xtreme", "digitalizard")])
             print(f"{ts} {label}: provider API error {e}")
             continue
-        if xc > xtreme_busy_ok or dc:
+        if xc > xtreme_busy_ok or dc > dl_busy_ok:
             write_rows([{"ts": ts, "label": label, "provider": p, "status": "skipped_viewer"} for p in ("xtreme", "digitalizard")])
             print(f"{ts} {label}: skipped (xtreme active_cons={xc}, digitalizard={dc})")
             continue
@@ -316,6 +316,10 @@ def main():
     # a 2nd viewer on a DIFFERENT channel gets "All tuners in use"; a viewer's mid-stream
     # re-tune could be refused. The viewer already playing is never kicked.
     ap.add_argument("--xtreme-busy-ok", type=int, default=0)
+    # Digitalizard's counter got stuck at 1/1 on 2026-11-27 (after a pull that reconnected
+    # 4x) while new streams still worked. 1 = ignore its counter. Only safe while nobody
+    # watches DL channels in Plex (its plan has 1 slot).
+    ap.add_argument("--dl-busy-ok", type=int, default=0)
     a = ap.parse_args()
     if a.mode == "summary":
         return summary()
@@ -329,7 +333,7 @@ def main():
         i = int(open(st).read()) if os.path.exists(st) else 0
         pairs = [PAIRS[i % len(PAIRS)]]
         open(st, "w").write(str(i + 1))
-    compare(pairs, a.seconds, a.xtreme_busy_ok)
+    compare(pairs, a.seconds, a.xtreme_busy_ok, a.dl_busy_ok)
 
 
 if __name__ == "__main__":
