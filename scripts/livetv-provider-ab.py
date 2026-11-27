@@ -310,8 +310,11 @@ def main():
     ap.add_argument("mode", choices=["run", "cycle", "summary"])
     ap.add_argument("--seconds", type=int, default=180)
     ap.add_argument("--channels", default="")
-    # Escape hatch for a stale connection Xtreme keeps counting (seen 2026-11-27):
-    # 1 = run even with one Xtreme slot busy, taking the 2nd. Leave 0 for unattended runs.
+    # 1 = run even with one Xtreme slot busy (one viewer or a stale connection), taking the
+    # 2nd; still skips at 2. Jay's call 2026-11-27, also for the weekend cron: measuring during
+    # real viewing (game time) matters more than keeping the 2nd slot free. Cost: during a pull
+    # a 2nd viewer on a DIFFERENT channel gets "All tuners in use"; a viewer's mid-stream
+    # re-tune could be refused. The viewer already playing is never kicked.
     ap.add_argument("--xtreme-busy-ok", type=int, default=0)
     a = ap.parse_args()
     if a.mode == "summary":
