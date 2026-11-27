@@ -142,7 +142,8 @@ def write_load(row):
 # Triggers: (1) a live session buffering for STALL_SAMPLES consecutive 10 s samples; (2) 3+ buffering reports within 2 min in Plex's own
 # log (it timestamps blips to the second; our 10 s poll misses them); (3) the client reports "stopped" within 20 s of a buffering report
 # (the Playback Error screen: Plex logs "Client stopped playback"); (4) slow resume: after a pause of RESUME_MIN_PAUSE s or more the
-# viewer is not playing again RESUME_SLOW s after resuming. A session that drops out of Plex's list keeps its state for VANISH_GRACE s
+# viewer is not playing again RESUME_SLOW s after resuming; (6) the client reports "stopped" with no buffering report but within 25 s of a video
+# segment that took SLOW_SEG_MS+ to deliver (a feed stall that the app did not ride out). A session that drops out of Plex's list keeps its state for VANISH_GRACE s
 # (the app replaces the session on a re-tune), so a missed poll or a vanished session still counts as "still buffering/not playing yet".
 # One notice per device per kind per 15 min.
 INCIDENT_DIR = os.environ.get("VIEWER_INCIDENTS", os.path.expanduser("~/logs/livetv-incidents"))
@@ -159,6 +160,8 @@ SECRET = re.compile(r"(X-Plex-Token|token|password|username)=[^&\s\"']+", re.I)
 URLS = re.compile(r"https?://\S+")
 TL = re.compile(r"^(\w{3} \d\d, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Client \[([^\]]+)\] reporting timeline state (\w+), progress of (\d+)/\d+ms .*key=(/livetv/\S*)")
 
+SLOW_SEG_MS = int(os.environ.get("VIEWER_SLOW_SEG_MS", "6000"))       # a video segment that took this long to hand to a client = the stream stalled
+SLOWSEG = re.compile(r"^(\w{3} \d\d, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Completed: \[[^\]]+\] \d+ GET /livetv/sessions/[0-9a-f-]+/([0-9a-f]+)-com-plexapp-\w+/\d+\.ts .*?#[0-9a-f]+ (\d+)ms ")
 DEAD = re.compile(r"^(\w{3} \d\d, \d{4} \d\d:\d\d:\d\d)\.\d+ .*Completed: \[[^\]]+\] 404 GET /livetv/sessions/[0-9a-f-]+/([0-9a-f]+)-com-plexapp-\w+/index\.m3u8")
 
 
@@ -309,7 +312,7 @@ def post_discord(msg):
 class Incidents:
     def __init__(self, live=True):
         self.live = live                                       # False = replay/test: build messages but never snapshot or post
-        self.streak, self.last, self.joined, self.blips, self.alias = {}, {}, {}, {}, {}
+        self.streak, self.last, self.joined, self.blips, self.alias, self.slow = {}, {}, {}, {}, {}, {}
         self.dev = {}                                          # device -> {bstart, pstart, resume, lastseen, m}
         self.pos = self.ino = None
         self.out = []
@@ -435,10 +438,18 @@ class Incidents:
             mm = DEAD.match(l)
             if mm:
                 ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), "dead404", 0))
+                continue
+            if ".ts (" in l:
+                mm = SLOWSEG.match(l)
+                if mm and int(mm.group(3)) >= SLOW_SEG_MS:
+                    ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), "slowseg", int(mm.group(3))))
         return ev
 
     def events(self, evs, meta, now_dt, ld):
         for ts, cid, state, prog in evs:                         # (2) repeated blips, (3) stop right after a blip
+            if state == "slowseg":                                 # (6) remember a stalled segment; it only matters if the viewer stops soon after
+                self.slow[cid[:8]] = (ts, prog)
+                continue
             hit = self._lookup(cid)
             dev, m = hit if hit else ("device " + cid[:8], {"Player": {"title": "device " + cid[:8], "local": True}, "title": "?"})
             L = self.blips.setdefault(cid, [])
@@ -468,6 +479,12 @@ class Incidents:
                     self._fire(dev, m, ts, now_dt, ld, "playback STOPPED at %s, %d s after buffering (likely the Playback Error screen)" % (ts.strftime("%H:%M:%S"), (ts - L[-1]).total_seconds()),
                                self._ctx(dev, m, meta, now_dt) if hit else "")
                 L.clear()
+            elif state == "stopped" and prog >= 15000:             # (6) the app gave up with no buffering report (Nov 26 20:35: feed stalled ~8 s, a home Fire TV went straight to Playback Error)
+                sg = self.slow.get(cid[:8])
+                if sg and 0 <= (ts - sg[0]).total_seconds() <= 25 and self._cool((dev, "slowstop"), ts.timestamp()):
+                    self._fire(dev, m, ts, now_dt, ld, "playback STOPPED at %s with no buffering report, %d s after Plex needed %d s to hand this viewer one video segment "
+                               "(the stream stalled and the app gave up waiting; likely the Playback Error screen)" % (ts.strftime("%H:%M:%S"), (ts - sg[0]).total_seconds(), sg[1] // 1000),
+                               (self._ctx(dev, m, meta, now_dt) if hit else "") + self._pause_note(dev, ts))
 
 
 def replay(start, end):
@@ -480,6 +497,10 @@ def replay(start, end):
             mm = TL.match(l)
             if mm and mm.group(1).startswith(day) and start <= mm.group(1)[13:] <= end:
                 ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), mm.group(3), int(mm.group(4))))
+            elif ".ts (" in l:
+                mm = SLOWSEG.match(l)
+                if mm and int(mm.group(3)) >= SLOW_SEG_MS and mm.group(1).startswith(day) and start <= mm.group(1)[13:] <= end:
+                    ev.append((datetime.strptime(mm.group(1), "%b %d, %Y %H:%M:%S"), mm.group(2), "slowseg", int(mm.group(3))))
     ev.sort()
     inc = Incidents(live=False)
     for row_ in csv.DictReader(open(CSV)):                       # device names from the viewer log (session id prefix = client id prefix)
