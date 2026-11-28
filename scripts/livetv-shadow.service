@@ -1,0 +1,13 @@
+[Unit]
+Description=Live TV shadow: pull the watched channel from Digitalizard alongside Xtreme viewing (#87)
+After=network-online.target docker.service
+
+[Service]
+User=jay
+ExecStart=/usr/bin/python3 -I /home/jay/mediahub-configs/scripts/livetv-shadow.py
+Restart=on-failure
+RestartSec=10
+Nice=10
+
+[Install]
+WantedBy=multi-user.target
