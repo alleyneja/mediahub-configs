@@ -128,7 +128,13 @@ for s in streams:
     if name not in wanted.get(group, ()) or (group, name) in found:
         continue
     found.add((group, name))
+    # Namespace the tvg-id. Threadfin refreshes stream URLs by tvg-id across
+    # ALL providers, so a DL channel sharing "espn.us" with Xtreme's ESPN
+    # overwrote Xtreme's URL: on 2026-11-27, 92 Xtreme channels silently
+    # streamed from Digitalizard. Guide data for DL channels comes from the
+    # x-mapping stored in xepg.json, not from this id.
     epg_id = s.get("epg_channel_id") or EPG_ID_OVERRIDES.get(name, "")
+    epg_id = f"dl.{epg_id}" if epg_id else ""
     display = NAME_PREFIX + name
     lines.append(
         f'#EXTINF:-1 tvg-id="{epg_id}" tvg-name="{display}" tvg-logo="{s.get("stream_icon", "")}" '
